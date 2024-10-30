@@ -1,61 +1,45 @@
 package com.sheildron.station.src
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.InetAddress
-import java.net.Socket
 import java.nio.ByteBuffer
-import kotlin.concurrent.thread
-
 
 class VideoController(private val context: Context) {
 
-    private var socket: Socket? = null
-    private var dataOutputStream: DataOutputStream? = null
+    private var udpSocket: DatagramSocket? = null
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     companion object {
-        private const val HOST = "192.168.0.12" // Replace with actual IP
+        private const val HOST = "192.168.240.189"
         private const val PORT = 65432
     }
 
-
-    fun pingServer(ipAddress: String, callback: (Boolean) -> Unit) {
-        thread {
-            try {
-                val address = InetAddress.getByName(ipAddress)
-                val reachable = address.isReachable(2000)  // 타임아웃 2초 설정
-                callback(reachable)
-            } catch (e: Exception) {
-                callback(false)
-            }
+    init {
+        try {
+            udpSocket = DatagramSocket()
+            Log.i("VideoController", "UDP Socket created")
+        } catch (e: Exception) {
+            Log.e("VideoController", "Error creating UDP socket: ${e.message}")
         }
     }
 
-
-    // Initialize camera preview and network transmission
     fun startCameraPreview() {
         Log.i("VideoController", "startCameraPreview called")
-
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            Log.e("VideoController", "Camera permission not granted")
-            return
-        }
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
             val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetResolution(android.util.Size(1280, 720))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
@@ -70,12 +54,11 @@ class VideoController(private val context: Context) {
         }, ContextCompat.getMainExecutor(context))
     }
 
-    // Process image frame and send over network
     private fun processImageProxy(imageProxy: ImageProxy) {
         try {
             val bitmap = imageProxy.toBitmap()
             bitmap?.let {
-                sendBitmapOverNetwork(it)
+                sendBitmapOverUDP(it)
             }
         } catch (e: Exception) {
             Log.e("VideoController", "Error processing image: ${e.message}")
@@ -84,7 +67,6 @@ class VideoController(private val context: Context) {
         }
     }
 
-    // Convert ImageProxy to Bitmap
     private fun ImageProxy.toBitmap(): Bitmap? {
         val buffer: ByteBuffer = planes[0].buffer
         val byteArray = ByteArray(buffer.remaining())
@@ -92,39 +74,47 @@ class VideoController(private val context: Context) {
         return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
     }
 
-    // Compress and send bitmap over network
-    private fun sendBitmapOverNetwork(bitmap: Bitmap) {
-        try {
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
+    private fun sendBitmapOverUDP(bitmap: Bitmap) {
+        coroutineScope.launch {
+            try {
+                // 이미지 크기 조정 (320x240 픽셀로 축소)
+                val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 320, 240, true)
 
-            if (socket == null || socket?.isClosed == true) {
-                socket = Socket(InetAddress.getByName(HOST), PORT)
-                dataOutputStream = DataOutputStream(socket?.getOutputStream())
-                Log.i("VideoController", "Connected to socket at $HOST:$PORT")
+                // 압축 및 바이트 배열로 변환 (품질을 50으로 설정하여 크기 줄이기)
+                val byteArrayOutputStream = ByteArrayOutputStream()
+                resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
+                val byteArray = byteArrayOutputStream.toByteArray()
+
+                // 패킷이 MTU를 초과하지 않도록 크기 확인
+                if (byteArray.size > 1500) {
+                    Log.w("VideoController", "Warning: Packet size may exceed MTU limit")
+                }
+
+                val packet = DatagramPacket(
+                    byteArray,
+                    byteArray.size,
+                    InetAddress.getByName(HOST),
+                    PORT
+                )
+
+                udpSocket?.send(packet)
+                Log.i("VideoController", "Frame sent over UDP to $HOST:$PORT, size: ${byteArray.size} bytes")
+
+            } catch (e: Exception) {
+                Log.e("VideoController", "Error sending UDP packet: ${e.message}")
             }
-
-            dataOutputStream?.writeInt(byteArray.size)
-            dataOutputStream?.write(byteArray)
-            dataOutputStream?.flush()
-
-        } catch (e: Exception) {
-            Log.e("VideoController", "Error sending data: ${e.message}")
-            closeSocket()
         }
     }
 
-    private fun closeSocket() {
+
+    fun closeSocket() {
         try {
-            dataOutputStream?.close()
-            socket?.close()
-            Log.i("VideoController", "Socket closed")
+            udpSocket?.close()
+            Log.i("VideoController", "UDP Socket closed")
         } catch (e: Exception) {
-            Log.e("VideoController", "Error closing socket: ${e.message}")
+            Log.e("VideoController", "Error closing UDP socket: ${e.message}")
         } finally {
-            socket = null
-            dataOutputStream = null
+            udpSocket = null
         }
     }
 }
