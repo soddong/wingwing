@@ -49,61 +49,38 @@ android {
 }
 
 dependencies {
-    // Google Play Services의 Wearable API 사용을 위한 라이브러리
     implementation(libs.play.services.wearable)
-
-    // Compose 관련 BOM, Compose 라이브러리 버전 통일
     implementation(platform(libs.androidx.compose.bom))
-
-    // Compose UI의 기본 UI 컴포넌트 라이브러리
+    
     implementation(libs.androidx.ui)
-
-    // Compose UI의 미리보기 도구
     implementation(libs.androidx.ui.tooling.preview)
-
-    // Compose Material 디자인 컴포넌트 라이브러리
     implementation(libs.androidx.compose.material)
-
-    // Compose의 기본적인 Foundation 컴포넌트 제공 라이브러리
     implementation(libs.androidx.compose.foundation)
-
-    // Wear OS용 미리보기 도구 제공 라이브러리
     implementation(libs.androidx.wear.tooling.preview)
-
-    // Compose Activity를 위한 라이브러리
     implementation(libs.androidx.activity.compose)
-
-    // Android 12 이상의 앱에서 스플래시 스크린을 쉽게 적용할 수 있는 라이브러리
     implementation(libs.androidx.core.splashscreen)
-
-    // Android Wear OS 타일(Tiles) 기능을 위한 라이브러리
     implementation(libs.androidx.tiles)
-
-    // Material 디자인 기반의 Wear OS Tiles UI 컴포넌트를 제공하는 라이브러리
     implementation(libs.androidx.tiles.material)
-
-    // Horologist 라이브러리: Wear OS에서 Compose를 위한 도구 라이브러리
     implementation(libs.horologist.compose.tools)
-
-    // Horologist 라이브러리: Wear OS에서 Tiles를 위한 도구 라이브러리
     implementation(libs.horologist.tiles)
-
-    // Wear OS의 복잡도(Complications) 데이터 소스를 쉽게 관리할 수 있도록 지원하는 라이브러리
     implementation(libs.androidx.watchface.complications.data.source.ktx)
+    
+    implementation("androidx.wear.compose:compose-material:1.2.1")
+    implementation("androidx.wear.compose:compose-foundation:1.2.1")
+    implementation("androidx.wear.compose:compose-navigation:1.2.1")
+    
+    // Material Icons 추가
+    implementation("androidx.compose.material:material-icons-core:1.5.4")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
-    // Android 테스트에서 Compose BOM을 사용
+    implementation("androidx.health:health-services-client:1.1.0-alpha03")
+    
+    // 테스트 관련 의존성
     androidTestImplementation(platform(libs.androidx.compose.bom))
-
-    // JUnit4를 위한 Compose UI 테스트 라이브러리
     androidTestImplementation(libs.androidx.ui.test.junit4)
-
-    // 디버그 모드에서 UI 도구를 위한 라이브러리 (UI 미리보기 및 개발 편의)
     debugImplementation(libs.androidx.ui.tooling)
-
-    // Compose 테스트에서 AndroidManifest.xml 파일을 위한 라이브러리
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    // Wear OS 앱을 위한 모듈 참조
+    
     wearApp(project(":wear"))
 }
 
