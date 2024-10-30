@@ -1,4 +1,6 @@
-package com.ssafy.shieldroneapp.complication
+// 워치페이스 컴플리케이션 서비스
+
+package com.ssafy.shieldroneapp.services
 
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
@@ -11,7 +13,7 @@ import java.util.Calendar
 /**
  * Skeleton for complication data source that returns short text.
  */
-class MainComplicationService : SuspendingComplicationDataSourceService() {
+class ComplicationService : SuspendingComplicationDataSourceService() {
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) {

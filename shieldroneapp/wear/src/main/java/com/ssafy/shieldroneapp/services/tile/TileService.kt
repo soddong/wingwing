@@ -1,10 +1,13 @@
-package com.ssafy.shieldroneapp.tile
+// 타일 서비스
+
+package com.ssafy.shieldroneapp.services
 
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.wear.tooling.preview.devices.WearDevices
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ResourceBuilders
@@ -26,7 +29,7 @@ private const val RESOURCES_VERSION = "0"
  * Skeleton for a tile with no images.
  */
 @OptIn(ExperimentalHorologistApi::class)
-class MainTileService : SuspendingTileService() {
+class TileService : SuspendingTileService() {
 
     override suspend fun resourcesRequest(
         requestParams: RequestBuilders.ResourcesRequest
@@ -59,7 +62,7 @@ private fun tileLayout(context: Context): LayoutElementBuilders.LayoutElement {
 }
 
 @Preview(
-    device = Devices.WEAR_OS_SMALL_ROUND,
+    device = WearDevices.LARGE_ROUND,
     showSystemUi = true,
     backgroundColor = 0xff000000,
     showBackground = true

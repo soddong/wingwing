@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.presentation.theme
+package com.ssafy.shieldroneapp.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.material.MaterialTheme
