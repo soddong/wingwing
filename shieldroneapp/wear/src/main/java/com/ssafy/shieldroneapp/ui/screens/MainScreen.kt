@@ -5,19 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-//import com.ssafy.shieldroneapp.ui.components.StatusIndicator
-//import com.ssafy.shieldroneapp.ui.components.SensorDisplay
-import com.ssafy.shieldroneapp.viewmodels.SensorViewModel
 import androidx.wear.compose.material.Card
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxSize
+import com.ssafy.shieldroneapp.viewmodels.SensorViewModel
 
 @Composable
 fun MainScreen(
@@ -72,7 +63,7 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "75",  // sensorViewModel.heartRate 값 사용
+                        text = "75",
                         style = MaterialTheme.typography.title1
                     )
                     Text(
@@ -99,30 +90,8 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "걷기",  // sensorViewModel.activity 값 사용
-                    style = MaterialTheme.typography.title2
-                )
-            }
-        }
-
-        // 배터리 상태
-        Card(
-            onClick = { /* 배터리 상세 보기 */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "배터리",
-                    style = MaterialTheme.typography.caption1
-                )
-                Text(
-                    text = "85%",  // sensorViewModel.batteryLevel 값 사용
-                    style = MaterialTheme.typography.caption2,
-                    color = MaterialTheme.colors.secondary
+                    text = "걷기",
+                    style = MaterialTheme.typography.title3
                 )
             }
         }
