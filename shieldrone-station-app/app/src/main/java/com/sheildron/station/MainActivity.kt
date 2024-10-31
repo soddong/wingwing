@@ -1,3 +1,4 @@
+
 package com.sheildron.station
 
 import android.Manifest
@@ -126,7 +127,7 @@ private val LightColorScheme = lightColorScheme(
     onBackground = Color.Black,
     onSurface = Color.Black
 )
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraPermissionScreen(
     onRequestPermission: () -> Unit,
