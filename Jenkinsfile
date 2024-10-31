@@ -5,12 +5,14 @@ pipeline {
         MAIN_SERVER_DIR = 'shieldrone-main-server'
     }
 
-    boolean buildMainServer = false
 
     stages {
         stage('Check Changes') {
             steps {
                 script {
+
+                    buildMainServer = false
+
                     def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD^", returnStdout: true).trim()
 
                     buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR)
