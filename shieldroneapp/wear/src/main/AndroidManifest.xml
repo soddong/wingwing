@@ -1,89 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 이 앱이 웨어러블 디바이스(워치)용으로 설계되었음을 명시 -->
-    <uses-feature android:name="android.hardware.type.watch" />
+  <!-- 이 앱이 웨어러블 디바이스(워치)용으로 설계되었음을 명시 -->
+  <uses-feature android:name="android.hardware.type.watch"/>
 
-    <!-- 기기가 슬립 모드로 전환되는 것을 방지하는 권한 -->
-    <!-- 센서 데이터 수집이나 사용자 모니터링을 지속적으로 수행하기 위해 필요 -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- 마이크 사용 권한 -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- 생체 신호 센서 데이터 권한 -->
-    <uses-permission android:name="android.permission.BODY_SENSORS" />
-    <uses-permission android:name=" android.permission.BODY_SENSORS_BACKGROUND" />
-    <!-- 워치와 페어링된 모바일 기기와 통신하기 위한 권한 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- 알림 보내기 권한 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.VIBRATE" />
+  <!-- 기기가 슬립 모드로 전환되는 것을 방지하는 권한 -->
+  <!-- 센서 데이터 수집이나 사용자 모니터링을 지속적으로 수행하기 위해 필요 -->
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+  <!-- 마이크 사용 권한 -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <!-- 생체 신호 센서 데이터 권한 -->
+  <uses-permission android:name="android.permission.BODY_SENSORS"/>
+  <uses-permission android:name=" android.permission.BODY_SENSORS_BACKGROUND"/>
+  <!-- 워치와 페어링된 모바일 기기와 통신하기 위한 권한 -->
+  <uses-permission android:name="android.permission.BLUETOOTH"/>
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+  <!-- 알림 보내기 권한 -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
 
-    <application
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault">
-        <service
-            android:name=".services.ComplicationService"
-            android:exported="true"
-            android:label="@string/complication_label"
-            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
-            <intent-filter>
-                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
-            </intent-filter>
+  <queries>
+    <package android:name="com.google.android.wearable.shieldrone"/>
+  </queries>
 
-            <meta-data
-                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
-                android:value="SHORT_TEXT" />
-            <meta-data
-                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
-                android:value="0" />
-        </service>
-        <service
-            android:name=".services.TileService"
-            android:exported="true"
-            android:label="@string/tile_label"
-            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
-            <intent-filter>
-                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
-            </intent-filter>
+  <application android:name=".MainApplication" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
+    <service android:name=".services.ComplicationService" android:exported="true" android:label="@string/complication_label" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+      <intent-filter>
+        <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/>
+      </intent-filter>
 
-            <meta-data
-                android:name="androidx.wear.tiles.PREVIEW"
-                android:resource="@drawable/tile_preview" />
-        </service>
+      <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT"/>
+      <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="0"/>
+    </service>
+    <!-- <service android:name=".services.TileService" android:exported="true" android:label="@string/tile_label" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"> <intent-filter> <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /> </intent-filter> <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/tile_preview" /> </service> -->
 
-        <service
-            android:name=".services.WearableService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-                <data
-                    android:host="*"
-                    android:pathPrefix="/emergency_alert"
-                    android:scheme="wear" />
-            </intent-filter>
-        </service>
+    <service android:name=".services.WearableService" android:exported="true">
+      <intent-filter>
+        <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED"/>
+        <data android:host="*" android:pathPrefix="/emergency_alert" android:scheme="wear"/>
+      </intent-filter>
+    </service>
 
-        <uses-library
-            android:name="com.google.android.wearable"
-            android:required="true" />
-        <!-- Set to true if your app is Standalone, that is, it does not require the handheld app to run. -->
-        <meta-data
-            android:name="com.google.android.wearable.standalone"
-            android:value="true" />
+    <uses-library android:name="com.google.android.wearable" android:required="true"/>
+    <!-- Set to true if your app is Standalone, that is, it does not require the handheld app to run. -->
+    <meta-data android:name="com.google.android.wearable.standalone" android:value="true"/>
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:taskAffinity=""
-            android:theme="@style/MainActivityTheme.Starting">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+    <activity android:name=".MainActivity" android:exported="true" android:taskAffinity="" android:theme="@style/MainActivityTheme.Starting">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+  </application>
 
 </manifest>
