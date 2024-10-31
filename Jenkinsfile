@@ -47,12 +47,8 @@ pipeline {
                     echo '********** shieldrone-main-server Deploy Start **********'
                     sh 'docker-compose -f main-server-compose.yml down'
                     sh 'docker rm -f main-server || true'
-
-                    def mysqlRunning = sh(script: "docker inspect -f '{{.State.Running}}' mysql || echo 'false'", returnStdout: true).trim()
-                    if(mysqlRunning == 'false') {
-                        sh 'docker-compose -f mysql-compose.yml up -d'
-                    }
-
+                    sh 'docker rm -f mysql || true'
+                    sh 'docker-compose -f mysql-compose.yml up -d'
                     sh 'docker-compose -f main-server-compose.yml up -d'
                     echo '********** shieldrone-main-server Deploy End **********'
                 }
