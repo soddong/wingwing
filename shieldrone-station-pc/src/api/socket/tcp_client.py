@@ -6,7 +6,7 @@ import numpy as np
 from ultralytics import YOLO
 
 # config.json 파일 경로 설정 및 로드
-config_path = os.path.join(os.path.dirname(__file__), "config.json")
+config_path = os.path.join(os.path.dirname(__file__), "../../../config.json")
 with open(config_path, "r") as config_file:
     config = json.load(config_file)
 
@@ -18,42 +18,43 @@ YOLO_MODEL_PATH = config["YOLO_MODEL_PATH"]
 # YOLO 모델 로드 (사전 학습된 YOLO 모델 가정)
 model = YOLO(YOLO_MODEL_PATH)
 
-# TCP 클라이언트 소켓 생성
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-    client_socket.connect((HOST, PORT))
-    print(f"Connected to server at {HOST}:{PORT}")
+def main():
+    # UDP 소켓 생성 및 바인딩
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket.bind((HOST, PORT))
+    print(f"서버가 {HOST}:{PORT}에서 대기 중입니다...")
 
-    # 프레임 크기 (4바이트) 수신
-    size_data = client_socket.recv(4)
-    if len(size_data) < 4:
-        print("Error: Failed to receive the size of the data.")
-    else:
-        data_size = int.from_bytes(size_data, byteorder='big')
-        print(f"Receiving data of size: {data_size} bytes")
+    try:
+        while True:
+            # 최대 패킷 크기 수신 (65507은 IPv4에서 UDP 최대 크기)
+            packet, addr = server_socket.recvfrom(65507)
+            print(f"{addr}로부터 패킷 수신 완료")
 
-        # 데이터 수신을 위한 버퍼 설정
-        data_buffer = bytearray()
-        while len(data_buffer) < data_size:
-            chunk = client_socket.recv(min(4096, data_size - len(data_buffer)))
-            if not chunk:
-                print("Error: Connection closed or incomplete data received.")
-                break
-            data_buffer.extend(chunk)
+            # 바이트 배열을 이미지로 변환
+            frame = np.frombuffer(packet, dtype=np.uint8)
+            img = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-        # 수신한 데이터 크기 검증
-        if len(data_buffer) == data_size:
-            # 수신한 바이트 배열을 numpy 배열로 변환하여 이미지로 디코딩
-            frame_array = np.frombuffer(data_buffer, dtype=np.uint8)
-            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
-
-            if frame is not None:
-                # YOLO 모델을 이용한 객체 탐지 수
-                results = model(frame)
+            if img is not None:
+                # YOLO 모델을 이용하여 객체 탐지 수행
+                results = model(img)
 
                 # 탐지 결과 출력
                 for result in results:
                     print("Detected objects:", result.boxes)
+
+                # 수신한 이미지 표시
+                cv2.imshow("Received Frame", img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
             else:
                 print("Error: Failed to decode image.")
-        else:
-            print("Error: Incomplete data received.")
+                
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        server_socket.close()
+        cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
+
