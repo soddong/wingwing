@@ -1,4 +1,4 @@
-ROM gradle:8.8-jdk-focal AS build
+FROM gradle:8.8-jdk-focal AS build
 
 
 WORKDIR /app
