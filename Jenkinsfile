@@ -28,7 +28,11 @@ pipeline {
                 }
             }
             steps {
-                echo 'Building Main Server...'
+                echo '********** shieldrone-main-server Build Start **********'
+                dir(env.MAIN_SERVER_DIR) {
+                    sh 'docker build -t main-server .'
+                }
+                echo '********** shieldrone-main-server Build End **********'
             }
         }
 
@@ -39,7 +43,13 @@ pipeline {
                 }
             }
             steps {
-                echo 'Deploying Main Server...'
+                script {
+                    echo '********** shieldrone-main-server Deploy Start **********'
+                    sh 'docker-compose down'
+                    sh 'docker rm -f main-server || true'
+                    sh 'docker-compose -f main-server-compose.yml up -d'
+                    echo '********** shieldrone-main-server Deploy End **********'
+                }
             }
         }
     }
