@@ -45,7 +45,7 @@ pipeline {
             steps {
                 script {
                     echo '********** shieldrone-main-server Deploy Start **********'
-                    sh 'docker-compose -f main-server-compose.yml down'
+                    sh 'docker-compose -f main-server-compose.yml stop'
                     sh 'docker rm -f main-server || true'
                     sh 'docker rm -f mysql || true'
                     sh 'docker-compose -f mysql-compose.yml up -d'
