@@ -15,7 +15,7 @@ pipeline {
 
                     def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD", returnStdout: true).trim()
 
-                    buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR)
+                    buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR) || diffOutput.contains('Jenkinsfile')
 
                 }
             }
