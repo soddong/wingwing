@@ -8,11 +8,10 @@ import jakarta.persistence.Id;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Drone {
+public class Drone extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +20,4 @@ public class Drone {
     @Column(name = "battery", nullable = false)
     private Integer battery;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 }
