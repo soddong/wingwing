@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,8 +41,5 @@ public class User {
 
     @Column(name = "distance")
     private Integer distance;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 
 }

@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Hive {
+public class Hive extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +46,4 @@ public class Hive {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 }
