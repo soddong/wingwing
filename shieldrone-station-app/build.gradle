@@ -6,7 +6,3 @@ alias(libs.plugins.android.application) apply false
 dependencies {
     classpath("com.android.tools.build:gradle:7.4.2")
 }
-plugins {
-    kotlin("android") version "1.7.21" apply false
-    kotlin("jvm") version "1.7.21" apply false
-}
