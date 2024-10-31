@@ -13,7 +13,7 @@ pipeline {
 
                     buildMainServer = false
 
-                    def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD^", returnStdout: true).trim()
+                    def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD", returnStdout: true).trim()
 
                     buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR)
 
