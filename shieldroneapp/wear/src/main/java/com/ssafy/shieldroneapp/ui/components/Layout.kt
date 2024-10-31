@@ -18,7 +18,6 @@ fun Layout(
     hasClock: Boolean = true,
     children: @Composable () -> Unit
 ) {
-    // 스크롤 상태 관리
     val listState = rememberScalingLazyListState()
     
     Scaffold(
@@ -38,14 +37,8 @@ fun Layout(
             )
         }
     ) {
-        ScalingLazyColumn(
-            modifier = modifier.fillMaxSize(),
-            state = listState,
-            autoCentering = AutoCenteringParams(itemIndex = 0)
-        ) {
-            item {
-                children()
-            }
+        Box(modifier = modifier.fillMaxSize()) {
+            children()
         }
     }
 }
