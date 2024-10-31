@@ -1,10 +1,43 @@
 pipeline {
     agent any
 
+    environment {
+        MAIN_SERVER_DIR = 'shieldrone-main-server'
+    }
+
+    boolean buildMainServer = false
+
     stages {
-        stage('Checkout') {
+        stage('Check Changes') {
             steps {
-                echo 'Checking out code...'
+                script {
+                    def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD^", returnStdout: true).trim()
+
+                    buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR)
+
+                }
+            }
+        }
+
+        stage('Build Main Server') {
+            when {
+                expression {
+                    return buildMainServer
+                }
+            }
+            steps {
+                echo 'Building Main Server...'
+            }
+        }
+
+        stage('Deploy Main Server') {
+            when {
+                expression {
+                    return buildMainServer
+                }
+            }
+            steps {
+                echo 'Deploying Main Server...'
             }
         }
     }
