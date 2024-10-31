@@ -8,6 +8,9 @@ services:
       DB_URL_SERVER: ${DB_URL_SERVER}
       DB_USERNAME_SERVER: ${DB_USERNAME_SERVER}
       DB_PASSWORD_SERVER: ${DB_PASSWORD_SERVER}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
-      - mysql
+      - mysql 
     restart: always
