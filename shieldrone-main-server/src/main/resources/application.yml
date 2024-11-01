@@ -12,3 +12,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+coolsms:
+  api:
+    key: NCSE8PAEQQXYCMU7
+    secret: BMULBTT9UFTFATILZMWC9KLVWH7OFPZW
+    number: 01023272591
