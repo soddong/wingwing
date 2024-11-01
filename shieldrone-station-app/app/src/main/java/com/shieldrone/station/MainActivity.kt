@@ -1,5 +1,5 @@
 
-package com.sheildron.station
+package com.shieldrone.station
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -17,10 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.sheildron.station.ui.theme.SheildronStationTheme
-import com.sheildron.station.src.controller.StreamController
-import com.sheildron.station.src.service.camera.CameraImageFrameProvider
-import com.sheildron.station.src.service.camera.DroneImageFrameProvider
+import com.shieldrone.station.ui.theme.SheildronStationTheme
+import com.shieldrone.station.src.controller.StreamController
+import com.shieldrone.station.src.service.camera.CameraImageFrameProvider
+import com.shieldrone.station.src.service.camera.DroneImageFrameProvider
 
 class MainActivity : ComponentActivity() {
 

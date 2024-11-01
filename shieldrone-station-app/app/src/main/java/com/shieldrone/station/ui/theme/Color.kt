@@ -1,4 +1,4 @@
-package com.sheildron.station.ui.theme
+package com.shieldrone.station.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

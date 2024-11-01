@@ -1,4 +1,4 @@
-package com.sheildron.station.src.service.camera
+package com.shieldrone.station.src.service.camera
 
 import android.graphics.Bitmap
 

@@ -1,4 +1,4 @@
-package com.sheildron.station
+package com.shieldrone.station
 
 import org.junit.Test
 

@@ -1,4 +1,4 @@
-package com.sheildron.station
+package com.shieldrone.station
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

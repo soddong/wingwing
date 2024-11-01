@@ -1,8 +1,8 @@
-package com.sheildron.station.src.controller
+package com.shieldrone.station.src.controller
 
 import android.graphics.Bitmap
 import android.util.Log
-import com.sheildron.station.src.service.camera.ImageFrameProvider
+import com.shieldrone.station.src.service.camera.ImageFrameProvider
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
