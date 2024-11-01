@@ -1,4 +1,4 @@
-package com.ssafy.shieldron.model;
+package com.ssafy.shieldron.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
