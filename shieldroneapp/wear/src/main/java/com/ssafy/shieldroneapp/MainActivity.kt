@@ -13,17 +13,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val sensorRepository = (application as MainApplication).sensorRepository
-
-        setTheme(android.R.style.Theme_DeviceDefault)
+        setTheme(android.R.style.Theme_DeviceDefault_Light)
 
         setContent {
             WearApp(
                 sensorRepository = sensorRepository
             )
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
     }
 }

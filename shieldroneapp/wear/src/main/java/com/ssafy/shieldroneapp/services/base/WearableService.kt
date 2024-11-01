@@ -21,15 +21,15 @@ class WearableService : WearableListenerService() {
         }
     }
 
-    override fun onMessageReceived(messageEvent: MessageEvent) {
-        super.onMessageReceived(messageEvent)
-        
-        when (messageEvent.path) {
-            PATH_EMERGENCY_ALERT -> {
-                CoroutineScope(Dispatchers.Main).launch {
-                    sensorViewModel?.showAlert()
-                }
-            }
-        }
-    }
+//    override fun onMessageReceived(messageEvent: MessageEvent) {
+//        super.onMessageReceived(messageEvent)
+//
+//        when (messageEvent.path) {
+//            PATH_EMERGENCY_ALERT -> {
+//                CoroutineScope(Dispatchers.Main).launch {
+//                    sensorViewModel?.showAlert()
+//                }
+//            }
+//        }
+//    }
 }

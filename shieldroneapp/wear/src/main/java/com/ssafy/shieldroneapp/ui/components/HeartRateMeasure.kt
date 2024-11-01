@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.wear.tooling.preview.devices.WearDevices
@@ -20,8 +21,14 @@ import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 fun HeartRateMeasure(
     hr: Double,
     availability: DataTypeAvailability,
-    permissionState: PermissionState
+    permissionState: PermissionState,
+    onStartMeasuring: () -> Unit
 ) {
+    LaunchedEffect(permissionState.status) {
+        if (permissionState.status.isGranted) {
+            onStartMeasuring()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -32,8 +39,7 @@ fun HeartRateMeasure(
             hr = hr,
             availability = availability
         )
-        if (permissionState.status.isGranted) {
-        } else {
+        if (!permissionState.status.isGranted) {
             permissionState.launchPermissionRequest()
         }
     }
@@ -56,7 +62,8 @@ private fun HeartRateMeasurePreview() {
         HeartRateMeasure(
             hr = 65.0,
             availability = DataTypeAvailability.AVAILABLE,
-            permissionState = permissionState
+            permissionState = permissionState,
+            onStartMeasuring = {}
         )
     }
 }
