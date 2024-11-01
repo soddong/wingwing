@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.height
 import androidx.wear.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,7 +32,6 @@ fun MainScreen(
         )
     )
 
-    val enabled by viewModel.enabled.collectAsState()
     val hr by viewModel.hr
     val availability by viewModel.availability
     val uiState by viewModel.uiState
@@ -53,9 +51,11 @@ fun MainScreen(
                 HeartRateMeasure(
                     hr = hr,
                     availability = availability,
-                    permissionState = permissionState
+                    permissionState = permissionState,
+                    onStartMeasuring = { viewModel.toggleEnabled() }
                 )
             }
+
             is PermissionStatus.Denied -> {
                 LaunchedEffect(Unit) {
                     permissionState.launchPermissionRequest()
@@ -83,17 +83,5 @@ fun MainScreen(
         }
     } else if (uiState == HeartRateMeasureUiState.NotSupported) {
         NotSupportedScreen()
-    } else {
-        // uiState == HeartRateMeasureUiState.Startup
-        LaunchedEffect(Unit) {
-            viewModel.toggleEnabled()
-        }
-        HeartRateMeasure(
-            hr = hr,
-            availability = availability,
-            permissionState = rememberPermissionState(
-                permission = android.Manifest.permission.BODY_SENSORS
-            )
-        )
     }
 }

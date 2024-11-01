@@ -14,12 +14,13 @@ import kotlinx.coroutines.launch
 
 class SensorViewModel(
     private val sensorRepository: SensorRepository
-): ViewModel() {
+) : ViewModel() {
     val enabled: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val hr: MutableState<Double> = mutableStateOf(0.0)
     val availability: MutableState<DataTypeAvailability> =
         mutableStateOf(DataTypeAvailability.UNKNOWN)
-    val uiState: MutableState<HeartRateMeasureUiState> = mutableStateOf(HeartRateMeasureUiState.Startup)
+    val uiState: MutableState<HeartRateMeasureUiState> =
+        mutableStateOf(HeartRateMeasureUiState.Startup)
 
     init {
         viewModelScope.launch {
@@ -61,7 +62,7 @@ class SensorViewModel(
 
 class HeartRateMeasureViewModelFactory(
     private val sensorRepository: SensorRepository
-): ViewModelProvider.Factory {
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SensorViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
