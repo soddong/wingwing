@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jlleitschuh.gradle.ktlint")
+    id("dagger.hilt.android.plugin")
+    id("kotlin-kapt")
 }
 
 android {
@@ -73,8 +75,35 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core:1.5.4")
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.4")
+    implementation("androidx.work:work-runtime:2.9.1")
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
+    implementation ("androidx.navigation:navigation-compose:2.5.3")
+   // Hilt dependency injection
+    implementation("com.google.dagger:hilt-android:${rootProject.extra["hiltVersion"]}")
+    implementation(libs.androidx.constraintlayout)
+    kapt("com.google.dagger:hilt-android-compiler:${rootProject.extra["hiltVersion"]}")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
+
+
+ // Wear
+    implementation("androidx.wear:wear:1.3.0")
+
+    // Health Services
     implementation("androidx.health:health-services-client:1.1.0-alpha03")
-    
+
+
+    // Used to bridge between Futures and coroutines
+    implementation("com.google.guava:guava:33.3.1-android")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
+
+   // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-service:2.8.6")
+
     // 테스트 관련 의존성
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

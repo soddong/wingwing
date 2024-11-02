@@ -1,130 +1,87 @@
 package com.ssafy.shieldroneapp.ui.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-//import com.ssafy.shieldroneapp.ui.components.StatusIndicator
-//import com.ssafy.shieldroneapp.ui.components.SensorDisplay
-import com.ssafy.shieldroneapp.viewmodels.SensorViewModel
-import androidx.wear.compose.material.Card
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Text
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.wear.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.rememberPermissionState
+import com.ssafy.shieldroneapp.data.repository.SensorRepository
+import com.ssafy.shieldroneapp.ui.components.PrimaryButton
+import com.ssafy.shieldroneapp.ui.components.Flex
+import com.ssafy.shieldroneapp.viewmodels.HeartRateMeasureUiState
+import com.ssafy.shieldroneapp.viewmodels.SensorViewModel
+import com.ssafy.shieldroneapp.viewmodels.HeartRateMeasureViewModelFactory
+import com.ssafy.shieldroneapp.ui.components.HeartRateMeasure
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen(
-    sensorViewModel: SensorViewModel,
-    modifier: Modifier = Modifier
+    sensorRepository: SensorRepository
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // 상태 카드
-        Card(
-            onClick = { /* 상태 상세 보기 */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "상태",
-                    style = MaterialTheme.typography.caption1
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "정상",
-                    style = MaterialTheme.typography.title2,
-                    color = MaterialTheme.colors.primary
+    val viewModel: SensorViewModel = viewModel(
+        factory = HeartRateMeasureViewModelFactory(
+            sensorRepository = sensorRepository
+        )
+    )
+
+    val hr by viewModel.hr
+    val availability by viewModel.availability
+    val uiState by viewModel.uiState
+
+    if (uiState == HeartRateMeasureUiState.Supported) {
+        val permissionState = rememberPermissionState(
+            permission = android.Manifest.permission.BODY_SENSORS,
+            onPermissionResult = { granted ->
+                if (granted) {
+                    viewModel.toggleEnabled()
+                }
+            }
+        )
+
+        when (permissionState.status) {
+            is PermissionStatus.Granted -> {
+                HeartRateMeasure(
+                    hr = hr,
+                    availability = availability,
+                    permissionState = permissionState,
+                    onStartMeasuring = { viewModel.toggleEnabled() }
                 )
             }
-        }
 
-        // 심박수 카드
-        Card(
-            onClick = { /* 심박수 상세 보기 */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "심박수",
-                    style = MaterialTheme.typography.caption1
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
+            is PermissionStatus.Denied -> {
+                LaunchedEffect(Unit) {
+                    permissionState.launchPermissionRequest()
+                }
+                Flex {
+                    Spacer(Modifier.height(20.dp))
                     Text(
-                        text = "75",  // sensorViewModel.heartRate 값 사용
-                        style = MaterialTheme.typography.title1
+                        text = "심박수 측정을 위해",
+                        color = Color.White
                     )
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = " BPM",
-                        style = MaterialTheme.typography.caption2,
-                        modifier = Modifier.padding(start = 4.dp)
+                        text = "권한을 허용해주세요",
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    PrimaryButton(
+                        onClick = {
+                            permissionState.launchPermissionRequest()
+                        },
+                        text = "권한 허용"
                     )
                 }
             }
         }
-
-        // 활동 상태 카드
-        Card(
-            onClick = { /* 활동 상세 보기 */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "활동",
-                    style = MaterialTheme.typography.caption1
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "걷기",  // sensorViewModel.activity 값 사용
-                    style = MaterialTheme.typography.title2
-                )
-            }
-        }
-
-        // 배터리 상태
-        Card(
-            onClick = { /* 배터리 상세 보기 */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "배터리",
-                    style = MaterialTheme.typography.caption1
-                )
-                Text(
-                    text = "85%",  // sensorViewModel.batteryLevel 값 사용
-                    style = MaterialTheme.typography.caption2,
-                    color = MaterialTheme.colors.secondary
-                )
-            }
-        }
+    } else if (uiState == HeartRateMeasureUiState.NotSupported) {
+        NotSupportedScreen()
     }
 }

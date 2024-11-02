@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 
-class SensorViewModel(
+class HeartRateViewModel(
     private val sensorRepository: SensorRepository
 ) : ViewModel() {
     val enabled: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -64,9 +64,9 @@ class HeartRateMeasureViewModelFactory(
     private val sensorRepository: SensorRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SensorViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(HeartRateViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return SensorViewModel(
+            return HeartRateViewModel(
                 sensorRepository = sensorRepository
             ) as T
         }
