@@ -5,18 +5,18 @@ import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.ssafy.shieldroneapp.viewmodels.SensorViewModel
+import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 
 class WearableService : WearableListenerService() {
     companion object {
         const val PATH_EMERGENCY_ALERT = "/emergency_alert"
-        private var sensorViewModel: SensorViewModel? = null
+        private var sensorViewModel: HeartRateViewModel? = null
 
-        fun setSensorViewModel(viewModel: SensorViewModel?) {
+        fun setHeartRateViewModel(viewModel: HeartRateViewModel?) {
             sensorViewModel = viewModel
         }
 
-        fun getSensorViewModel(): SensorViewModel? {
+        fun getHeartRateViewModel(): HeartRateViewModel? {
             return sensorViewModel
         }
     }

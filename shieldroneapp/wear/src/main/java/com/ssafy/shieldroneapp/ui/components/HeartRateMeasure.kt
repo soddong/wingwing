@@ -14,7 +14,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
-import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -42,28 +41,5 @@ fun HeartRateMeasure(
         if (!permissionState.status.isGranted) {
             permissionState.launchPermissionRequest()
         }
-    }
-}
-
-@ExperimentalPermissionsApi
-@Preview(
-    device = WearDevices.LARGE_ROUND,
-    showBackground = false,
-    showSystemUi = true
-)
-@Composable
-private fun HeartRateMeasurePreview() {
-    val permissionState = object : PermissionState {
-        override val permission = "android.permission.ACTIVITY_RECOGNITION"
-        override val status: PermissionStatus = PermissionStatus.Granted
-        override fun launchPermissionRequest() {}
-    }
-    ShieldroneappTheme {
-        HeartRateMeasure(
-            hr = 65.0,
-            availability = DataTypeAvailability.AVAILABLE,
-            permissionState = permissionState,
-            onStartMeasuring = {}
-        )
     }
 }
