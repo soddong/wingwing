@@ -23,6 +23,7 @@ import com.google.accompanist.permissions.isGranted
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SpeedMeasure(
+    modifier: Modifier = Modifier,
     speed: Double,
     availability: DataTypeAvailability,
     permissionState: PermissionState,
@@ -34,7 +35,9 @@ fun SpeedMeasure(
         }
     }
 
-    Flex {
+    Flex(
+        modifier = modifier
+    ) {
         Text(
             text = "현재 속도",
             color = Color.White

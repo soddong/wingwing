@@ -18,6 +18,7 @@ import com.google.accompanist.permissions.isGranted
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HeartRateMeasure(
+    modifier: Modifier = Modifier,
     hr: Double,
     availability: DataTypeAvailability,
     permissionState: PermissionState,
@@ -30,7 +31,8 @@ fun HeartRateMeasure(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        // modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

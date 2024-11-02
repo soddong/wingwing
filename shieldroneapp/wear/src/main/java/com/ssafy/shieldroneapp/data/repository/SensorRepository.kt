@@ -14,12 +14,18 @@ import androidx.health.services.client.data.SampleDataPoint
 import com.ssafy.shieldroneapp.TAG
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.runBlocking
 
 class SensorRepository(context: Context) {
     private val healthServicesClient = HealthServices.getClient(context)
     private val measureClient = healthServicesClient.measureClient
+
+    // 속도 capability 상태를 관찰할 수 있는 Flow
+    private val _speedCapabilityFlow = MutableStateFlow<Boolean>(false)
+    val speedCapabilityFlow = _speedCapabilityFlow.asStateFlow()
 
     suspend fun hasHeartRateCapability(): Boolean {
         val capabilities = measureClient.getCapabilitiesAsync().await()
@@ -43,11 +49,9 @@ class SensorRepository(context: Context) {
             }
         }
 
-        Log.d(TAG, "Registering for data")
         measureClient.registerMeasureCallback(DataType.HEART_RATE_BPM, callback)
 
         awaitClose {
-            Log.d(TAG, "Unregistering for data")
             runBlocking {
                 measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback)
                     .await()
@@ -55,9 +59,25 @@ class SensorRepository(context: Context) {
         }
     }
 
+//    suspend fun hasSpeedCapability(): Boolean {
+//        val capabilities = measureClient.getCapabilitiesAsync().await()
+//        return (DataType.SPEED in capabilities.supportedDataTypesMeasure)
+//    }
+
+    suspend fun checkSpeedCapability() {
+        val capabilities = measureClient.getCapabilitiesAsync().await()
+        val hasSpeed = (DataType.SPEED in capabilities.supportedDataTypesMeasure)
+        Log.d("센서 레포지토리", "Speed capability check: $hasSpeed")
+        _speedCapabilityFlow.value = hasSpeed
+    }
+
     suspend fun hasSpeedCapability(): Boolean {
         val capabilities = measureClient.getCapabilitiesAsync().await()
-        return (DataType.SPEED in capabilities.supportedDataTypesMeasure)
+        Log.d("센서 레포지토리", "All supported data types: ${capabilities.supportedDataTypesMeasure}")
+
+        val hasSpeed = (DataType.SPEED in capabilities.supportedDataTypesMeasure)
+        Log.d("센서 레포지토리", "Speed capability check: $hasSpeed")
+        return hasSpeed
     }
 
     fun speedMeasureFlow() = callbackFlow {

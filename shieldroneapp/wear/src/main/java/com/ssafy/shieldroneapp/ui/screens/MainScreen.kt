@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.wear.compose.material.Text
 import androidx.compose.runtime.*
@@ -54,6 +55,7 @@ fun MainScreen(
         permission = android.Manifest.permission.ACTIVITY_RECOGNITION,
         onPermissionResult = { granted ->
             if (granted) {
+                speedViewModel.recheckCapability()
                 speedViewModel.toggleEnabled()
             }
         }
@@ -71,8 +73,14 @@ fun MainScreen(
             is PermissionStatus.Granted -> {
                 when (speedPermissionState.status) {
                     is PermissionStatus.Granted -> {
+                        Log.d("MainScreen", "두개 권한 다 허용")
+                        Log.d("속도 상태", "$speedUiState")
+                        Log.d("심박수 상태", "$hrUiState")
+
                         Column {
+                            // 심박수 UI
                             HeartRateMeasure(
+                                modifier = Modifier.weight(1f),
                                 hr = hr,
                                 availability = hrAvailability,
                                 permissionState = hrPermissionState,
@@ -81,8 +89,10 @@ fun MainScreen(
 
                             // 속도 UI
                             if (speedUiState == SpeedUiState.Supported) {
+                                Log.d("MainScreen", "SpeedUiState is Supported")
                                 Spacer(Modifier.height(16.dp))
                                 SpeedMeasure(
+                                    modifier = Modifier.weight(1f),
                                     speed = speed,
                                     availability = speedAvailability,
                                     permissionState = speedPermissionState,
@@ -90,7 +100,10 @@ fun MainScreen(
                                 )
                             } else if (speedUiState == SpeedUiState.NotSupported) {
                                 NotSupportedScreen()
+                            }  else {
+                                Log.d("MainScreen", "SpeedUiState is ${speedUiState}")
                             }
+
                         }
                     }
                     is PermissionStatus.Denied -> {
