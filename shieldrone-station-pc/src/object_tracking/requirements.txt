@@ -10,3 +10,4 @@ terminaltables
 Cython
 pycocotools
 setuptools
+scikit-learn
