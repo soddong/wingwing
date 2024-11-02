@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import yaml
-import glob
 import cv2
 import numpy as np
 import math
@@ -26,10 +24,7 @@ import queue
 import time
 from collections import defaultdict
 from datacollector import DataCollector, Result
-try:
-    from collections.abc import Sequence
-except Exception:
-    from collections import Sequence
+import socket
 
 # add deploy path of PaddleDetection to sys.path
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
@@ -80,27 +75,13 @@ class Pipeline(object):
 
     def _parse_input(self, image_file, image_dir, video_file, video_dir,
                      camera_id, rtsp):
-
         # parse input as is_video and multi_camera
 
-        if image_file is not None or image_dir is not None:
-            input = get_test_images(image_dir, image_file)
-            self.is_video = False
-
-        elif video_file is not None:
+        if video_file is not None:
             assert os.path.exists(
                 video_file
             ) or 'rtsp' in video_file, "video_file not exists and not an rtsp site."
             input = video_file
-            self.is_video = True
-
-        elif video_dir is not None:
-            videof = [os.path.join(video_dir, x) for x in os.listdir(video_dir)]
-            if len(videof) > 1:
-                videof.sort()
-                input = videof
-            else:
-                input = videof[0]
             self.is_video = True
 
         elif rtsp is not None:
@@ -352,17 +333,70 @@ class PipePredictor(object):
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 queue.put(frame_rgb)
 
-    def predict_video(self, video_file, thread_idx=0):
+    def receive_frames(self, queue):
+        # 소켓 초기화 및 바인딩
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_socket.bind(("0.0.0.0", 65432))
+        print(f"서버가 대기 중입니다...")
+
+        frame_count = 0
+        skip_frame_num = 0
+        start_time = time.time()
+
+        try:
+            while True:
+                # 프레임 수신
+                packet, addr = server_socket.recvfrom(65507)
+                frame = np.frombuffer(packet, dtype=np.uint8)
+                img = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                frame_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                if frame_rgb is not None:
+                    if not queue.full():
+                        queue.put(frame_rgb)
+                        frame_count += 1  # 프레임 수 카운트 증가
+                    else:
+                        skip_frame_num += 1
+                else:
+                    print("수신한 이미지를 디코딩하는데 실패했습니다.")
+
+                # 5초마다 FPS 출력
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                if elapsed_time >= 5.0:
+                    fps = frame_count / elapsed_time  # FPS 계산
+                    print("5초 요약:")
+                    print(f" - 수신한 프레임 수: {frame_count}")
+                    print(f" - 건너뛴 프레임 수: {skip_frame_num}")
+                    print(f" - 초당 프레임 수 (FPS): {fps:.2f}")
+                    
+                    # 카운터와 타이머 초기화
+                    frame_count = 0
+                    skip_frame_num = 0
+                    start_time = current_time
+                
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            server_socket.close()
+                
+    def predict_video(self, video_file, thread_idx=0, udp=False):
         # mot
         # mot -> attr
         # mot -> pose -> action
-        capture = cv2.VideoCapture(video_file)
+        if not udp:
+            capture = cv2.VideoCapture(video_file)
 
         # Get Video info : resolution, fps, frame count
-        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(capture.get(cv2.CAP_PROP_FPS))
-        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = 640
+        height = 480
+        fps = 20
+        frame_count = 0
+        if not udp:
+            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = int(capture.get(cv2.CAP_PROP_FPS))
+            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         print("video fps: %d, frame_count: %d" % (fps, frame_count))
 
         if len(self.pushurl) > 0:
@@ -400,14 +434,22 @@ class PipePredictor(object):
 
         video_action_imgs = []
      
-        framequeue = queue.Queue(10)
+        framequeue = queue.Queue(60)
 
-        thread = threading.Thread(
+        if udp:
+            thread = threading.Thread(
+                target=self.receive_frames, args=(framequeue,))
+        else:
+            thread = threading.Thread(
             target=self.capturevideo, args=(capture, framequeue))
         thread.start()
         time.sleep(1)
 
         while (not framequeue.empty()):
+            # if framequeue.empty():
+            #     time.sleep(0.1)
+            #     continue
+                
             if frame_id % 10 == 0:
                 print('Thread: {}; frame id: {}'.format(thread_idx, frame_id))
 
@@ -431,8 +473,8 @@ class PipePredictor(object):
 
                 # mot output format: id, class, score, xmin, ymin, xmax, ymax
                 mot_res = parse_mot_res(res)
-                print("MOT 결과")
-                print(mot_res)
+                # print("MOT 결과")
+                # print(mot_res)
                 if frame_id > self.warmup_frame:
                     self.pipe_timer.module_time['mot'].end()
                     self.pipe_timer.track_num += len(mot_res['boxes'])
