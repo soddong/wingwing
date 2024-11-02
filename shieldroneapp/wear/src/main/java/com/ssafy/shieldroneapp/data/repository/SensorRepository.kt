@@ -54,6 +54,40 @@ class SensorRepository(context: Context) {
             }
         }
     }
+
+    suspend fun hasSpeedCapability(): Boolean {
+        val capabilities = measureClient.getCapabilitiesAsync().await()
+        return (DataType.SPEED in capabilities.supportedDataTypesMeasure)
+    }
+
+    fun speedMeasureFlow() = callbackFlow {
+        val callback = object : MeasureCallback {
+            override fun onAvailabilityChanged(
+                dataType: DeltaDataType<*, *>,
+                availability: Availability
+            ) {
+                if (availability is DataTypeAvailability) {
+                    trySendBlocking(MeasureMessage.MeasureAvailability(availability))
+                }
+            }
+
+            override fun onDataReceived(data: DataPointContainer) {
+                val speedData = data.getData(DataType.SPEED)
+                trySendBlocking(MeasureMessage.MeasureData(speedData))
+            }
+        }
+
+        Log.d(TAG, "Registering for speed data")
+        measureClient.registerMeasureCallback(DataType.SPEED, callback)
+
+        awaitClose {
+            Log.d(TAG, "Unregistering for speed data")
+            runBlocking {
+                measureClient.unregisterMeasureCallbackAsync(DataType.SPEED, callback)
+                    .await()
+            }
+        }
+    }
 }
 
 sealed class MeasureMessage {
