@@ -1,6 +1,6 @@
 package com.ssafy.shieldron.dto.response;
 
-public record AuthCodeVerifyResponse(
+public record CheckIsUserResponse(
         Boolean isUser
 ) {
 }

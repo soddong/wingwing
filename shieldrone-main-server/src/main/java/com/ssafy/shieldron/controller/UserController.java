@@ -2,6 +2,7 @@ package com.ssafy.shieldron.controller;
 
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
+import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
 import com.ssafy.shieldron.service.UserManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,10 @@ public class UserController {
     @PostMapping("/verify")
     public ResponseEntity<?> verifyAuthCode(@RequestBody AuthCodeVerifyRequest authCodeVerifyRequest) {
         // TODO 검증
-        userManagementService.verifyAuthCode(authCodeVerifyRequest);
-        return ResponseEntity.ok().build();
+        CheckIsUserResponse checkIsUserResponse = userManagementService.verifyAuthCode(authCodeVerifyRequest);
+        return ResponseEntity.ok().body(checkIsUserResponse);
     }
+
+    @PostMapping("/sign-up")
+    public ResponseEntity<?> signUp(@RequestBody )
 }
