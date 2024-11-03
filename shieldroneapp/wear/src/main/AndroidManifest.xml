@@ -12,6 +12,9 @@
   <!-- 생체 신호 센서 데이터 권한 -->
   <uses-permission android:name="android.permission.BODY_SENSORS"/>
   <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND"/>
+  <!-- 위치 권한 -->
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <!-- speed 데이터 권한 -->
   <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
   <!-- 워치와 페어링된 모바일 기기와 통신하기 위한 권한 -->

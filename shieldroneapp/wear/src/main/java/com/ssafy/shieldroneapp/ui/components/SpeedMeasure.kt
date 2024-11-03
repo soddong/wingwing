@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +36,11 @@ fun SpeedMeasure(
         }
     }
 
+    LaunchedEffect(speed, availability) {
+        Log.d("SpeedMeasure", "Current speed: $speed")
+        Log.d("SpeedMeasure", "Current availability: $availability")
+    }
+
     Flex(
         modifier = modifier
     ) {
@@ -67,7 +73,7 @@ fun SpeedMeasure(
 
             else -> {
                 Text(
-                    text = "속도 측정 불가",
+                    text = "속도 측정 불가 (상태: $availability)",
                     color = Color.White
                 )
             }

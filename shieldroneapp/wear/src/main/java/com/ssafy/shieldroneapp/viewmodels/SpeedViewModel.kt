@@ -35,57 +35,175 @@ class SpeedViewModel(
 //            }
 //        }
 
+//    init {
+//        viewModelScope.launch {
+//            // 먼저 초기 capability 체크
+//            val hasCapability = sensorRepository.hasSpeedCapability()
+//            Log.d("SpeedViewModel", "Initial speed capability check: $hasCapability")
+//
+//            // capability 상태에 따라 UI 상태 업데이트
+//            uiState.value = if (hasCapability) {
+//                SpeedUiState.Supported
+//            } else {
+//                SpeedUiState.NotSupported
+//            }
+//
+//            // 이후 capability 변화 관찰
+//            sensorRepository.speedCapabilityFlow.collect { supported ->
+//                Log.d("SpeedViewModel", "Speed capability changed: $supported")
+//                uiState.value = if (supported) {
+//                    SpeedUiState.Supported
+//                } else {
+//                    SpeedUiState.NotSupported
+//                }
+//            }
+//        }
+//    init {
+//        viewModelScope.launch {
+//            // 초기 capability 체크
+//            val hasCapability = sensorRepository.hasSpeedCapability()
+//            Log.d("SpeedViewModel", "Initial speed capability check: $hasCapability")
+//
+//            // 이미 Startup이 한번 떴다면, NotSupported로 변경하지 않음
+//            if (uiState.value == SpeedUiState.Startup) {
+//                uiState.value = SpeedUiState.Supported
+//            }
+//
+//            // capability 변화 관찰
+//            sensorRepository.speedCapabilityFlow.collect { supported ->
+//                Log.d("SpeedViewModel", "Speed capability changed: $supported")
+//                // Startup이 한번 떴다면 NotSupported로 변경하지 않음
+//                if (uiState.value == SpeedUiState.Startup) {
+//                    uiState.value = SpeedUiState.Supported
+//                }
+//            }
+//        }
+//
+//        viewModelScope.launch {
+//            val supported = sensorRepository.hasSpeedCapability()
+//            Log.d("SpeedViewModel", "Initial speed capability supported: $supported")
+//        }
+//
+//        viewModelScope.launch {
+//            enabled.collect {
+//                if (it) {
+//                    Log.d("SpeedViewModel", "Starting speed collection")
+//                    while (enabled.value) {
+//                        sensorRepository.speedMeasureFlow()
+//                            .takeWhile { enabled.value }
+//                            .collect { measureMessage ->
+//                                Log.d("SpeedViewModel", "Received message: $measureMessage")
+//                                when (measureMessage) {
+//                                    is MeasureMessage.MeasureData -> {
+//                                        measureMessage.data.lastOrNull()?.let { dataPoint ->
+//                                            Log.d(
+//                                                "SpeedViewModel",
+//                                                "New speed value: ${dataPoint.value}"
+//                                            )
+//                                            speed.value = dataPoint.value
+//                                            availability.value = DataTypeAvailability.AVAILABLE
+//                                        }
+//                                    }
+//
+//                                    is MeasureMessage.MeasureAvailability -> {
+//                                        Log.d(
+//                                            "SpeedViewModel",
+//                                            "Availability changed: ${measureMessage.availability}"
+//                                        )
+//                                        availability.value = measureMessage.availability
+//                                    }
+//                                }
+//                            }
+//                        delay(1000)
+//                    }
+//                } else {
+//                    Log.d("SpeedViewModel", "Speed collection disabled")
+//                    availability.value = DataTypeAvailability.UNKNOWN
+//                }
+//            }
+//        }
+//    }
+//
+
+    // init {
+    //     viewModelScope.launch {
+    //         enabled.collect { isEnabled ->
+    //             Log.d("SpeedViewModel", "Enabled state changed to: $isEnabled")
+    //             if (isEnabled) {
+    //                 Log.d("SpeedViewModel", "Starting speed collection")
+    //                 while (enabled.value) {
+    //                     try {
+    //                         sensorRepository.speedMeasureFlow()
+    //                             .takeWhile { enabled.value }
+    //                             .collect { measureMessage ->
+    //                                 Log.d("SpeedViewModel", "Received message: $measureMessage")
+    //                                 when (measureMessage) {
+    //                                     is MeasureMessage.MeasureData -> {
+    //                                         measureMessage.data.lastOrNull()?.let { dataPoint ->
+    //                                             Log.d("SpeedViewModel", "New speed value: ${dataPoint.value}")
+    //                                             speed.value = dataPoint.value
+    //                                             availability.value = DataTypeAvailability.AVAILABLE
+    //                                         }
+    //                                     }
+    //                                     is MeasureMessage.MeasureAvailability -> {
+    //                                         Log.d("SpeedViewModel", "Availability changed: ${measureMessage.availability}")
+    //                                         availability.value = measureMessage.availability
+    //                                     }
+    //                                 }
+    //                             }
+    //                     } catch (e: Exception) {
+    //                         Log.e("SpeedViewModel", "Error collecting speed data", e)
+    //                     }
+    //                     delay(1000)
+    //                 }
+    //             } else {
+    //                 Log.d("SpeedViewModel", "Speed collection disabled")
+    //             }
+    //         }
+    //     }
+    // }
     init {
-        // capability 상태 변화 감지
         viewModelScope.launch {
+            // capability 상태 관찰
             sensorRepository.speedCapabilityFlow.collect { supported ->
                 Log.d("SpeedViewModel", "Speed capability changed: $supported")
-                uiState.value = if (supported) {
-                    SpeedUiState.Supported
-                } else {
-                    SpeedUiState.NotSupported
+                // Startup 상태에서는 무조건 Supported로 변경
+                if (uiState.value == SpeedUiState.Startup) {
+                    Log.d("SpeedViewModel", "Changing from Startup to Supported")
+                    uiState.value = SpeedUiState.Supported
                 }
             }
         }
-
+    
         viewModelScope.launch {
-            val supported = sensorRepository.hasSpeedCapability()
-            Log.d("SpeedViewModel", "Initial speed capability supported: $supported")
-        }
-
-        viewModelScope.launch {
-            enabled.collect {
-                if (it) {
+            enabled.collect { isEnabled ->
+                Log.d("SpeedViewModel", "Enabled state changed to: $isEnabled")
+                if (isEnabled) {
                     Log.d("SpeedViewModel", "Starting speed collection")
-                    while (enabled.value) {
+                    availability.value = DataTypeAvailability.ACQUIRING  // 측정 시작할 때 ACQUIRING으로 설정
+                    try {
                         sensorRepository.speedMeasureFlow()
-                            .takeWhile { enabled.value }
                             .collect { measureMessage ->
-                                Log.d("SpeedViewModel", "Received message: $measureMessage")
                                 when (measureMessage) {
                                     is MeasureMessage.MeasureData -> {
                                         measureMessage.data.lastOrNull()?.let { dataPoint ->
-                                            Log.d(
-                                                "SpeedViewModel",
-                                                "New speed value: ${dataPoint.value}"
-                                            )
                                             speed.value = dataPoint.value
+                                            availability.value = DataTypeAvailability.AVAILABLE
                                         }
                                     }
-
                                     is MeasureMessage.MeasureAvailability -> {
-                                        Log.d(
-                                            "SpeedViewModel",
-                                            "Availability changed: ${measureMessage.availability}"
-                                        )
+                                        Log.d("SpeedViewModel", "Availability changed: ${measureMessage.availability}")
                                         availability.value = measureMessage.availability
                                     }
                                 }
                             }
-                        delay(1000)
+                    } catch (e: Exception) {
+                        Log.e("SpeedViewModel", "Error collecting speed data", e)
+                        availability.value = DataTypeAvailability.UNKNOWN
                     }
                 } else {
                     Log.d("SpeedViewModel", "Speed collection disabled")
+                    availability.value = DataTypeAvailability.UNKNOWN
                 }
             }
         }
@@ -99,6 +217,7 @@ class SpeedViewModel(
     }
 
     fun toggleEnabled() {
+        Log.d("SpeedViewModel", "Toggle enabled from ${enabled.value} to ${!enabled.value}")
         enabled.value = !enabled.value
         if (!enabled.value) {
             availability.value = DataTypeAvailability.UNKNOWN

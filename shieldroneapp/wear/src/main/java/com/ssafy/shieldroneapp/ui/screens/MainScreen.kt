@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.ui.screens
 
 import android.util.Log
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.wear.compose.material.Text
 import androidx.compose.runtime.*
@@ -14,6 +15,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.ui.components.*
 import com.ssafy.shieldroneapp.viewmodels.*
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -30,6 +32,8 @@ fun MainScreen(
             sensorRepository = sensorRepository
         )
     )
+
+    val scope = rememberCoroutineScope()
 
     // HeartRate 상태
     val hr by heartRateViewModel.hr
@@ -51,20 +55,59 @@ fun MainScreen(
         }
     )
 
+//    val speedPermissionState = rememberPermissionState(
+//        permission = android.Manifest.permission.ACTIVITY_RECOGNITION,
+//        onPermissionResult = { granted ->
+//            if (granted) {
+////                speedViewModel.recheckCapability()
+////                speedViewModel.toggleEnabled()
+//                scope.launch {
+//                    Log.d("MainScreen", "Speed permission granted, checking capability")
+//                    speedViewModel.recheckCapability()
+//                    Log.d("MainScreen", "Capability check done, toggling enabled")
+//                    speedViewModel.toggleEnabled()
+//                }
+//            }
+//        }
+//    )
     val speedPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.ACTIVITY_RECOGNITION,
         onPermissionResult = { granted ->
             if (granted) {
-                speedViewModel.recheckCapability()
-                speedViewModel.toggleEnabled()
+                scope.launch {  // viewModelScope 대신 scope 사용
+                    Log.d("MainScreen", "Speed permission granted, checking capability")
+                    speedViewModel.recheckCapability()
+                    Log.d("MainScreen", "Capability check done, toggling enabled")
+                    speedViewModel.toggleEnabled()
+                }
             }
         }
     )
 
+    val locationPermissionState = rememberPermissionState(
+        permission = android.Manifest.permission.ACCESS_FINE_LOCATION,
+        onPermissionResult = { granted ->
+            if (granted) {
+                scope.launch {  // 여기도 scope 추가
+                    speedViewModel.recheckCapability()
+                    speedViewModel.toggleEnabled()
+                }
+            }
+        }
+    )
+
+    // 권한 요청 순서 제어
     LaunchedEffect(hrPermissionState.status) {
         if (hrPermissionState.status is PermissionStatus.Granted &&
             speedPermissionState.status is PermissionStatus.Denied) {
             speedPermissionState.launchPermissionRequest()
+        }
+    }
+
+    LaunchedEffect(speedPermissionState.status) {
+        if (speedPermissionState.status is PermissionStatus.Granted &&
+            locationPermissionState.status is PermissionStatus.Denied) {
+            locationPermissionState.launchPermissionRequest()
         }
     }
 
@@ -73,37 +116,65 @@ fun MainScreen(
             is PermissionStatus.Granted -> {
                 when (speedPermissionState.status) {
                     is PermissionStatus.Granted -> {
-                        Log.d("MainScreen", "두개 권한 다 허용")
-                        Log.d("속도 상태", "$speedUiState")
-                        Log.d("심박수 상태", "$hrUiState")
+                        when (locationPermissionState.status) {
+                            is PermissionStatus.Granted -> {
+                                Log.d("MainScreen", "모든 권한 허용")
+                                Log.d("속도 상태", "$speedUiState")
+                                Log.d("심박수 상태", "$hrUiState")
 
-                        Column {
-                            // 심박수 UI
-                            HeartRateMeasure(
-                                modifier = Modifier.weight(1f),
-                                hr = hr,
-                                availability = hrAvailability,
-                                permissionState = hrPermissionState,
-                                onStartMeasuring = { heartRateViewModel.toggleEnabled() }
-                            )
+                                Column {
+                                    // 심박수 UI
+                                    HeartRateMeasure(
+                                        modifier = Modifier.weight(1f),
+                                        hr = hr,
+                                        availability = hrAvailability,
+                                        permissionState = hrPermissionState,
+                                        onStartMeasuring = { heartRateViewModel.toggleEnabled() }
+                                    )
 
-                            // 속도 UI
-                            if (speedUiState == SpeedUiState.Supported) {
-                                Log.d("MainScreen", "SpeedUiState is Supported")
-                                Spacer(Modifier.height(16.dp))
-                                SpeedMeasure(
-                                    modifier = Modifier.weight(1f),
-                                    speed = speed,
-                                    availability = speedAvailability,
-                                    permissionState = speedPermissionState,
-                                    onStartMeasuring = { speedViewModel.toggleEnabled() }
-                                )
-                            } else if (speedUiState == SpeedUiState.NotSupported) {
-                                NotSupportedScreen()
-                            }  else {
-                                Log.d("MainScreen", "SpeedUiState is ${speedUiState}")
+                                    // 속도 UI
+                                    if (speedUiState == SpeedUiState.Supported) {
+                                        Log.d("MainScreen", "SpeedUiState is Supported")
+                                        Spacer(Modifier.height(16.dp))
+                                        SpeedMeasure(
+                                            modifier = Modifier.weight(1f),
+                                            speed = speed,
+                                            availability = speedAvailability,
+                                            permissionState = speedPermissionState,
+                                            onStartMeasuring = { speedViewModel.toggleEnabled() }
+                                        )
+                                    } else if (speedUiState == SpeedUiState.NotSupported) {
+                                        NotSupportedScreen()
+                                    } else if (speedUiState == SpeedUiState.Startup) {
+                                        Spacer(Modifier.height(16.dp))
+                                        Flex {
+                                            Text(
+                                                text = "센서 초기화 중...",
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                     else {
+                                        Log.d("MainScreen", "SpeedUiState is ${speedUiState}")
+                                    }
+                                }
                             }
-
+                            is PermissionStatus.Denied -> {
+                                Flex {
+                                    Spacer(Modifier.height(20.dp))
+                                    Text(
+                                        text = "위치 권한이 필요합니다",
+                                        color = Color.White
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                    PrimaryButton(
+                                        onClick = {
+                                            locationPermissionState.launchPermissionRequest()
+                                        },
+                                        text = "권한 허용"
+                                    )
+                                }
+                            }
                         }
                     }
                     is PermissionStatus.Denied -> {
