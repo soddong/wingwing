@@ -25,6 +25,7 @@ import time
 from collections import defaultdict
 from datacollector import DataCollector, Result
 import socket
+import zmq
 
 # add deploy path of PaddleDetection to sys.path
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
@@ -65,8 +66,8 @@ class Pipeline(object):
         self.is_video = False
         self.output_dir = args.output_dir
         self.vis_result = cfg['visual']
-        self.input = self._parse_input(args.image_file, args.image_dir,
-                                       args.video_file, args.video_dir,
+        self.input = self._parse_input(None, None,
+                                       args.video_file, None,
                                        args.camera_id, args.rtsp)
 
         self.predictor = PipePredictor(args, cfg, self.is_video)
@@ -249,7 +250,7 @@ class PipePredictor(object):
                 args.enable_mkldnn,
                 skip_frame_num=skip_frame_num,
                 draw_center_traj=self.draw_center_traj,
-                secs_interval=self.secs_interval)
+                secs_interval=self.secs_interval,)
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -445,6 +446,12 @@ class PipePredictor(object):
         thread.start()
         time.sleep(1)
 
+        context = zmq.Context()
+        socket = context.socket(zmq.PUSH)
+        socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
+        socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
+
+
         while (not framequeue.empty()):
             # if framequeue.empty():
             #     time.sleep(0.1)
@@ -473,8 +480,20 @@ class PipePredictor(object):
 
                 # mot output format: id, class, score, xmin, ymin, xmax, ymax
                 mot_res = parse_mot_res(res)
-                # print("MOT 결과")
+                print("MOT 결과")
                 # print(mot_res)
+
+                data_bytes = mot_res["boxes"].tobytes()
+                data_shape = mot_res["boxes"].shape
+                data_dtype = str(mot_res["boxes"].dtype)
+                print("데이터 변환")
+
+                # 배열 데이터와 메타 정보를 함께 전송
+                socket.send_json({'shape': data_shape, 'dtype': data_dtype})
+                print("json 전송")
+                socket.send(data_bytes)
+                print("데이터를 전송했습니다.")
+
                 if frame_id > self.warmup_frame:
                     self.pipe_timer.module_time['mot'].end()
                     self.pipe_timer.track_num += len(mot_res['boxes'])
@@ -557,7 +576,6 @@ class PipePredictor(object):
                     self.pipeline_res.update(reid_res_dict, 'reid')
                 else:
                     self.pipeline_res.clear('reid')
-
             self.collector.append(frame_id, self.pipeline_res)
 
             if frame_id > self.warmup_frame:
@@ -579,6 +597,8 @@ class PipePredictor(object):
                         cv2.imshow('Paddle-Pipeline', im)
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
+        socket.close()
+        context.term()
 
         if self.cfg['visual'] and len(self.pushurl) == 0:
             writer.release()
