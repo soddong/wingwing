@@ -12,12 +12,16 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        val sensorRepository = (application as MainApplication).sensorRepository
+        val application = application as MainApplication
+        val sensorRepository = application.sensorRepository
+        val dataRepository = application.dataRepository
+
         setTheme(android.R.style.Theme_DeviceDefault_Light)
 
         setContent {
             WearApp(
-                sensorRepository = sensorRepository
+                sensorRepository = sensorRepository,
+                dataRepository = dataRepository
             )
         }
     }

@@ -6,6 +6,9 @@ import androidx.health.services.client.data.DataTypeAvailability
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.ssafy.shieldroneapp.data.model.DataAvailability
+import com.ssafy.shieldroneapp.data.model.HeartRateData
+import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.data.repository.MeasureMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +16,8 @@ import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 
 class HeartRateViewModel(
-    private val sensorRepository: SensorRepository
+    private val sensorRepository: SensorRepository,
+    private val dataRepository: DataRepository
 ) : ViewModel() {
     val enabled: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val hr: MutableState<Double> = mutableStateOf(0.0)
@@ -40,8 +44,11 @@ class HeartRateViewModel(
                         .collect { measureMessage ->
                             when (measureMessage) {
                                 is MeasureMessage.MeasureData -> {
-                                    hr.value = measureMessage.data.last().value
+                                    val bpm = measureMessage.data.last().value
+                                    hr.value = bpm
+                                    sendHeartRateData(bpm)
                                 }
+
                                 is MeasureMessage.MeasureAvailability -> {
                                     availability.value = measureMessage.availability
                                 }
@@ -49,6 +56,21 @@ class HeartRateViewModel(
                         }
                 }
             }
+        }
+    }
+
+    private fun sendHeartRateData(bpm: Double) {
+        viewModelScope.launch {
+            val heartRateData = HeartRateData(
+                bpm = bpm,
+                availability = when (availability.value) {
+                    DataTypeAvailability.AVAILABLE -> DataAvailability.AVAILABLE
+                    DataTypeAvailability.ACQUIRING -> DataAvailability.ACQUIRING
+                    DataTypeAvailability.UNAVAILABLE -> DataAvailability.UNAVAILABLE
+                    else -> DataAvailability.UNKNOWN
+                }
+            )
+            dataRepository.sendHeartRateData(heartRateData)
         }
     }
 
@@ -61,13 +83,15 @@ class HeartRateViewModel(
 }
 
 class HeartRateMeasureViewModelFactory(
-    private val sensorRepository: SensorRepository
+    private val sensorRepository: SensorRepository,
+    private val dataRepository: DataRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HeartRateViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return HeartRateViewModel(
-                sensorRepository = sensorRepository
+                sensorRepository = sensorRepository,
+                dataRepository = dataRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

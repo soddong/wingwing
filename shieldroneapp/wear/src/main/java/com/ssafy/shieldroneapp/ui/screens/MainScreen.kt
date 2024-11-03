@@ -16,15 +16,18 @@ import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.ui.components.*
 import com.ssafy.shieldroneapp.viewmodels.*
 import androidx.compose.runtime.rememberCoroutineScope
+import com.ssafy.shieldroneapp.data.repository.DataRepository
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen(
-    sensorRepository: SensorRepository
+    sensorRepository: SensorRepository,
+    dataRepository: DataRepository
 ) {
     val heartRateViewModel: HeartRateViewModel = viewModel(
         factory = HeartRateMeasureViewModelFactory(
-            sensorRepository = sensorRepository
+            sensorRepository = sensorRepository,
+            dataRepository = dataRepository
         )
     )
     val speedViewModel: SpeedViewModel = viewModel(
@@ -99,14 +102,16 @@ fun MainScreen(
     // 권한 요청 순서 제어
     LaunchedEffect(hrPermissionState.status) {
         if (hrPermissionState.status is PermissionStatus.Granted &&
-            speedPermissionState.status is PermissionStatus.Denied) {
+            speedPermissionState.status is PermissionStatus.Denied
+        ) {
             speedPermissionState.launchPermissionRequest()
         }
     }
 
     LaunchedEffect(speedPermissionState.status) {
         if (speedPermissionState.status is PermissionStatus.Granted &&
-            locationPermissionState.status is PermissionStatus.Denied) {
+            locationPermissionState.status is PermissionStatus.Denied
+        ) {
             locationPermissionState.launchPermissionRequest()
         }
     }
@@ -153,12 +158,12 @@ fun MainScreen(
                                                 color = Color.White
                                             )
                                         }
-                                    }
-                                     else {
+                                    } else {
                                         Log.d("MainScreen", "SpeedUiState is ${speedUiState}")
                                     }
                                 }
                             }
+
                             is PermissionStatus.Denied -> {
                                 Flex {
                                     Spacer(Modifier.height(20.dp))
@@ -177,6 +182,7 @@ fun MainScreen(
                             }
                         }
                     }
+
                     is PermissionStatus.Denied -> {
                         LaunchedEffect(Unit) {
                             speedPermissionState.launchPermissionRequest()
@@ -203,6 +209,7 @@ fun MainScreen(
                     }
                 }
             }
+
             is PermissionStatus.Denied -> {
                 LaunchedEffect(Unit) {
                     hrPermissionState.launchPermissionRequest()
