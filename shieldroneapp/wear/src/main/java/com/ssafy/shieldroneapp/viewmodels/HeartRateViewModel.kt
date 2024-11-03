@@ -19,7 +19,7 @@ class HeartRateViewModel(
     private val sensorRepository: SensorRepository,
     private val dataRepository: DataRepository
 ) : ViewModel() {
-    val enabled: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val enabled = MutableStateFlow(true)
     val hr: MutableState<Double> = mutableStateOf(0.0)
     val availability: MutableState<DataTypeAvailability> =
         mutableStateOf(DataTypeAvailability.UNKNOWN)
@@ -75,10 +75,14 @@ class HeartRateViewModel(
     }
 
     fun toggleEnabled() {
-        enabled.value = !enabled.value
         if (!enabled.value) {
-            availability.value = DataTypeAvailability.UNKNOWN
+            enabled.value = true
         }
+    }
+
+    fun stopMeasuring() {
+        enabled.value = false
+        availability.value = DataTypeAvailability.UNKNOWN
     }
 }
 
