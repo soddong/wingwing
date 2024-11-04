@@ -19,8 +19,25 @@ android {
         }
     }
 
+//    buildTypes {
+//        release {
+//            isMinifyEnabled = false
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
+//        }
+//    }
+
     buildTypes {
+        debug {
+            // 디버그 빌드용 API URL
+            buildConfigField("String", "BASE_API_URL", "\"https://debug-api.example.com/\"")
+            isMinifyEnabled = false
+        }
         release {
+            // 릴리스 빌드용 API URL
+            buildConfigField("String", "BASE_API_URL", "\"https://api.example.com/\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -28,10 +45,12 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
