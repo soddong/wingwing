@@ -2,17 +2,16 @@ package com.ssafy.shieldron.service;
 
 import com.ssafy.shieldron.domain.SmsAuth;
 import com.ssafy.shieldron.domain.User;
-import com.ssafy.shieldron.dto.SignUpRequest;
+import com.ssafy.shieldron.dto.request.SignUpRequest;
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
 import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
-import com.ssafy.shieldron.exception.CustomException;
-import com.ssafy.shieldron.exception.ErrorCode;
+import com.ssafy.shieldron.global.exception.CustomException;
 import com.ssafy.shieldron.repository.SmsAuthRepository;
 import com.ssafy.shieldron.repository.UserRepository;
-import com.ssafy.shieldron.util.SmsAuthUtil;
+import com.ssafy.shieldron.global.util.SmsAuthUtil;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +19,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.ssafy.shieldron.exception.ErrorCode.*;
+import static com.ssafy.shieldron.global.exception.ErrorCode.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserManagementService {

@@ -1,4 +1,4 @@
-package com.ssafy.shieldron.util;
+package com.ssafy.shieldron.global.util;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

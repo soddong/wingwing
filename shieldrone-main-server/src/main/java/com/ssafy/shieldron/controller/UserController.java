@@ -1,9 +1,12 @@
 package com.ssafy.shieldron.controller;
 
-import com.ssafy.shieldron.dto.SignUpRequest;
+import com.ssafy.shieldron.dto.request.SignInRequest;
+import com.ssafy.shieldron.dto.request.SignUpRequest;
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
 import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
+import com.ssafy.shieldron.dto.response.SignInResponse;
+import com.ssafy.shieldron.service.UserAuthService;
 import com.ssafy.shieldron.service.UserManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserManagementService userManagementService;
+    private final UserAuthService userAuthService;
 
     @PostMapping("/send")
     public ResponseEntity<?> sendSms(@Valid @RequestBody SmsAuthRequest authSmsRequest) throws Exception {
@@ -41,5 +45,12 @@ public class UserController {
         // TODO 검증
         userManagementService.signUp(signUpRequest);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/sign-in")
+    public ResponseEntity<?> signIn(@RequestBody SignInRequest signInRequest) {
+        // TODO 검증
+        SignInResponse signInResponse = userAuthService.signIn(signInRequest);
+        return ResponseEntity.ok().body(signInResponse);
     }
 }

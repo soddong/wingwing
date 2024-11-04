@@ -1,4 +1,4 @@
-package com.ssafy.shieldron.exception;
+package com.ssafy.shieldron.global.exception;
 
 public record ErrorResponse (
         String code,

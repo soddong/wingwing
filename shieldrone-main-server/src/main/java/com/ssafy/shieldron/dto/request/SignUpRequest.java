@@ -1,4 +1,4 @@
-package com.ssafy.shieldron.dto;
+package com.ssafy.shieldron.dto.request;
 
 import java.time.LocalDate;
 
