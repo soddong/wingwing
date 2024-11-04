@@ -54,7 +54,7 @@ class TileService : SuspendingTileService() {
 private fun tileLayout(context: Context): LayoutElementBuilders.LayoutElement {
     return PrimaryLayout.Builder(buildDeviceParameters(context.resources))
         .setContent(
-            Text.Builder(context, "Hello World!")
+            Text.Builder(context, "Hello Watch!")
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION1)
                 .build()

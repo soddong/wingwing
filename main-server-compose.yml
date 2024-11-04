@@ -1,0 +1,14 @@
+services:
+  main-server:
+    image: main-server:latest
+    container_name: main-server
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL_SERVER: ${DB_URL_SERVER}
+      DB_USERNAME_SERVER: ${DB_USERNAME_SERVER}
+      DB_PASSWORD_SERVER: ${DB_PASSWORD_SERVER}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: always

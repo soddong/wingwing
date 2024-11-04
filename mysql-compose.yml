@@ -1,0 +1,16 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD_SERVER}
+      MYSQL_DATABASE: ${DATABASE}
+      MYSQL_USER: ${DB_USERNAME_SERVER}
+      MYSQL_PASSWORD: ${DB_PASSWORD_SERVER}
+    volumes:
+      - /home/ubuntu/mysql/mysql_data:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - "3306:3306"
+    restart: always

@@ -1,10 +1,57 @@
 pipeline {
     agent any
 
+    environment {
+        MAIN_SERVER_DIR = 'shieldrone-main-server'
+    }
+
+
     stages {
-        stage('Checkout') {
+        stage('Check Changes') {
             steps {
-                echo 'Checking out code...'
+                script {
+
+                    buildMainServer = false
+
+                    def diffOutput = sh(script: "git diff --name-only HEAD^ HEAD", returnStdout: true).trim()
+
+                    buildMainServer = diffOutput.contains(env.MAIN_SERVER_DIR) || diffOutput.contains('Jenkinsfile')
+
+                }
+            }
+        }
+
+        stage('Build Main Server') {
+            when {
+                expression {
+                    return buildMainServer
+                }
+            }
+            steps {
+                echo '********** shieldrone-main-server Build Start **********'
+                dir(env.MAIN_SERVER_DIR) {
+                    sh 'docker build -t main-server .'
+                }
+                echo '********** shieldrone-main-server Build End **********'
+            }
+        }
+
+        stage('Deploy Main Server') {
+            when {
+                expression {
+                    return buildMainServer
+                }
+            }
+            steps {
+                script {
+                    echo '********** shieldrone-main-server Deploy Start **********'
+                    sh 'docker-compose -f main-server-compose.yml stop'
+                    sh 'docker rm -f main-server || true'
+                    sh 'docker rm -f mysql || true'
+                    sh 'docker-compose -f mysql-compose.yml up -d'
+                    sh 'docker-compose -f main-server-compose.yml up -d'
+                    echo '********** shieldrone-main-server Deploy End **********'
+                }
             }
         }
     }
