@@ -1,10 +1,12 @@
 package com.ssafy.shieldroneapp.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.health.services.client.data.DataTypeAvailability
@@ -23,6 +25,14 @@ fun HeartRateMeasure(
 ) {
     LaunchedEffect(permissionState.status) {
         if (permissionState.status.isGranted) {
+            Log.d("HeartRateMeasure", "권한 허용됨, 측정 시작")
+            onStartMeasuring()
+        }
+    }
+
+    SideEffect {
+        if (permissionState.status.isGranted && availability == DataTypeAvailability.UNKNOWN) {
+            Log.d("HeartRateMeasure", "이미 권한이 허용된 상태, 측정 시작")
             onStartMeasuring()
         }
     }

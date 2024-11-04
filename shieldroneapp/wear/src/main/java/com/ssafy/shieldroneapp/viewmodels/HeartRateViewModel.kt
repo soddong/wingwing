@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.viewmodels
 
+import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.health.services.client.data.DataTypeAvailability
@@ -12,7 +13,7 @@ import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.data.repository.MeasureMessage
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class HeartRateViewModel(
@@ -26,34 +27,48 @@ class HeartRateViewModel(
     val uiState: MutableState<HeartRateMeasureUiState> =
         mutableStateOf(HeartRateMeasureUiState.Startup)
 
+    private var measureJob: Job? = null
+
     init {
         viewModelScope.launch {
             val supported = sensorRepository.hasHeartRateCapability()
-            uiState.value = if (supported) {
-                HeartRateMeasureUiState.Supported
+            if (supported) {
+                uiState.value = HeartRateMeasureUiState.Supported
+                Log.d("HeartRateViewModel", "심박수 센서 지원됨")
             } else {
-                HeartRateMeasureUiState.NotSupported
+                uiState.value = HeartRateMeasureUiState.NotSupported
+                Log.d("HeartRateViewModel", "심박수 센서 지원 안됨")
             }
         }
+    }
 
-        viewModelScope.launch {
-            enabled.collect {
-                if (it) {
-                    sensorRepository.heartRateMeasureFlow()
-                        .takeWhile { enabled.value }
-                        .collect { measureMessage ->
-                            when (measureMessage) {
-                                is MeasureMessage.MeasureData -> {
-                                    val bpm = measureMessage.data.last().value
-                                    hr.value = bpm
-                                    sendHeartRateData(bpm)
-                                }
-                                is MeasureMessage.MeasureAvailability -> {
-                                    availability.value = measureMessage.availability
-                                }
+    fun toggleEnabled() {
+        startMeasuring()
+    }
+
+    fun startMeasuring() {
+        Log.d("HeartRateViewModel", "심박수 측정 시작")
+        measureJob?.cancel() // 기존 job이 있다면 취소
+
+        measureJob = viewModelScope.launch {
+            try {
+                sensorRepository.heartRateMeasureFlow()
+                    .collect { measureMessage ->
+                        when (measureMessage) {
+                            is MeasureMessage.MeasureData -> {
+                                val bpm = measureMessage.data.last().value
+                                hr.value = bpm
+                                Log.d("HeartRateViewModel", "심박수: $bpm")
+                                sendHeartRateData(bpm)
+                            }
+                            is MeasureMessage.MeasureAvailability -> {
+                                availability.value = measureMessage.availability
+                                Log.d("HeartRateViewModel", "가용성 변경: ${measureMessage.availability}")
                             }
                         }
-                }
+                    }
+            } catch (e: Exception) {
+                Log.e("HeartRateViewModel", "측정 중 오류 발생", e)
             }
         }
     }
@@ -73,10 +88,10 @@ class HeartRateViewModel(
         }
     }
 
-    fun toggleEnabled() {
-        if (!enabled.value) {
-            enabled.value = true
-        }
+    override fun onCleared() {
+        super.onCleared()
+        measureJob?.cancel()
+        availability.value = DataTypeAvailability.UNKNOWN
     }
 }
 
