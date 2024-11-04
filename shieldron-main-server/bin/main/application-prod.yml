@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL_SERVER}
+    username: ${DB_USERNAME_SERVER}
+    password: ${DB_PASSWORD_SERVER}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
