@@ -2,6 +2,7 @@ package com.ssafy.shieldron.service;
 
 import com.ssafy.shieldron.domain.SmsAuth;
 import com.ssafy.shieldron.domain.User;
+import com.ssafy.shieldron.dto.SignUpRequest;
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
 import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -39,7 +41,7 @@ public class UserManagementService {
         sendSmsAndSaveSmsAuth(phoneNumber);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CheckIsUserResponse verifyAuthCode(AuthCodeVerifyRequest authCodeVerifyRequest) {
         String phoneNumber = authCodeVerifyRequest.phoneNumber();
         String authCode = authCodeVerifyRequest.authCode();
@@ -47,6 +49,44 @@ public class UserManagementService {
         validateSmsAuth(phoneNumber, authCode);
 
         return checkIsUser(phoneNumber);
+    }
+
+    @Transactional
+    public void signUp(SignUpRequest signUpRequest) {
+        String phoneNumber = signUpRequest.phoneNumber();
+        
+        checkSmsAuthIsVerified(phoneNumber);
+        checkDuplicatedUser(phoneNumber);
+
+        saveNewUser(signUpRequest, phoneNumber);
+    }
+
+    private void saveNewUser(SignUpRequest signUpRequest, String phoneNumber) {
+        String username = signUpRequest.username();
+        LocalDate birthday = signUpRequest.birthday();
+        User user = User.builder()
+                .phoneNumber(phoneNumber)
+                .username(username)
+                .birthday(birthday)
+                .build();
+        userRepository.save(user);
+    }
+
+    private void checkDuplicatedUser(String phoneNumber) {
+        if (userRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new CustomException(DUPLICATE_USER);
+        }
+    }
+
+    private void checkSmsAuthIsVerified(String phoneNumber) {
+        Optional<SmsAuth> existingSmsAuth = smsAuthRepository.findByPhoneNumber(phoneNumber);
+        if (existingSmsAuth.isEmpty()) {
+           throw new CustomException(SMS_AUTH_REQUIRED);
+        }
+        SmsAuth smsAuth = existingSmsAuth.get();
+        if (!smsAuth.getIsVerified()) {
+            throw new CustomException(SMS_AUTH_REQUIRED);
+        }
     }
 
     private CheckIsUserResponse checkIsUser(String phoneNumber) {
@@ -71,6 +111,8 @@ public class UserManagementService {
         if (!smsAuth.getAuthCode().equals(authCode)) {
             throw new CustomException(INVALID_AUTH_CODE);
         }
+
+        smsAuth.updateIsVerifiedToTrue();
     }
 
     private void sendSmsAndSaveSmsAuth(String phoneNumber) throws Exception {
@@ -80,6 +122,7 @@ public class UserManagementService {
                 .authCode(authCode)
                 .expiresAt(LocalDateTime.now().plusMinutes(2))
                 .isDeleted(false)
+                .isVerified(false)
                 .build();
         smsAuthRepository.save(smsAuth);
     }

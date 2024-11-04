@@ -33,15 +33,23 @@ public class SmsAuth {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified;
+
     @Builder
-    public SmsAuth(String phoneNumber, String authCode, LocalDateTime expiresAt, Boolean isDeleted) {
+    public SmsAuth(String phoneNumber, String authCode, LocalDateTime expiresAt, Boolean isDeleted, Boolean isVerified) {
         this.phoneNumber = phoneNumber;
         this.authCode = authCode;
         this.expiresAt = expiresAt;
         this.isDeleted = isDeleted;
+        this.isVerified = isVerified;
     }
 
     public void softDelete() {
         this.isDeleted = true;
+    }
+
+    public void updateIsVerifiedToTrue() {
+        this.isVerified = true;
     }
 }

@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.SignUpRequest;
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
 import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
@@ -36,5 +37,9 @@ public class UserController {
     }
 
     @PostMapping("/sign-up")
-    public ResponseEntity<?> signUp(@RequestBody )
+    public ResponseEntity<?> signUp(@RequestBody SignUpRequest signUpRequest) {
+        // TODO 검증
+        userManagementService.signUp(signUpRequest);
+        return ResponseEntity.ok().build();
+    }
 }

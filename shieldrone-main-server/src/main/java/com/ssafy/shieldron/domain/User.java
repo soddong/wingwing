@@ -9,10 +9,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -27,7 +28,7 @@ public class User extends BaseEntity {
     private String phoneNumber;
 
     @Column(name = "birthday", nullable = false)
-    private LocalDateTime birthday;
+    private LocalDate birthday;
 
     @OneToOne
     @JoinColumn(name = "start_hive_id")
@@ -41,5 +42,15 @@ public class User extends BaseEntity {
 
     @Column(name = "distance")
     private Integer distance;
+
+    @Column(name = "username")
+    private String username;
+
+    @Builder
+    public User(String phoneNumber, LocalDate birthday, String username) {
+        this.phoneNumber = phoneNumber;
+        this.birthday = birthday;
+        this.username = username;
+    }
 
 }
