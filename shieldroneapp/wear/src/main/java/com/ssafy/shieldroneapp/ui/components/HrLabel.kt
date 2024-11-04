@@ -1,7 +1,6 @@
 package com.ssafy.shieldroneapp.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,15 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.wear.tooling.preview.devices.WearDevices
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.ssafy.shieldroneapp.R
-import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun HrLabel(
@@ -32,40 +32,47 @@ fun HrLabel(
         DataTypeAvailability.UNAVAILABLE_DEVICE_OFF_BODY -> Icons.Default.HeartBroken
         else -> Icons.Default.QuestionMark
     }
+
+    val iconColor = when (availability) {
+        DataTypeAvailability.AVAILABLE -> Color.Red
+        DataTypeAvailability.ACQUIRING -> Color(0xFFFFA500)
+        else -> Color.Gray
+    }
+
     val text = if (availability == DataTypeAvailability.AVAILABLE) {
         hr.toInt().toString()
     } else {
         stringResource(id = R.string.no_hr_reading)
     }
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = stringResource(R.string.icon),
-            tint = Color.Red
+            tint = iconColor,
+            modifier = Modifier.size(32.dp)
         )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.display1
-        )
-    }
-}
 
-@ExperimentalPermissionsApi
-@Preview(
-    device = WearDevices.LARGE_ROUND,
-    showBackground = false,
-    showSystemUi = true
-)
-@Composable
-fun HrLabelPreview() {
-    ShieldroneappTheme {
-        HrLabel(
-            hr = 121.2,
-            availability = DataTypeAvailability.AVAILABLE
-        )
+        AnimatedVisibility(
+            visible = availability == DataTypeAvailability.AVAILABLE,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.display1,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        if (availability != DataTypeAvailability.AVAILABLE) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.body2,
+            )
+        }
     }
 }
