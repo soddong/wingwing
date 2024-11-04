@@ -123,9 +123,6 @@ fun MainScreen(
                     is PermissionStatus.Granted -> {
                         when (locationPermissionState.status) {
                             is PermissionStatus.Granted -> {
-                                Log.d("MainScreen", "모든 권한 허용")
-                                Log.d("속도 상태", "$speedUiState")
-                                Log.d("심박수 상태", "$hrUiState")
 
                                 Column {
                                     // 심박수 UI

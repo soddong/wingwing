@@ -48,7 +48,6 @@ class HeartRateViewModel(
                                     hr.value = bpm
                                     sendHeartRateData(bpm)
                                 }
-
                                 is MeasureMessage.MeasureAvailability -> {
                                     availability.value = measureMessage.availability
                                 }
@@ -78,11 +77,6 @@ class HeartRateViewModel(
         if (!enabled.value) {
             enabled.value = true
         }
-    }
-
-    fun stopMeasuring() {
-        enabled.value = false
-        availability.value = DataTypeAvailability.UNKNOWN
     }
 }
 
