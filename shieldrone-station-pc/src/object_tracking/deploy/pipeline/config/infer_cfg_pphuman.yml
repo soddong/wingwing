@@ -1,6 +1,7 @@
 crop_thresh: 0.5
 attr_thresh: 0.5
-visual: False
+kpt_thresh: 0.2
+visual: True
 warmup_frame: 50
 
 DET:
@@ -22,4 +23,8 @@ ATTR:
 REID:
   model_dir:  https://bj.bcebos.com/v1/paddledet/models/pipeline/reid_model.zip
   batch_size: 16
-  enable: True
+  enable: False
+
+KPT:
+  model_dir: https://bj.bcebos.com/v1/paddledet/models/pipeline/dark_hrnet_w32_256x192.zip
+  batch_size: 8
