@@ -11,11 +11,7 @@ import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.health.services.client.data.DeltaDataType
-import androidx.health.services.client.data.ExerciseConfig
-import androidx.health.services.client.data.ExerciseState
-import androidx.health.services.client.data.ExerciseType
 import androidx.health.services.client.data.SampleDataPoint
-import com.ssafy.shieldroneapp.TAG
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,13 +33,6 @@ class SensorRepository(context: Context) {
         val capabilities = measureClient.getCapabilitiesAsync().await()
         return (DataType.HEART_RATE_BPM in capabilities.supportedDataTypesMeasure)
     }
-
-    // suspend fun checkSpeedCapability() {
-    //     val capabilities = measureClient.getCapabilitiesAsync().await()
-    //     val hasSpeed = DataType.SPEED in capabilities.supportedDataTypesMeasure
-    //     _speedCapabilityFlow.value = hasSpeed
-    //     Log.d("센서 레포지토리", "Speed capability: $hasSpeed")
-    // }
 
     suspend fun checkSpeedCapability() {
         val capabilities = measureClient.getCapabilitiesAsync().await()
@@ -89,67 +78,16 @@ class SensorRepository(context: Context) {
         }
     }
 
-//    suspend fun hasSpeedCapability(): Boolean {
-//        val capabilities = measureClient.getCapabilitiesAsync().await()
-//        return (DataType.SPEED in capabilities.supportedDataTypesMeasure)
-//    }
-
-//    suspend fun hasSpeedCapability(): Boolean {
-//        val capabilities = measureClient.getCapabilitiesAsync().await()
-//        Log.d("센서 레포지토리", "All supported data types: ${capabilities.supportedDataTypesMeasure}")
-//
-//        val hasSpeed = (DataType.SPEED in capabilities.supportedDataTypesMeasure)
-//        Log.d("센서 레포지토리", "Speed capability check: $hasSpeed")
-//        return hasSpeed
-//    }
-//
-//    suspend fun checkSpeedCapability() {
-//        val capabilities = measureClient.getCapabilitiesAsync().await()
-//        val hasSpeed = (DataType.SPEED in capabilities.supportedDataTypesMeasure)
-//        Log.d("센서 레포지토리", "Speed capability check: $hasSpeed")
-//        _speedCapabilityFlow.value = hasSpeed
-//    }
-
-    // 속도 capability 체크를 Exercise API로 변경
     suspend fun hasSpeedCapability(): Boolean {
         val capabilities = measureClient.getCapabilitiesAsync().await()
         val hasSpeed = DataType.SPEED in capabilities.supportedDataTypesMeasure
 
-        // speedCapabilityFlow 업데이트
         _speedCapabilityFlow.value = hasSpeed
 
         Log.d("SensorRepository", "Speed capability check: $hasSpeed")
         return hasSpeed
     }
 
-    //    fun speedMeasureFlow() = callbackFlow {
-//        val callback = object : MeasureCallback {
-//            override fun onAvailabilityChanged(
-//                dataType: DeltaDataType<*, *>,
-//                availability: Availability
-//            ) {
-//                if (availability is DataTypeAvailability) {
-//                    trySendBlocking(MeasureMessage.MeasureAvailability(availability))
-//                }
-//            }
-//
-//            override fun onDataReceived(data: DataPointContainer) {
-//                val speedData = data.getData(DataType.SPEED)
-//                trySendBlocking(MeasureMessage.MeasureData(speedData))
-//            }
-//        }
-//
-//        Log.d(TAG, "Registering for speed data")
-//        measureClient.registerMeasureCallback(DataType.SPEED, callback)
-//
-//        awaitClose {
-//            Log.d(TAG, "Unregistering for speed data")
-//            runBlocking {
-//                measureClient.unregisterMeasureCallbackAsync(DataType.SPEED, callback)
-//                    .await()
-//            }
-//        }
-//    }
     fun speedMeasureFlow() = callbackFlow {
         val callback = object : MeasureCallback {
             override fun onAvailabilityChanged(

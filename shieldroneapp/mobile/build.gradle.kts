@@ -8,6 +8,10 @@ android {
     namespace = "com.ssafy.shieldroneapp"
     compileSdk = 34
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.ssafy.shieldroneapp"
         minSdk = 33
