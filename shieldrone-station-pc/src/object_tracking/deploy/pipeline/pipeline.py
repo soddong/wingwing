@@ -33,12 +33,14 @@ sys.path.insert(0, parent_path)
 
 from cfg_utils import argsparser, print_arguments, merge_cfg
 from pipe_utils import PipeTimer
-from pipe_utils import get_test_images, crop_image_with_det, crop_image_with_mot, parse_mot_res, parse_mot_keypoint
+from pipe_utils import crop_image_with_det, crop_image_with_mot, parse_mot_res, parse_mot_keypoint
 from pipe_utils import PushStream
 
 from python.infer import Detector
+from python.keypoint_infer import KeyPointDetector
+from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image
-from python.visualize import visualize_box_mask, visualize_attr
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -46,6 +48,7 @@ from pptracking.python.mot.utils import flow_statistic
 
 from pphuman.attr_infer import AttrDetector
 from pphuman.reid import ReID
+from pphuman.action_utils import HandAboveHeadTracker
 
 from download import auto_download_model
 
@@ -214,7 +217,21 @@ class PipePredictor(object):
 
         # auto download inference model
         get_model_dir(self.cfg)
-
+        kpt_cfg = self.cfg['KPT']
+        kpt_model_dir = kpt_cfg['model_dir']
+        kpt_batch_size = kpt_cfg['batch_size']
+        self.kpt_predictor = KeyPointDetector(
+            kpt_model_dir,
+            args.device,
+            args.run_mode,
+            kpt_batch_size,
+            args.trt_min_shape,
+            args.trt_max_shape,
+            args.trt_opt_shape,
+            args.trt_calib_mode,
+            args.cpu_threads,
+            args.enable_mkldnn,
+            use_dark=False)
         if self.with_human_attr:
             attr_cfg = self.cfg['ATTR']
             basemode = self.basemode['ATTR']
@@ -251,6 +268,7 @@ class PipePredictor(object):
                 skip_frame_num=skip_frame_num,
                 draw_center_traj=self.draw_center_traj,
                 secs_interval=self.secs_interval,)
+            self.handAboveHeadTracker = HandAboveHeadTracker()
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -380,8 +398,54 @@ class PipePredictor(object):
             print(f"Error: {e}")
         finally:
             server_socket.close()
+
+    def capture_webcam(self, queue):
+        cap = cv2.VideoCapture(0)  # 기본 웹캠
+        frame_count = 0
+        skip_frame_num = 0
+        start_time = time.time()
+
+        try:
+            while True:
+                # 프레임 수신
+                ret, frame = cap.read()
+
+                if not ret:
+                    print("웹캠에서 프레임을 읽지 못했습니다.")
+                    break
+
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                if frame_rgb is not None:
+                    if not queue.full():
+                        queue.put(frame_rgb)
+                        frame_count += 1  # 프레임 수 카운트 증가
+                    else:
+                        skip_frame_num += 1
+                else:
+                    print("수신한 이미지를 디코딩하는데 실패했습니다.")
+
+                # 5초마다 FPS 출력
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                if elapsed_time >= 5.0:
+                    fps = frame_count / elapsed_time  # FPS 계산
+                    print("5초 요약:")
+                    print(f" - 수신한 프레임 수: {frame_count}")
+                    print(f" - 건너뛴 프레임 수: {skip_frame_num}")
+                    print(f" - 초당 프레임 수 (FPS): {fps:.2f}")
+                    
+                    # 카운터와 타이머 초기화
+                    frame_count = 0
+                    skip_frame_num = 0
+                    start_time = current_time
                 
-    def predict_video(self, video_file, thread_idx=0, udp=False):
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            cap.release()
+
+    def predict_video(self, video_file, thread_idx=0, udp=True):
         # mot
         # mot -> attr
         # mot -> pose -> action
@@ -390,7 +454,7 @@ class PipePredictor(object):
 
         # Get Video info : resolution, fps, frame count
         width = 640
-        height = 480
+        height = 640
         fps = 20
         frame_count = 0
         if not udp:
@@ -439,10 +503,13 @@ class PipePredictor(object):
 
         if udp:
             thread = threading.Thread(
-                target=self.receive_frames, args=(framequeue,))
+                target=self.capture_webcam, args=(framequeue,))
+            # thread = threading.Thread(
+            #     target=self.receive_frames, args=(framequeue,))
         else:
             thread = threading.Thread(
             target=self.capturevideo, args=(capture, framequeue))
+            
         thread.start()
         time.sleep(1)
 
@@ -451,11 +518,12 @@ class PipePredictor(object):
         socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
         socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
-
-        while (not framequeue.empty()):
-            # if framequeue.empty():
-            #     time.sleep(0.1)
-            #     continue
+        print(self.cfg)
+        # while (not framequeue.empty()):
+        while (1):
+            if framequeue.empty():
+                time.sleep(0.1)
+                continue
                 
             if frame_id % 10 == 0:
                 print('Thread: {}; frame id: {}'.format(thread_idx, frame_id))
@@ -480,19 +548,19 @@ class PipePredictor(object):
 
                 # mot output format: id, class, score, xmin, ymin, xmax, ymax
                 mot_res = parse_mot_res(res)
-                print("MOT 결과")
+                # print("MOT 결과")
                 # print(mot_res)
 
-                data_bytes = mot_res["boxes"].tobytes()
-                data_shape = mot_res["boxes"].shape
-                data_dtype = str(mot_res["boxes"].dtype)
-                print("데이터 변환")
+                # data_bytes = mot_res["boxes"].tobytes()
+                # data_shape = mot_res["boxes"].shape
+                # data_dtype = str(mot_res["boxes"].dtype)
+                # print("데이터 변환")
 
-                # 배열 데이터와 메타 정보를 함께 전송
-                socket.send_json({'shape': data_shape, 'dtype': data_dtype})
-                print("json 전송")
-                socket.send(data_bytes)
-                print("데이터를 전송했습니다.")
+                # # 배열 데이터와 메타 정보를 함께 전송
+                # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
+                # print("json 전송")
+                # socket.send(data_bytes)
+                # print("데이터를 전송했습니다.")
 
                 if frame_id > self.warmup_frame:
                     self.pipe_timer.module_time['mot'].end()
@@ -547,6 +615,22 @@ class PipePredictor(object):
                 self.pipeline_res.update(mot_res, 'mot')
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
+                if frame_id > self.warmup_frame:
+                    self.pipe_timer.module_time['kpt'].start()
+                kpt_pred = self.kpt_predictor.predict_image(
+                crop_input, visual=False)
+                self.handAboveHeadTracker.update(kpt_pred, mot_res)
+                keypoint_vector, score_vector = translate_to_ori_images(
+                    kpt_pred, np.array(new_bboxes))
+                kpt_res = {}
+                kpt_res['keypoint'] = [
+                    keypoint_vector.tolist(), score_vector.tolist()
+                ] if len(keypoint_vector) > 0 else [[], []]
+                kpt_res['bbox'] = ori_bboxes
+                if frame_id > self.warmup_frame:
+                    self.pipe_timer.module_time['kpt'].end()
+
+                self.pipeline_res.update(kpt_res, 'kpt')
 
                 if self.with_human_attr:
                     if frame_id > self.warmup_frame:
@@ -592,11 +676,16 @@ class PipePredictor(object):
                 if len(self.pushurl) > 0:
                     pushstream.pipe.stdin.write(im.tobytes())
                 else:
-                    writer.write(im)
-                    if self.file_name is None:  # use camera_id
+                    if udp:
                         cv2.imshow('Paddle-Pipeline', im)
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
+                    else:
+                        writer.write(im)
+                        if self.file_name is None:  # use camera_id
+                            cv2.imshow('Paddle-Pipeline', im)
+                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                                break
         socket.close()
         context.term()
 
@@ -668,6 +757,15 @@ class PipePredictor(object):
                     plates.append(plate)
                 else:
                     plates.append("")
+                kpt_res = result.get('kpt')
+
+        kpt_res = result.get('kpt')
+        if kpt_res is not None:
+            image = visualize_pose(
+                image,
+                kpt_res,
+                # visual_thresh=self.cfg['kpt_thresh'],
+                returnimg=True)
 
         return image
 
