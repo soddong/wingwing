@@ -19,7 +19,7 @@ def connect():
     
     if user_id:
         print(f"유저 {user_id}가 연결되었습니다. 이제 WebSocket을 통해 실시간 데이터를 전송할 수 있습니다.")
-        return jsonify({"status": "connected", "ws_url": "ws://211.192.252.62:8765"}), 200
+        return jsonify({"status": "connected", "ws_url": "wss://96b8-222-107-238-22.ngrok-free.app"}), 200
     else:
         return jsonify({"error": "user_id missing"}), 400
 
