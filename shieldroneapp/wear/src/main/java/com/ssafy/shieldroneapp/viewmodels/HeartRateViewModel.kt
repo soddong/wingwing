@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.viewmodels
 
+import android.content.Intent
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,8 @@ import com.ssafy.shieldroneapp.data.model.HeartRateData
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.data.repository.MeasureMessage
+import com.ssafy.shieldroneapp.services.HeartRateService
+import com.ssafy.shieldroneapp.services.WearableService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -20,78 +23,61 @@ class HeartRateViewModel(
     private val sensorRepository: SensorRepository,
     private val dataRepository: DataRepository
 ) : ViewModel() {
-    private val enabled = MutableStateFlow(true)
     val hr: MutableState<Double> = mutableStateOf(0.0)
     val availability: MutableState<DataTypeAvailability> =
         mutableStateOf(DataTypeAvailability.UNKNOWN)
     val uiState: MutableState<HeartRateMeasureUiState> =
         mutableStateOf(HeartRateMeasureUiState.Startup)
 
-    private var measureJob: Job? = null
-
     init {
         viewModelScope.launch {
-            val supported = sensorRepository.hasHeartRateCapability()
-            if (supported) {
-                uiState.value = HeartRateMeasureUiState.Supported
-                Log.d("HeartRateViewModel", "심박수 센서 지원됨")
-            } else {
-                uiState.value = HeartRateMeasureUiState.NotSupported
-                Log.d("HeartRateViewModel", "심박수 센서 지원 안됨")
+            try {
+                val supported = sensorRepository.hasHeartRateCapability()
+                if (supported) {
+                    uiState.value = HeartRateMeasureUiState.Supported
+                    Log.d("HeartRateViewModel", "심박수 센서 지원됨")
+                    WearableService.setHeartRateViewModel(this@HeartRateViewModel)
+
+                    // 서비스 시작
+                    val context = WearableService.getContext()
+                    if (context != null) {
+                        Log.d("HeartRateViewModel", "서비스 자동 시작")
+                        val serviceIntent = Intent(context, HeartRateService::class.java)
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        Log.e("HeartRateViewModel", "Context가 null입니다")
+                    }
+                } else {
+                    uiState.value = HeartRateMeasureUiState.NotSupported
+                    Log.d("HeartRateViewModel", "심박수 센서 지원 안됨")
+                }
+            } catch (e: Exception) {
+                Log.e("HeartRateViewModel", "초기화 중 오류 발생", e)
+                e.printStackTrace()
             }
         }
     }
 
     fun toggleEnabled() {
-        startMeasuring()
+        Log.d("HeartRateViewModel", "서비스 시작")
+        val context = WearableService.getContext() ?: return
+        val serviceIntent = Intent(context, HeartRateService::class.java)
+        context.startForegroundService(serviceIntent)
     }
 
-    fun startMeasuring() {
-        Log.d("HeartRateViewModel", "심박수 측정 시작")
-        measureJob?.cancel() // 기존 job이 있다면 취소
-
-        measureJob = viewModelScope.launch {
-            try {
-                sensorRepository.heartRateMeasureFlow()
-                    .collect { measureMessage ->
-                        when (measureMessage) {
-                            is MeasureMessage.MeasureData -> {
-                                val bpm = measureMessage.data.last().value
-                                hr.value = bpm
-                                Log.d("HeartRateViewModel", "심박수: $bpm")
-                                sendHeartRateData(bpm)
-                            }
-                            is MeasureMessage.MeasureAvailability -> {
-                                availability.value = measureMessage.availability
-                                Log.d("HeartRateViewModel", "가용성 변경: ${measureMessage.availability}")
-                            }
-                        }
-                    }
-            } catch (e: Exception) {
-                Log.e("HeartRateViewModel", "측정 중 오류 발생", e)
-            }
-        }
+    fun updateHeartRate(bpm: Double) {
+        hr.value = bpm
     }
 
-    private fun sendHeartRateData(bpm: Double) {
-        viewModelScope.launch {
-            val heartRateData = HeartRateData(
-                bpm = bpm,
-                availability = when (availability.value) {
-                    DataTypeAvailability.AVAILABLE -> DataAvailability.AVAILABLE
-                    DataTypeAvailability.ACQUIRING -> DataAvailability.ACQUIRING
-                    DataTypeAvailability.UNAVAILABLE -> DataAvailability.UNAVAILABLE
-                    else -> DataAvailability.UNKNOWN
-                }
-            )
-            dataRepository.sendHeartRateData(heartRateData)
-        }
+    fun updateAvailability(newAvailability: DataTypeAvailability) {
+        availability.value = newAvailability
     }
 
     override fun onCleared() {
         super.onCleared()
-        measureJob?.cancel()
-        availability.value = DataTypeAvailability.UNKNOWN
+        val context = WearableService.getContext()
+        context?.stopService(Intent(context, HeartRateService::class.java))
+        WearableService.setHeartRateViewModel(null)
     }
 }
 
