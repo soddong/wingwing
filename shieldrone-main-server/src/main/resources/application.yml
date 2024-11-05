@@ -15,9 +15,9 @@ spring:
 
 coolsms:
   api:
-    key: NCSE8PAEQQXYCMU7
-    secret: BMULBTT9UFTFATILZMWC9KLVWH7OFPZW
-    number: 01023272591
+    key: ${SMS_KEY}
+    secret: ${SMS_SECRET}
+    number: ${SMS_NUMBER}
 
 jwt:
   secret: 64461f01e1af406da538b9c48d801ce59142452199ff112fb5404c8e7e98e3ff

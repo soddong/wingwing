@@ -25,7 +25,7 @@ public class SmsAuthUtil {
 
     @PostConstruct
     public void init() {
-        this.messageService = new DefaultMessageService(apiKey, apiSecret, "https://api.coolsms.co.kr");
+        this.messageService = new DefaultMessageService(apiKey, apiSecret, "https://api.solapi.com");
     }
 
     @Value("${coolsms.api.number}")
