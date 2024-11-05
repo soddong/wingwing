@@ -198,7 +198,8 @@ def plot_tracking_dict(image,
                        illegal_parking_dict=None,
                        entrance=None,
                        records=None,
-                       center_traj=None):
+                       center_traj=None,
+                       target_id=None):
     im = np.ascontiguousarray(np.copy(image))
     im_h, im_w = im.shape[:2]
     if do_break_in_counting or do_illegal_parking_recognition:
@@ -309,6 +310,8 @@ def plot_tracking_dict(image,
             id_text = '{}'.format(int(obj_id))
             if ids2names != []:
                 id_text = '{}_{}'.format(ids2names[cls_id], id_text)
+                if target_id is not None and target_id == int(obj_id):
+                    id_text += "_TARGET"
             else:
                 id_text = 'class{}_{}'.format(cls_id, id_text)
 

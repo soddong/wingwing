@@ -33,21 +33,19 @@ sys.path.insert(0, parent_path)
 
 from cfg_utils import argsparser, print_arguments, merge_cfg
 from pipe_utils import PipeTimer
-from pipe_utils import crop_image_with_det, crop_image_with_mot, parse_mot_res, parse_mot_keypoint
+from pipe_utils import crop_image_with_mot, parse_mot_res
 from pipe_utils import PushStream
 
 from python.infer import Detector
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose
+from python.visualize import visualize_box_mask, visualize_pose
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
 from pptracking.python.mot.utils import flow_statistic
 
-from pphuman.attr_infer import AttrDetector
-from pphuman.reid import ReID
 from pphuman.action_utils import HandAboveHeadTracker
 
 from download import auto_download_model
@@ -173,16 +171,6 @@ class PipePredictor(object):
 
         self.basemode = {
             "MOT": "idbased",
-            "ATTR": "idbased",
-            "VIDEO_ACTION": "videobased",
-            "SKELETON_ACTION": "skeletonbased",
-            "ID_BASED_DETACTION": "idbased",
-            "ID_BASED_CLSACTION": "idbased",
-            "REID": "idbased",
-            "VEHICLE_PLATE": "idbased",
-            "VEHICLE_ATTR": "idbased",
-            "VEHICLE_PRESSING": "idbased",
-            "VEHICLE_RETROGRADE": "idbased",
         }
 
         self.is_video = is_video
@@ -219,31 +207,30 @@ class PipePredictor(object):
             args.enable_mkldnn,
             use_dark=False)
 
-        if self.with_mot or self.modebase["idbased"] or self.modebase[
-                "skeletonbased"]:
-            mot_cfg = self.cfg['MOT']
-            model_dir = mot_cfg['model_dir']
-            tracker_config = mot_cfg['tracker_config']
-            batch_size = mot_cfg['batch_size']
-            skip_frame_num = mot_cfg.get('skip_frame_num', -1)
-            basemode = self.basemode['MOT']
-            self.modebase[basemode] = True
-            self.mot_predictor = SDE_Detector(
-                model_dir,
-                tracker_config,
-                args.device,
-                args.run_mode,
-                batch_size,
-                args.trt_min_shape,
-                args.trt_max_shape,
-                args.trt_opt_shape,
-                args.trt_calib_mode,
-                args.cpu_threads,
-                args.enable_mkldnn,
-                skip_frame_num=skip_frame_num,
-                draw_center_traj=self.draw_center_traj,
-                secs_interval=self.secs_interval,)
-            self.handAboveHeadTracker = HandAboveHeadTracker()
+        mot_cfg = self.cfg['MOT']
+        model_dir = mot_cfg['model_dir']
+        tracker_config = mot_cfg['tracker_config']
+        batch_size = mot_cfg['batch_size']
+        skip_frame_num = mot_cfg.get('skip_frame_num', -1)
+        basemode = self.basemode['MOT']
+        self.modebase[basemode] = True
+        self.mot_predictor = SDE_Detector(
+            model_dir,
+            tracker_config,
+            args.device,
+            args.run_mode,
+            batch_size,
+            args.trt_min_shape,
+            args.trt_max_shape,
+            args.trt_opt_shape,
+            args.trt_calib_mode,
+            args.cpu_threads,
+            args.enable_mkldnn,
+            skip_frame_num=skip_frame_num,
+            draw_center_traj=self.draw_center_traj,
+            secs_interval=self.secs_interval,)
+        self.handAboveHeadTracker = HandAboveHeadTracker()
+        self.target_id = None
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -575,24 +562,29 @@ class PipePredictor(object):
                     continue
 
                 self.pipeline_res.update(mot_res, 'mot')
-                crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
-                    frame_rgb, mot_res)
-                if frame_id > self.warmup_frame:
-                    self.pipe_timer.module_time['kpt'].start()
-                kpt_pred = self.kpt_predictor.predict_image(
-                crop_input, visual=False)
-                self.handAboveHeadTracker.update(kpt_pred, mot_res)
-                keypoint_vector, score_vector = translate_to_ori_images(
-                    kpt_pred, np.array(new_bboxes))
-                kpt_res = {}
-                kpt_res['keypoint'] = [
-                    keypoint_vector.tolist(), score_vector.tolist()
-                ] if len(keypoint_vector) > 0 else [[], []]
-                kpt_res['bbox'] = ori_bboxes
-                if frame_id > self.warmup_frame:
-                    self.pipe_timer.module_time['kpt'].end()
-
-                self.pipeline_res.update(kpt_res, 'kpt')
+                if self.target_id is None:
+                    crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
+                        frame_rgb, mot_res)
+                    if frame_id > self.warmup_frame:
+                        self.pipe_timer.module_time['kpt'].start()
+                    kpt_pred = self.kpt_predictor.predict_image(
+                    crop_input, visual=False)
+                    self.target_id = self.handAboveHeadTracker.update(kpt_pred, mot_res)
+                    
+                    if self.cfg['visual']:
+                        keypoint_vector, score_vector = translate_to_ori_images(
+                            kpt_pred, np.array(new_bboxes))
+                        kpt_res = {}
+                        kpt_res['keypoint'] = [
+                            keypoint_vector.tolist(), score_vector.tolist()
+                        ] if len(keypoint_vector) > 0 else [[], []]
+                        kpt_res['bbox'] = ori_bboxes
+                        if frame_id > self.warmup_frame:
+                            self.pipe_timer.module_time['kpt'].end()
+                        if self.target_id is None: 
+                            self.pipeline_res.update(kpt_res, 'kpt')
+                        else:
+                            self.pipeline_res.clear('kpt')
 
             self.collector.append(frame_id, self.pipeline_res)
 
@@ -674,7 +666,8 @@ class PipePredictor(object):
                 fps=fps,
                 ids2names=self.mot_predictor.pred_config.labels,
                 records=records,
-                center_traj=center_traj)
+                center_traj=center_traj,
+                target_id=self.target_id)
 
         kpt_res = result.get('kpt')
         if kpt_res is not None:

@@ -150,8 +150,8 @@ class HandAboveHeadTracker(object):
             else:
                 if time.time() - self.holding_ids[tracker_id] >= self.min_hold_time:
                     self.holding_ids = dict()
-                    print(f"{tracker_id} is holding hand 5")
-                    return tracker_id
+                    print(f"{tracker_id} target Lock-in")
+                    return int(tracker_id)
         for tracker, is_holding in cur_holding_trackers.items():
             if not is_holding:
                 del self.holding_ids[tracker]
