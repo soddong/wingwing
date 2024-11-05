@@ -142,11 +142,6 @@ class PipePredictor(object):
     """
     Predictor in single camera
     
-    The pipeline for image input: 
-
-        1. Detection
-        2. Detection -> Attribute
-
     The pipeline for video input: 
 
         1. Tracking
@@ -166,18 +161,8 @@ class PipePredictor(object):
         # general module for pphuman and ppvehicle
         self.with_mot = cfg.get('MOT', False)['enable'] if cfg.get(
             'MOT', False) else False
-        self.with_human_attr = cfg.get('ATTR', False)['enable'] if cfg.get(
-            'ATTR', False) else False
         if self.with_mot:
             print('Multi-Object Tracking enabled')
-        if self.with_human_attr:
-            print('Human Attribute Recognition enabled')
-
-        self.with_mtmct = cfg.get('REID', False)['enable'] if cfg.get(
-            'REID', False) else False
-
-        if self.with_mtmct:
-            print("MTMCT enabled")
 
         self.modebase = {
             "framebased": False,
@@ -217,6 +202,7 @@ class PipePredictor(object):
 
         # auto download inference model
         get_model_dir(self.cfg)
+
         kpt_cfg = self.cfg['KPT']
         kpt_model_dir = kpt_cfg['model_dir']
         kpt_batch_size = kpt_cfg['batch_size']
@@ -232,17 +218,6 @@ class PipePredictor(object):
             args.cpu_threads,
             args.enable_mkldnn,
             use_dark=False)
-        if self.with_human_attr:
-            attr_cfg = self.cfg['ATTR']
-            basemode = self.basemode['ATTR']
-            self.modebase[basemode] = True
-            self.attr_predictor = AttrDetector.init_with_cfg(args, attr_cfg)
-
-        if self.with_mtmct:
-            reid_cfg = self.cfg['REID']
-            basemode = self.basemode['REID']
-            self.modebase[basemode] = True
-            self.reid_predictor = ReID.init_with_cfg(args, reid_cfg)
 
         if self.with_mot or self.modebase["idbased"] or self.modebase[
                 "skeletonbased"]:
@@ -315,24 +290,6 @@ class PipePredictor(object):
                 self.pipe_timer.track_num += len(det_res['boxes'])
             self.pipeline_res.update(det_res, 'det')
 
-            if self.with_human_attr:
-                crop_inputs = crop_image_with_det(batch_input, det_res)
-                attr_res_list = []
-
-                if i > self.warmup_frame:
-                    self.pipe_timer.module_time['attr'].start()
-
-                for crop_input in crop_inputs:
-                    attr_res = self.attr_predictor.predict_image(
-                        crop_input, visual=False)
-                    attr_res_list.extend(attr_res['output'])
-
-                if i > self.warmup_frame:
-                    self.pipe_timer.module_time['attr'].end()
-
-                attr_res = {'output': attr_res_list}
-                self.pipeline_res.update(attr_res, 'attr')
-
             self.pipe_timer.img_num += len(batch_input)
             if i > self.warmup_frame:
                 self.pipe_timer.total_time.end()
@@ -350,7 +307,7 @@ class PipePredictor(object):
                 if not ret:
                     return
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                queue.put(frame_rgb)
+                queue.put({"frame":frame_rgb,"inputTime":time.time()})
 
     def receive_frames(self, queue):
         # 소켓 초기화 및 바인딩
@@ -372,7 +329,7 @@ class PipePredictor(object):
 
                 if frame_rgb is not None:
                     if not queue.full():
-                        queue.put(frame_rgb)
+                        queue.put({"frame":frame_rgb,"inputTime":time.time()})
                         frame_count += 1  # 프레임 수 카운트 증가
                     else:
                         skip_frame_num += 1
@@ -418,7 +375,7 @@ class PipePredictor(object):
 
                 if frame_rgb is not None:
                     if not queue.full():
-                        queue.put(frame_rgb)
+                        queue.put({"frame":frame_rgb,"inputTime":time.time()})
                         frame_count += 1  # 프레임 수 카운트 증가
                     else:
                         skip_frame_num += 1
@@ -496,8 +453,6 @@ class PipePredictor(object):
         records = list()
 
         video_fps = fps
-
-        video_action_imgs = []
      
         framequeue = queue.Queue(60)
 
@@ -518,7 +473,6 @@ class PipePredictor(object):
         socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
         socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
-        print(self.cfg)
         # while (not framequeue.empty()):
         while (1):
             if framequeue.empty():
@@ -528,7 +482,10 @@ class PipePredictor(object):
             if frame_id % 10 == 0:
                 print('Thread: {}; frame id: {}'.format(thread_idx, frame_id))
 
-            frame_rgb = framequeue.get()
+            frame_data = framequeue.get()
+            frame_rgb = frame_data["frame"]
+            frame_time = frame_data["inputTime"]
+
             if frame_id > self.warmup_frame:
                 self.pipe_timer.total_time.start()
 
@@ -601,15 +558,20 @@ class PipePredictor(object):
                         _, _, fps = self.pipe_timer.get_total_time()
                         im = self.visualize_video(
                             frame_rgb, mot_res, self.collector, frame_id, fps,
-                            entrance, records, center_traj)  # visualize
+                            entrance, records, center_traj,  latency = frame_time)  # visualize
                         if len(self.pushurl) > 0:
                             pushstream.pipe.stdin.write(im.tobytes())
                         else:
-                            writer.write(im)
-                            if self.file_name is None:  # use camera_id
+                            if udp:
                                 cv2.imshow('Paddle-Pipeline', im)
                                 if cv2.waitKey(1) & 0xFF == ord('q'):
                                     break
+                            else:
+                                writer.write(im)
+                                if self.file_name is None:  # use camera_id
+                                    cv2.imshow('Paddle-Pipeline', im)
+                                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                                        break
                     continue
 
                 self.pipeline_res.update(mot_res, 'mot')
@@ -632,34 +594,6 @@ class PipePredictor(object):
 
                 self.pipeline_res.update(kpt_res, 'kpt')
 
-                if self.with_human_attr:
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['attr'].start()
-                    attr_res = self.attr_predictor.predict_image(
-                        crop_input, visual=False)
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['attr'].end()
-                    self.pipeline_res.update(attr_res, 'attr')
-
-
-                if self.with_mtmct and frame_id % 10 == 0:
-                    crop_input, img_qualities, rects = self.reid_predictor.crop_image_with_mot(
-                        frame_rgb, mot_res)
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['reid'].start()
-                    reid_res = self.reid_predictor.predict_batch(crop_input)
-
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['reid'].end()
-
-                    reid_res_dict = {
-                        'features': reid_res,
-                        "qualities": img_qualities,
-                        "rects": rects
-                    }
-                    self.pipeline_res.update(reid_res_dict, 'reid')
-                else:
-                    self.pipeline_res.clear('reid')
             self.collector.append(frame_id, self.pipeline_res)
 
             if frame_id > self.warmup_frame:
@@ -672,7 +606,8 @@ class PipePredictor(object):
 
                 im = self.visualize_video(frame_rgb, self.pipeline_res,
                                           self.collector, frame_id, fps,
-                                          entrance, records, center_traj)  # visualize
+                                          entrance, records, center_traj, latency = frame_time)  # visualize
+
                 if len(self.pushurl) > 0:
                     pushstream.pipe.stdin.write(im.tobytes())
                 else:
@@ -703,7 +638,8 @@ class PipePredictor(object):
                         records=None,
                         center_traj=None,
                         do_illegal_parking_recognition=False,
-                        illegal_parking_dict=None):
+                        illegal_parking_dict=None,
+                        latency=None):
         image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
         mot_res = copy.deepcopy(result.get('mot'))
 
@@ -740,25 +676,6 @@ class PipePredictor(object):
                 records=records,
                 center_traj=center_traj)
 
-        human_attr_res = result.get('attr')
-        if human_attr_res is not None:
-            boxes = mot_res['boxes'][:, 1:]
-            human_attr_res = human_attr_res['output']
-            image = visualize_attr(image, human_attr_res, boxes)
-            image = np.array(image)
-
-        if mot_res is not None:
-            vehicleplate = False
-            plates = []
-            for trackid in mot_res['boxes'][:, 0]:
-                plate = collector.get_carlp(trackid)
-                if plate != None:
-                    vehicleplate = True
-                    plates.append(plate)
-                else:
-                    plates.append("")
-                kpt_res = result.get('kpt')
-
         kpt_res = result.get('kpt')
         if kpt_res is not None:
             image = visualize_pose(
@@ -766,13 +683,34 @@ class PipePredictor(object):
                 kpt_res,
                 # visual_thresh=self.cfg['kpt_thresh'],
                 returnimg=True)
+        
+        if latency:
+            # 이미지에 텍스트 표시
+            # 이미지 처리 후 우상단에 레이턴시 표시
+            latency = time.time() - latency
+            text = f"Latency: {latency:.2f} sec"
+
+            # 이미지 크기 가져오기
+            height, width, _ = image.shape
+
+            # 텍스트 표시할 위치를 오른쪽 상단으로 설정
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 1
+            font_color = (0, 255, 0)  # 녹색
+            thickness = 2
+
+            # 텍스트 크기 계산
+            (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+            position = (width - text_width - 10, text_height + 10)  # 오른쪽 상단에서 약간의 여백을 줌
+
+            # 이미지에 텍스트 표시
+            cv2.putText(image, text, position, font, font_scale, font_color, thickness)
 
         return image
 
     def visualize_image(self, im_files, images, result):
         start_idx, boxes_num_i = 0, 0
         det_res = result.get('det')
-        human_attr_res = result.get('attr')
 
         for i, (im_file, im) in enumerate(zip(im_files, images)):
             if det_res is not None:
@@ -787,10 +725,6 @@ class PipePredictor(object):
                     threshold=self.cfg['crop_thresh'])
                 im = np.ascontiguousarray(np.copy(im))
                 im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
-            if human_attr_res is not None:
-                human_attr_res_i = human_attr_res['output'][start_idx:start_idx
-                                                            + boxes_num_i]
-                im = visualize_attr(im, human_attr_res_i, det_res_i['boxes'])
 
             img_name = os.path.split(im_file)[-1]
             if not os.path.exists(self.output_dir):
