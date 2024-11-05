@@ -7,54 +7,55 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import com.ssafy.shieldroneapp.utils.await
-import kotlin.math.abs
 
 class DataRepository(private val context: Context) {
     private val dataClient: DataClient = Wearable.getDataClient(context)
 
     companion object {
-        private const val THRESHOLD_BPM = 90.0
-        private const val DELTA_THRESHOLD = 5.0
-        private const val TRANSMISSION_INTERVAL = 5000L
+        private const val THRESHOLD_BPM = 82.0
+        private const val SUSTAINED_DURATION = 10000L 
         private const val TAG = "DataRepository"
     }
 
-    private var previousBpm: Double? = null
+    private var highBpmStartTime: Long? = null
     private var lastTransmissionTime = 0L
+    private var isCurrentlyHighBpm = false
 
     suspend fun sendHeartRateData(heartRateData: HeartRateData) {
         try {
             val currentTime = System.currentTimeMillis()
             val currentBpm = heartRateData.bpm
-            val pulseFlag = currentBpm >= THRESHOLD_BPM
 
-            // 주기적 전송: 5초마다 데이터를 전송
-            if (currentTime - lastTransmissionTime >= TRANSMISSION_INTERVAL) {
-                sendData(pulseFlag, heartRateData.timestamp)
-                lastTransmissionTime = currentTime
-                return
-            }
-
-            // 임계값 변화에 따른 전송
-            if (pulseFlag) {
-                sendData(pulseFlag, heartRateData.timestamp)
-                Log.d(TAG, "Heart rate above threshold: ${currentBpm} BPM")
-            } else {
-                Log.d(TAG, "Heart rate below threshold (${currentBpm} BPM), not sending")
-            }
-
-            // 변화량에 따른 전송: 이전 bpm과의 차이가 5 이상일 때 전송
-            previousBpm?.let { previous ->
-                if (abs(currentBpm - previous) >= DELTA_THRESHOLD) {
-                    sendData(pulseFlag, heartRateData.timestamp)
-                    Log.d(TAG, "Heart rate changed significantly: ${currentBpm} BPM (delta: ${currentBpm - previous})")
+            when {
+                currentBpm >= THRESHOLD_BPM -> {
+                    if (!isCurrentlyHighBpm) {
+                        highBpmStartTime = currentTime
+                        isCurrentlyHighBpm = true
+                        Log.d(TAG, "현재 심박수: $currentBpm, 타이머 시작")
+                    } else {
+                        highBpmStartTime?.let { startTime ->
+                            val duration = currentTime - startTime
+                            if (duration >= SUSTAINED_DURATION) {
+                                if (currentTime - lastTransmissionTime >= SUSTAINED_DURATION) {
+                                    sendData(true, heartRateData.timestamp)
+                                    lastTransmissionTime = currentTime
+                                    Log.d(TAG, "10초이상 높은 심박수 유지됨: 데이터 전송")
+                                }
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    if (isCurrentlyHighBpm) {
+                        isCurrentlyHighBpm = false
+                        highBpmStartTime = null
+                        Log.d(TAG, "BPM dropped below threshold: $currentBpm")
+                    }
                 }
             }
 
-            previousBpm = currentBpm
-
         } catch (e: Exception) {
-            Log.e(TAG, "Error sending heart rate data", e)
+            Log.e(TAG, "심박수 데이터 전송 에러", e)
             e.printStackTrace()
         }
     }
@@ -63,9 +64,10 @@ class DataRepository(private val context: Context) {
         val putDataMapRequest = PutDataMapRequest.create("/sendPulseFlag").apply {
             dataMap.putBoolean("pulseFlag", pulseFlag)
             dataMap.putLong("timestamp", timestamp)
+            dataMap.putBoolean("sustained", true)
         }
         val putDataRequest = putDataMapRequest.asPutDataRequest().setUrgent()
         dataClient.putDataItem(putDataRequest).await()
-        Log.d(TAG, "Heart rate data sent: pulseFlag=$pulseFlag")
+        Log.d(TAG, "Heart rate data sent: pulseFlag=$pulseFlag, sustained=true")
     }
 }

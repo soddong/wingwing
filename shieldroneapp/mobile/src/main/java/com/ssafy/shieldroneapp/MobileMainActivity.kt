@@ -34,18 +34,15 @@ class MobileMainActivity : ComponentActivity() {
                     }
                     composable("authentication") {
                         AuthenticationScreen(
-                                onAuthComplete = {
-                                    // 인증 성공 후 메인 화면으로 이동 (지금은 임의로 landing screen)
-                                    navController.navigate("landing screen") {
-                                        // 인증 화면들도 백스택에서 제거
-                                        // popUpTo("authentication") { inclusive = true }
-                                    }
+                            onAuthComplete = {
+                                // 인증 성공 후 메인 화면으로 이동 (지금은 임의로 landing screen)
+                                navController.navigate("landing screen") {
+                                    // 인증 화면들도 백스택에서 제거
+                                    // popUpTo("authentication") { inclusive = true }
                                 }
+                            }
                         )
                     }
-
-
-
                 }
             }
         }

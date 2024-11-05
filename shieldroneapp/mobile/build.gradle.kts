@@ -59,6 +59,10 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
@@ -67,6 +71,14 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.material)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.google.dagger:hilt-android:2.48")
+    implementation ("com.google.code.gson:gson:2.8.9")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 
     // Jetpack Compose 의존성 추가
     implementation(libs.androidx.activity.compose)
