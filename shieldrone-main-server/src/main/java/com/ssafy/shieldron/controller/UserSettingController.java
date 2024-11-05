@@ -1,6 +1,7 @@
 package com.ssafy.shieldron.controller;
 
 import com.ssafy.shieldron.dto.request.EndPosRequest;
+import com.ssafy.shieldron.dto.request.GuardianRequest;
 import com.ssafy.shieldron.dto.response.EndPosResponse;
 import com.ssafy.shieldron.global.CurrentUser;
 import com.ssafy.shieldron.service.UserSettingService;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserSettingController {
 
     private final UserSettingService userSettingService;
-
+    // TODO 유효성 검증 로직 추가
     @PatchMapping("/end-pos")
     public ResponseEntity<?> updateEndPos(@RequestBody EndPosRequest endPosRequest,
                                           @CurrentUser String phoneNumber) {
@@ -34,6 +35,13 @@ public class UserSettingController {
     public ResponseEntity<?> getEndPos(@CurrentUser String phoneNumber) {
         EndPosResponse endPosResponse = userSettingService.getEndPos(phoneNumber);
         return ResponseEntity.ok().body(endPosResponse);
+    }
+
+    @PostMapping("/guardian")
+    public ResponseEntity<?> createGuardian(@RequestBody GuardianRequest guardianRequest,
+                                            @CurrentUser String phoneNumber) {
+        userSettingService.createGuardian(guardianRequest, phoneNumber);
+        return ResponseEntity.ok().build();
     }
 
 }

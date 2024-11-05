@@ -10,7 +10,9 @@ public enum ErrorCode {
     SMS_AUTH_REQUIRED("004", "번호 인증이 필요합니다."),
     DUPLICATE_USER("005", "이미 가입된 회원입니다."),
     INVALID_USER("006", "존재하지 않은 유저입니다."),
-    INVALID_TOKEN("007", "존재하니 않은 토큰입니다.")
+    INVALID_TOKEN("007", "존재하니 않은 토큰입니다."),
+    GUARDIAN_ALREADY_EXISTS("008", "이미 존재하는 보호자입니다."),
+    MAX_GUARDIAN_REACHED("009", "보호자 등록 한도를 초과했습니다.")
     ;
 
     private final String code;
