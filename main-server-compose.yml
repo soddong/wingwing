@@ -8,6 +8,10 @@ services:
       DB_URL_SERVER: ${DB_URL_SERVER}
       DB_USERNAME_SERVER: ${DB_USERNAME_SERVER}
       DB_PASSWORD_SERVER: ${DB_PASSWORD_SERVER}
+      JWT_KEY_SERVER: ${JWT_KEY_SERVER}
+      SMS_KEY: ${SMS_KEY}
+      SMS_NUMBER: ${SMS_NUMBER}
+      SMS_SECRET: ${SMS_SECRET}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
