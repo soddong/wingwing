@@ -32,11 +32,11 @@ parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
 sys.path.insert(0, parent_path)
 
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer
+from pipe_utils import PipeTimer, StreamingTimer
 from pipe_utils import crop_image_with_mot, parse_mot_res
 from pipe_utils import PushStream
 
-from python.infer import Detector
+# from python.infer import Detector
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image
@@ -62,8 +62,6 @@ class Pipeline(object):
 
     def __init__(self, args, cfg):
         self.illegal_parking_time = -1
-        reid_cfg = cfg.get('REID', False)
-        self.enable_mtmct = reid_cfg['enable'] if reid_cfg else False
         self.is_video = False
         self.output_dir = args.output_dir
         self.vis_result = cfg['visual']
@@ -121,6 +119,7 @@ def get_model_dir(cfg):
 
             if "model_dir" in cfg[key].keys():
                 model_dir = cfg[key]["model_dir"]
+                print("모델 다운로드 합니다", model_dir)
                 downloaded_model_dir = auto_download_model(model_dir)
                 if downloaded_model_dir:
                     model_dir = downloaded_model_dir
@@ -231,6 +230,7 @@ class PipePredictor(object):
             secs_interval=self.secs_interval,)
         self.handAboveHeadTracker = HandAboveHeadTracker()
         self.target_id = None
+        self.streaming_timer = StreamingTimer()
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -348,7 +348,7 @@ class PipePredictor(object):
         frame_count = 0
         skip_frame_num = 0
         start_time = time.time()
-
+        self.streaming_timer.clear()
         try:
             while True:
                 # 프레임 수신
@@ -363,9 +363,9 @@ class PipePredictor(object):
                 if frame_rgb is not None:
                     if not queue.full():
                         queue.put({"frame":frame_rgb,"inputTime":time.time()})
-                        frame_count += 1  # 프레임 수 카운트 증가
+                        self.streaming_timer.frame_count += 1  # 프레임 수 카운트 증가
                     else:
-                        skip_frame_num += 1
+                        self.streaming_timer.skip_frame_num += 1
                 else:
                     print("수신한 이미지를 디코딩하는데 실패했습니다.")
 
@@ -373,15 +373,12 @@ class PipePredictor(object):
                 current_time = time.time()
                 elapsed_time = current_time - start_time
                 if elapsed_time >= 5.0:
-                    fps = frame_count / elapsed_time  # FPS 계산
+                    fps,skiped_frame = self.streaming_timer.info()
+
                     print("5초 요약:")
-                    print(f" - 수신한 프레임 수: {frame_count}")
-                    print(f" - 건너뛴 프레임 수: {skip_frame_num}")
+                    print(f" - 건너뛴 프레임 수: {skiped_frame}")
                     print(f" - 초당 프레임 수 (FPS): {fps:.2f}")
-                    
-                    # 카운터와 타이머 초기화
-                    frame_count = 0
-                    skip_frame_num = 0
+
                     start_time = current_time
                 
         except Exception as e:
@@ -441,7 +438,7 @@ class PipePredictor(object):
 
         video_fps = fps
      
-        framequeue = queue.Queue(60)
+        framequeue = queue.Queue(10)
 
         if udp:
             thread = threading.Thread(
@@ -534,6 +531,7 @@ class PipePredictor(object):
                     records,
                     ids2names=self.mot_predictor.pred_config.labels)
                 records = statistic['records']
+                
 
                 # nothing detected
                 if len(mot_res['boxes']) == 0:
@@ -573,6 +571,8 @@ class PipePredictor(object):
                     kpt_pred = self.kpt_predictor.predict_image(
                     crop_input, visual=False)
                     self.target_id = self.handAboveHeadTracker.update(kpt_pred, mot_res)
+                    if frame_id > self.warmup_frame:
+                        self.pipe_timer.module_time['kpt'].end()
                     
                     if self.cfg['visual']:
                         keypoint_vector, score_vector = translate_to_ori_images(
@@ -582,14 +582,10 @@ class PipePredictor(object):
                             keypoint_vector.tolist(), score_vector.tolist()
                         ] if len(keypoint_vector) > 0 else [[], []]
                         kpt_res['bbox'] = ori_bboxes
-                        if frame_id > self.warmup_frame:
-                            self.pipe_timer.module_time['kpt'].end()
                         if self.target_id is None: 
                             self.pipeline_res.update(kpt_res, 'kpt')
                         else:
                             self.pipeline_res.clear('kpt')
-
-            self.collector.append(frame_id, self.pipeline_res)
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1

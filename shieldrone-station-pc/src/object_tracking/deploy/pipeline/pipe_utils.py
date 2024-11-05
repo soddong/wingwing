@@ -49,8 +49,21 @@ class Times(object):
 
     def value(self):
         return round(self.time, 4)
+    
+class StreamingTimer(object):
+    def __init__(self):
+        self.video_time = time.time()
+        self.frame_count = 0
+        self.skip_frame_num = 0
 
-
+    def info(self):
+        fps = self.frame_count/(time.time()-self.video_time)
+        return fps, self.skip_frame_num
+    
+    def clear(self):
+        self.video_time = time.time()
+        self.frame_count = 0
+        self.skip_frame_num = 0
 class PipeTimer(Times):
     def __init__(self):
         super(PipeTimer, self).__init__()
