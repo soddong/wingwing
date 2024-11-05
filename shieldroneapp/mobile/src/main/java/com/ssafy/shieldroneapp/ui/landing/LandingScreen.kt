@@ -45,7 +45,6 @@ fun LandingScreen(
         }
     }
 
-    // 메인 레이아웃
     Layout {
         Column(
             modifier = Modifier
@@ -55,18 +54,15 @@ fun LandingScreen(
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(60.dp)
             ) {
-                // 앱 타이틀
                 Text(
                     text = "Shieldrone",
                     style = MaterialTheme.typography.h1,
                     color = MaterialTheme.colors.onBackground
                 )
 
-                // 앱 설명
                 Text(
                     text = "Shieldrone과 함께\n" +
                             "안전 귀가를 시작하세요.\n" +
@@ -77,14 +73,12 @@ fun LandingScreen(
                 )
             }
 
-            // 권한이 있으면 다음 화면으로 이동, 없으면 권한 요청
             CustomButton(
                 text = "시작하기",
                 onClick = {
                     if (permissionState) {
                         onStartClick()
                     } else {
-                        // 권한이 없는 경우 다시 요청
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 },
