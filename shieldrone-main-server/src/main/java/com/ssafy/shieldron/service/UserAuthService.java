@@ -36,7 +36,7 @@ public class UserAuthService {
             throw new CustomException(SMS_AUTH_REQUIRED);
         }
         SmsAuth smsAuth = existingSmsAuth.get();
-        if (!smsAuth.getIsVerified()) {
+        if (!smsAuth.isVerified()) {
             throw new CustomException(SMS_AUTH_REQUIRED);
         }
         Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
