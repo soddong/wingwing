@@ -8,7 +8,7 @@
       <SelectionState runConfigName="mobile">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="AlertScreenPreview">
+      <SelectionState runConfigName="wear.ComplicationService">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

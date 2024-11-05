@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
     id("org.jlleitschuh.gradle.ktlint") version "12.1.0" apply false
+    // Hilt, KAPT(Kotlin Annotation Processing Tool) 플러그인 추가
     id("com.google.dagger.hilt.android") version "2.48" apply false
     id("org.jetbrains.kotlin.kapt") version "1.8.10" apply false
 }
