@@ -31,10 +31,10 @@ public class SmsAuth {
     private LocalDateTime expiresAt;
 
     @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
+    private boolean isDeleted;
 
     @Column(name = "is_verified", nullable = false)
-    private Boolean isVerified;
+    private boolean isVerified;
 
     @Builder
     public SmsAuth(String phoneNumber, String authCode, LocalDateTime expiresAt, Boolean isDeleted, Boolean isVerified) {
