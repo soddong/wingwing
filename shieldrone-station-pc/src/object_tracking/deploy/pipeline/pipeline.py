@@ -84,14 +84,6 @@ class Pipeline(object):
             input = video_file
             self.is_video = True
 
-        elif rtsp is not None:
-            if len(rtsp) > 1:
-                rtsp = [rtsp_item for rtsp_item in rtsp if 'rtsp' in rtsp_item]
-                input = rtsp
-            else:
-                input = rtsp[0]
-            self.is_video = True
-
         elif camera_id != -1:
             input = camera_id
             self.is_video = True
@@ -142,9 +134,6 @@ class PipePredictor(object):
     The pipeline for video input: 
 
         1. Tracking
-        2. Tracking -> Attribute
-        3. Tracking -> KeyPoint -> SkeletonAction Recognition
-        4. VideoAction Recognition
 
     Args:
         args (argparse.Namespace): arguments in pipeline, which contains environment and runtime settings
@@ -345,8 +334,6 @@ class PipePredictor(object):
 
     def capture_webcam(self, queue):
         cap = cv2.VideoCapture(0)  # 기본 웹캠
-        frame_count = 0
-        skip_frame_num = 0
         start_time = time.time()
         self.streaming_timer.clear()
         try:
@@ -390,20 +377,11 @@ class PipePredictor(object):
         # mot
         # mot -> attr
         # mot -> pose -> action
-        if not udp:
-            capture = cv2.VideoCapture(video_file)
 
         # Get Video info : resolution, fps, frame count
         width = 640
         height = 640
         fps = 20
-        frame_count = 0
-        if not udp:
-            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = int(capture.get(cv2.CAP_PROP_FPS))
-            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        print("video fps: %d, frame_count: %d" % (fps, frame_count))
 
         if len(self.pushurl) > 0:
             video_out_name = 'output' if self.file_name is None else self.file_name
@@ -440,14 +418,10 @@ class PipePredictor(object):
      
         framequeue = queue.Queue(10)
 
-        if udp:
-            thread = threading.Thread(
-                target=self.capture_webcam, args=(framequeue,))
-            # thread = threading.Thread(
-            #     target=self.receive_frames, args=(framequeue,))
-        else:
-            thread = threading.Thread(
-            target=self.capturevideo, args=(capture, framequeue))
+        thread = threading.Thread(
+            target=self.capture_webcam, args=(framequeue,))
+        # thread = threading.Thread(
+        #     target=self.receive_frames, args=(framequeue,))
             
         thread.start()
         time.sleep(1)
@@ -460,7 +434,7 @@ class PipePredictor(object):
         # while (not framequeue.empty()):
         while (1):
             if framequeue.empty():
-                time.sleep(0.1)
+                time.sleep(0.01)
                 continue
                 
             if frame_id % 10 == 0:
