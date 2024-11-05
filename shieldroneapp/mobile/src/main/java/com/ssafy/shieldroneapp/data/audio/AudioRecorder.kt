@@ -13,9 +13,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.min
 
 @Singleton
 class AudioRecorder @Inject constructor(
@@ -39,8 +41,8 @@ class AudioRecorder @Inject constructor(
     ) * BUFFER_SIZE_FACTOR)
 
     private var isRecording = false
+    private val TAG = "모바일: 오디오 레코더"
 
-    // 권한 체크 함수 추가
     private fun checkAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
@@ -102,47 +104,79 @@ class AudioRecorder @Inject constructor(
     private suspend fun collectAndSendAudioData() {
         try {
             if (!checkAudioPermission()) {
-                throw SecurityException("RECORD_AUDIO permission not granted")
+                throw SecurityException("RECORD_AUDIO 권한 없음")
             }
 
             val buffer = ByteArray(bufferSize)
+            Log.d(TAG, "$bufferSize bytes 버퍼 크기로 오디오 녹음 시작")
 
             while (isRecording) {
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
-                        try {
-                            val audioData = AudioData(
-                                time = System.currentTimeMillis(),
-                                dbFlag = true
-                            )
-                            webSocketService.sendAudioData(audioData)
-                        } catch (e: Exception) {
-                            Log.e("AudioRecorder", "Error sending audio data", e)
+                        val maxAmplitude = buffer.take(readResult).maxOf { it.toInt() and 0xFF }
+                        Log.d(TAG, "오디오 데이터 수집 완료 - 크기: $readResult 바이트, 최대 진폭: $maxAmplitude")
+
+                        // 일정 주기로 샘플링 데이터 출력
+                        if (System.currentTimeMillis() % 5000 < 100) { // 5초에 한 번 정도
+                            val sample = buffer.take(min(50, readResult))
+                                .joinToString(", ") { (it.toInt() and 0xFF).toString() }
+                            Log.d(TAG, "오디오 샘플: [$sample]")
                         }
+
+                        val audioData = AudioData(
+                            time = System.currentTimeMillis(),
+                            audioData = buffer.copyOf(readResult)
+                        )
+                        webSocketService.sendAudioData(audioData)
                     }
                     readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
-                        Log.e("AudioRecorder", "Error reading audio data: invalid operation")
+                        Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 형식")
                         break
                     }
                     readResult == AudioRecord.ERROR_BAD_VALUE -> {
-                        Log.e("AudioRecorder", "Error reading audio data: bad value")
+                        Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 값")
                         break
                     }
                 }
             }
-        } catch (e: SecurityException) {
-            Log.e("AudioRecorder", "Permission denied while recording: ${e.message}")
-            throw e
         } catch (e: Exception) {
-            Log.e("AudioRecorder", "Error during recording: ${e.message}")
-            throw e
-        } finally {
-            stopRecording()
+            Log.e(TAG, "녹음 중 오류: ", e)
+            handleRecordingError(e)
         }
     }
 
-    // 녹음을 중지하는 함수
+    private fun handleRecordingError(error: Exception) {
+        when (error) {
+            is SecurityException -> {
+                Log.e(TAG, "권한 거부됨", error)
+                stopRecording()
+            }
+
+            is IllegalStateException -> {
+                Log.e(TAG, "오디오 기록 초기화 안됨", error)
+                retryInitialization()
+            }
+
+            else -> {
+                Log.e(TAG, "알 수 없는 에러 발생", error)
+                stopRecording()
+            }
+        }
+    }
+
+    private fun retryInitialization() {
+        recordingScope.launch {
+            delay(1000)
+            try {
+                initializeAudioRecord()
+                startRecording()
+            } catch (e: Exception) {
+                handleRecordingError(e)
+            }
+        }
+    }
+
     fun stopRecording() {
         isRecording = false
         recordingScope.cancel()

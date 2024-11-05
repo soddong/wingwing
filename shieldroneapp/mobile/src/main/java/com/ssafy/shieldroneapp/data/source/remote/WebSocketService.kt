@@ -23,17 +23,44 @@ import android.content.Context
 import android.util.Log
 import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+sealed class WebSocketState {
+    object Connected : WebSocketState()
+    object Disconnected : WebSocketState()
+    data class Error(val throwable: Throwable) : WebSocketState()
+}
 
 class WebSocketService(
+
     private val context: Context,
     private val webSocketMessageSender: WebSocketMessageSender
 ) {
     private var webSocketConnectionManager: WebSocketConnectionManager? = null
     private var isConnected = false
     private val errorHandler = WebSocketErrorHandler(context)
+    private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
+
+    private val _connectionState = MutableStateFlow<WebSocketState>(WebSocketState.Disconnected)
+    val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
+
+    private companion object {
+        const val TAG = "모바일: 웹소켓 서비스"
+    }
 
     fun setConnectionManager(manager: WebSocketConnectionManager) {
         webSocketConnectionManager = manager
+    }
+
+    private fun updateConnectionState(state: WebSocketState) {
+        _connectionState.value = state
+        Log.d(TAG, "웹소켓 상태 변경: $state")
     }
 
     // WebSocket 초기 설정 및 구독 시작
@@ -42,13 +69,12 @@ class WebSocketService(
             webSocketConnectionManager?.connect()
             isConnected = webSocketConnectionManager?.isConnected() ?: false
             if (isConnected) {
-                Log.d("WebSocketService", "WebSocket 연결 성공")
+                updateConnectionState(WebSocketState.Connected)
             } else {
-                errorHandler.handleErrorEvent("WebSocket 연결 실패")
+                updateConnectionState(WebSocketState.Disconnected)
             }
         } catch (e: Exception) {
-            errorHandler.handleConnectionError(e)
-            isConnected = false
+            updateConnectionState(WebSocketState.Error(e))
         }
     }
 
@@ -57,7 +83,7 @@ class WebSocketService(
         try {
             webSocketConnectionManager?.disconnect()
             isConnected = false
-            Log.d("WebSocketService", "WebSocket 서비스 종료")
+            Log.d(TAG, "WebSocket 서비스 종료")
         } catch (e: Exception) {
             errorHandler.handleConnectionError(e)
         }
@@ -69,12 +95,10 @@ class WebSocketService(
                 webSocketMessageSender.sendWatchSensorData(data)
             } catch (e: Exception) {
                 errorHandler.handleMessageError(e)
-                // 메시지 전송 실패 시 재연결 시도
                 handleReconnect()
             }
         } else {
             errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
-            // 연결이 없는 경우 재연결 시도
             handleReconnect()
         }
     }
@@ -94,12 +118,21 @@ class WebSocketService(
     }
 
     fun handleReconnect() {
-        Log.d("WebSocketService", "재연결 시도 중...")
+        Log.d(TAG, "재연결 시도 중...")
         try {
             shutdown()
             initialize()
         } catch (e: Exception) {
             errorHandler.handleConnectionError(e)
+        }
+    }
+
+    // 상태 변경 시 AudioRecorder에 알림
+    fun setAudioRecorderCallback(callback: (WebSocketState) -> Unit) {
+        recordingScope.launch {
+            connectionState.collect { state ->
+                callback(state)
+            }
         }
     }
 }
