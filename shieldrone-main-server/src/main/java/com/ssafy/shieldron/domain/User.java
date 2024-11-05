@@ -48,6 +48,9 @@ public class User extends BaseEntity {
     @Column(name = "username")
     private String username;
 
+    @Column(name = "detail_address")
+    private String detailAddress;
+
     @Builder
     public User(String phoneNumber, LocalDate birthday, String username) {
         this.phoneNumber = phoneNumber;
