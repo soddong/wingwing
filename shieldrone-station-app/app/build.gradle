@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.sheildron.station'
+    namespace 'com.shieldrone.station'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.sheildron.station"
+        applicationId "com.shieldrone.station"
         minSdk 23
         targetSdk 33
         versionCode 1
@@ -49,6 +49,14 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+    packagingOptions {
+        pickFirst 'lib/x86/libc++_shared.so'
+        pickFirst 'lib/x86_64/libc++_shared.so'
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+    }
+
+
 }
 
 dependencies {
@@ -70,7 +78,9 @@ dependencies {
     implementation 'androidx.camera:camera-lifecycle:1.1.0'
     implementation 'androidx.camera:camera-view:1.1.0'
     implementation 'androidx.camera:camera-extensions:1.1.0'
-
+    implementation project(':opencv')
+    implementation 'androidx.appcompat:appcompat-resources:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
     // Testing dependencies
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

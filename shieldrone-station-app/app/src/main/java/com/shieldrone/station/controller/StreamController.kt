@@ -1,8 +1,8 @@
-package com.shieldrone.station.src.controller
+package com.shieldrone.station.controller
 
 import android.graphics.Bitmap
 import android.util.Log
-import com.shieldrone.station.src.service.camera.ImageFrameProvider
+import com.shieldrone.station.service.camera.ImageFrameProvider
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
@@ -13,12 +13,13 @@ class StreamController(private val imageFrameProvider: ImageFrameProvider) {
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
     private var udpSocket: DatagramSocket? = null
+    private var onFrameAvailable: ((Bitmap) -> Unit)? = null
 
     companion object {
         private const val HOST = "192.168.0.2"
         private const val PORT = 65432
-        private const val FRAME_WIDTH = 320
-        private const val FRAME_HEIGHT = 240
+        private const val FRAME_WIDTH = 640
+        private const val FRAME_HEIGHT = 640
     }
 
     init {
@@ -39,6 +40,10 @@ class StreamController(private val imageFrameProvider: ImageFrameProvider) {
     fun stopLive() {
         imageFrameProvider.stopStream()
         closeSocket()
+    }
+
+    fun setOnFrameAvailableListener(callback: (Bitmap) -> Unit) {
+        onFrameAvailable = callback
     }
 
     private fun processFrame(bitmap: Bitmap) {
