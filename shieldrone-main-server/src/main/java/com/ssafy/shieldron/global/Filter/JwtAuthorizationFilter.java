@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
 
-@WebFilter("/*")
+
 @RequiredArgsConstructor
 public class JwtAuthorizationFilter implements Filter {
 
@@ -28,16 +28,28 @@ public class JwtAuthorizationFilter implements Filter {
         String authorization = request.getHeader("Authorization");
 
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            // 엑세스 토큰이 없음
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"code\": \"AUTHORIZATION_HEADER_MISSING\", \"message\": \"Authorization header is missing or invalid\"}");
+            response.getWriter().flush();
             return;
         }
 
         String token = authorization.substring(7);
         if (!jwtUtil.validateToken(token)) {
-            // 서명 검증
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"code\": \"INVALID_TOKEN\", \"message\": \"Invalid token\"}");
+            response.getWriter().flush();
+            return;
         }
+
         if (jwtUtil.isExpired(token)) {
-            // 기간 만료됐으므로 응답 코드를 보낸 후 리프레시토큰 개발급하도록 한다.
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"code\": \"TOKEN_EXPIRED\", \"message\": \"Token is expired\"}");
+            response.getWriter().flush();
+            return;
         }
 
         String phoneNumber = jwtUtil.getPhoneNumber(token);
