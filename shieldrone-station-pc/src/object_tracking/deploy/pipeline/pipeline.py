@@ -562,6 +562,9 @@ class PipePredictor(object):
                     continue
 
                 self.pipeline_res.update(mot_res, 'mot')
+
+                if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
+                    self.target_id=None
                 if self.target_id is None:
                     crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                         frame_rgb, mot_res)
