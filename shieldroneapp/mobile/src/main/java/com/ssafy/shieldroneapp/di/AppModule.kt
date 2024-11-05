@@ -2,6 +2,7 @@ package com.ssafy.shieldroneapp.di
 
 import android.content.Context
 import com.ssafy.shieldroneapp.data.audio.AudioRecorder
+import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketErrorHandler
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
@@ -66,5 +67,13 @@ object AppModule {
         webSocketService: WebSocketService
     ): AudioRecorder {
         return AudioRecorder(context, webSocketService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioDataLocalSource(
+        @ApplicationContext context: Context
+    ): AudioDataLocalSource {
+        return AudioDataLocalSource(context)
     }
 }
