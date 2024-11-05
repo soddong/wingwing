@@ -17,7 +17,7 @@ public class FilterConfig {
     public FilterRegistrationBean<JwtAuthorizationFilter> jwtFilter() {
         FilterRegistrationBean<JwtAuthorizationFilter> registry = new FilterRegistrationBean<>();
         registry.setFilter(new JwtAuthorizationFilter(jwtUtil));
-        registry.addUrlPatterns("/*");
+        registry.addUrlPatterns("/api/settings/*", "/api/hives/*", "/api/routes/*", "/api/drones/*");
         registry.setOrder(1);
         return registry;
     }
