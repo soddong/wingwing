@@ -21,24 +21,28 @@ package com.ssafy.shieldroneapp.data.source.remote
 
 import android.content.Context
 import android.util.Log
+import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 
 class WebSocketService(
     private val context: Context,
-    private val webSocketConnectionManager: WebSocketConnectionManager,
     private val webSocketMessageSender: WebSocketMessageSender
 ) {
+    private var webSocketConnectionManager: WebSocketConnectionManager? = null
     private var isConnected = false
     private val errorHandler = WebSocketErrorHandler(context)
+
+    fun setConnectionManager(manager: WebSocketConnectionManager) {
+        webSocketConnectionManager = manager
+    }
 
     // WebSocket 초기 설정 및 구독 시작
     fun initialize() {
         try {
-            webSocketConnectionManager.connect()
-            isConnected = webSocketConnectionManager.isConnected()
+            webSocketConnectionManager?.connect()
+            isConnected = webSocketConnectionManager?.isConnected() ?: false
             if (isConnected) {
                 Log.d("WebSocketService", "WebSocket 연결 성공")
-                // webSocketSubscriptions.subscribeToTopics()
             } else {
                 errorHandler.handleErrorEvent("WebSocket 연결 실패")
             }
@@ -51,7 +55,7 @@ class WebSocketService(
     // WebSocket 서비스 종료 및 연결 해제
     fun shutdown() {
         try {
-            webSocketConnectionManager.disconnect()
+            webSocketConnectionManager?.disconnect()
             isConnected = false
             Log.d("WebSocketService", "WebSocket 서비스 종료")
         } catch (e: Exception) {
@@ -75,11 +79,25 @@ class WebSocketService(
         }
     }
 
+    fun sendAudioData(audioData: AudioData) {
+        if (isConnected) {
+            try {
+                webSocketMessageSender.sendAudioData(audioData)
+            } catch (e: Exception) {
+                errorHandler.handleMessageError(e)
+                handleReconnect()
+            }
+        } else {
+            errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
+            handleReconnect()
+        }
+    }
+
     fun handleReconnect() {
         Log.d("WebSocketService", "재연결 시도 중...")
         try {
-            shutdown() // 기존 연결 해제
-            initialize() // 다시 연결 시도
+            shutdown()
+            initialize()
         } catch (e: Exception) {
             errorHandler.handleConnectionError(e)
         }
