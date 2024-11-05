@@ -12,3 +12,15 @@ package com.ssafy.shieldroneapp.data.source.remote
  *
  * 이 클래스는 WebSocketService에 의해 import됩니다.
  */
+
+import com.ssafy.shieldroneapp.data.model.HeartRateData
+import okhttp3.WebSocket
+
+class WebSocketMessageSender(private val webSocket: WebSocket?) {
+
+    // 워치 센서 데이터를 서버에 전송
+    fun sendWatchSensorData(data: HeartRateData) {
+        val json = data.toJson()
+        webSocket?.send(json)
+    }
+}

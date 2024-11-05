@@ -18,3 +18,70 @@ package com.ssafy.shieldroneapp.data.source.remote
  * @property webSocketClient: 서버와의 WebSocket 통신 클라이언트 객체
  * @property isConnected: WebSocket 연결 상태를 나타내는 Boolean 값
  */
+
+import android.content.Context
+import android.util.Log
+import com.ssafy.shieldroneapp.data.model.HeartRateData
+
+class WebSocketService(
+    private val context: Context,
+    private val webSocketConnectionManager: WebSocketConnectionManager,
+    private val webSocketMessageSender: WebSocketMessageSender
+) {
+    private var isConnected = false
+    private val errorHandler = WebSocketErrorHandler(context)
+
+    // WebSocket 초기 설정 및 구독 시작
+    fun initialize() {
+        try {
+            webSocketConnectionManager.connect()
+            isConnected = webSocketConnectionManager.isConnected()
+            if (isConnected) {
+                Log.d("WebSocketService", "WebSocket 연결 성공")
+                // webSocketSubscriptions.subscribeToTopics()
+            } else {
+                errorHandler.handleErrorEvent("WebSocket 연결 실패")
+            }
+        } catch (e: Exception) {
+            errorHandler.handleConnectionError(e)
+            isConnected = false
+        }
+    }
+
+    // WebSocket 서비스 종료 및 연결 해제
+    fun shutdown() {
+        try {
+            webSocketConnectionManager.disconnect()
+            isConnected = false
+            Log.d("WebSocketService", "WebSocket 서비스 종료")
+        } catch (e: Exception) {
+            errorHandler.handleConnectionError(e)
+        }
+    }
+
+    fun sendHeartRateData(data: HeartRateData) {
+        if (isConnected) {
+            try {
+                webSocketMessageSender.sendWatchSensorData(data)
+            } catch (e: Exception) {
+                errorHandler.handleMessageError(e)
+                // 메시지 전송 실패 시 재연결 시도
+                handleReconnect()
+            }
+        } else {
+            errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
+            // 연결이 없는 경우 재연결 시도
+            handleReconnect()
+        }
+    }
+
+    fun handleReconnect() {
+        Log.d("WebSocketService", "재연결 시도 중...")
+        try {
+            shutdown() // 기존 연결 해제
+            initialize() // 다시 연결 시도
+        } catch (e: Exception) {
+            errorHandler.handleConnectionError(e)
+        }
+    }
+}
