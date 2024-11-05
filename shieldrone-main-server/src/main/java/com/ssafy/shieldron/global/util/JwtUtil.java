@@ -38,12 +38,12 @@ public class JwtUtil {
         return createToken(username, phoneNumber, (long) (1000 * 60 * 60 * 24 * 7));
     }
 
-    public boolean validateToken(String token) {
+    public boolean isTokenInvalid(String token) {
         try {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
             return false;
+        } catch (Exception e) {
+            return true;
         }
     }
 

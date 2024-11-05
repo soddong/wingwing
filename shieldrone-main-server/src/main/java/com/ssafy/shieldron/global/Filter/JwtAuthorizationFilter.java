@@ -7,7 +7,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +36,7 @@ public class JwtAuthorizationFilter implements Filter {
         }
 
         String token = authorization.substring(7);
-        if (!jwtUtil.validateToken(token)) {
+        if (jwtUtil.isTokenInvalid(token)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(CONTENT_TYPE);
             response.getWriter().write("{\"code\": \"INVALID_TOKEN\", \"message\": \"Invalid token\"}");

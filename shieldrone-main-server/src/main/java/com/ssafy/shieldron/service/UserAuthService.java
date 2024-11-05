@@ -33,21 +33,11 @@ public class UserAuthService {
     @Transactional(readOnly = true)
     public SignInResponse signIn(SignInRequest signInRequest) {
         String phoneNumber = signInRequest.phoneNumber();
-        // TODO 유효성 검증 코드 리팩토링 필요, Validator를 통해 controller에서 공통적으로 검증할것.
-        Optional<SmsAuth> existingSmsAuth = smsAuthRepository.findByPhoneNumber(phoneNumber);
-        if (existingSmsAuth.isEmpty()) {
-            throw new CustomException(SMS_AUTH_REQUIRED);
-        }
-        SmsAuth smsAuth = existingSmsAuth.get();
-        if (!smsAuth.isVerified()) {
-            throw new CustomException(SMS_AUTH_REQUIRED);
-        }
-        Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
-        if (existingUser.isEmpty()) {
-            throw new CustomException(INVALID_USER);
-        }
-        User user = existingUser.get();
+
+        checkVerifiedSmsAuthOrThrow(phoneNumber);
+        User user = getUserOrThrow(phoneNumber);
         String username = user.getUsername();
+
         String accessToken = jwtUtil.generateAccessToken(username, phoneNumber);
         String refreshToken = jwtUtil.generateRefreshToken(username, phoneNumber);
 
@@ -58,19 +48,44 @@ public class UserAuthService {
     public RefreshResponse refresh(RefreshRequest refreshRequest) {
         String refreshToken = refreshRequest.refreshToken();
 
-        if (!jwtUtil.validateToken(refreshToken)) {
+        if (jwtUtil.isTokenInvalid(refreshToken)) {
             throw new CustomException(INVALID_TOKEN);
         }
 
         String phoneNumber = jwtUtil.getPhoneNumber(refreshToken);
         String username = jwtUtil.getUsername(refreshToken);
+        validateTokenDetails(phoneNumber, username);
+
+        String newAccessToken = jwtUtil.generateAccessToken(username, phoneNumber);
+        String newRefreshToken = jwtUtil.generateRefreshToken(username, phoneNumber);
+
+        return new RefreshResponse(newAccessToken, newRefreshToken);
+    }
+
+
+    private void checkVerifiedSmsAuthOrThrow(String phoneNumber) {
+        Optional<SmsAuth> existingSmsAuth = smsAuthRepository.findByPhoneNumber(phoneNumber);
+        if (existingSmsAuth.isEmpty()) {
+            throw new CustomException(SMS_AUTH_REQUIRED);
+        }
+        SmsAuth smsAuth = existingSmsAuth.get();
+        if (!smsAuth.isVerified()) {
+            throw new CustomException(SMS_AUTH_REQUIRED);
+        }
+    }
+
+    private User getUserOrThrow(String phoneNumber) {
+        Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
+        if (existingUser.isEmpty()) {
+            throw new CustomException(INVALID_USER);
+        }
+        return existingUser.get();
+    }
+
+    private void validateTokenDetails(String phoneNumber, String username) {
         if (phoneNumber == null || username == null) {
             throw new CustomException(INVALID_TOKEN);
         }
-
-        String accessToken = jwtUtil.generateAccessToken(username, phoneNumber);
-        String newRefreshToken = jwtUtil.generateRefreshToken(username, phoneNumber);
-
-        return new RefreshResponse(accessToken, newRefreshToken);
     }
 }
+

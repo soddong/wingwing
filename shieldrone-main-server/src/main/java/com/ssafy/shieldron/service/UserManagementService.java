@@ -36,7 +36,6 @@ public class UserManagementService {
     @Transactional
     public void sendSmsAuth(SmsAuthRequest smsAuthRequest) throws Exception {
         String phoneNumber = smsAuthRequest.phoneNumber();
-
         softDeleteExistingSmsAuth(phoneNumber);
         sendSmsAndSaveSmsAuth(phoneNumber);
     }
@@ -46,16 +45,17 @@ public class UserManagementService {
         String phoneNumber = authCodeVerifyRequest.phoneNumber();
         String authCode = authCodeVerifyRequest.authCode();
 
-        validateSmsAuth(phoneNumber, authCode);
+        validateSmsAuthAndVerifying(phoneNumber, authCode);
 
-        return checkIsUser(phoneNumber);
+        return checkIsUserAndCreateResponse(phoneNumber);
     }
 
     @Transactional
     public void signUp(SignUpRequest signUpRequest) {
         String phoneNumber = signUpRequest.phoneNumber();
-        
-        checkSmsAuthIsVerified(phoneNumber);
+
+        checkVerifiedSmsAuthOrThrow(phoneNumber);
+
         checkDuplicatedUser(phoneNumber);
 
         saveNewUser(signUpRequest, phoneNumber);
@@ -78,32 +78,14 @@ public class UserManagementService {
         }
     }
 
-    private void checkSmsAuthIsVerified(String phoneNumber) {
-        Optional<SmsAuth> existingSmsAuth = smsAuthRepository.findByPhoneNumber(phoneNumber);
-        if (existingSmsAuth.isEmpty()) {
-           throw new CustomException(SMS_AUTH_REQUIRED);
-        }
-        SmsAuth smsAuth = existingSmsAuth.get();
-        if (!smsAuth.isVerified()) {
-            throw new CustomException(SMS_AUTH_REQUIRED);
-        }
+    private CheckIsUserResponse checkIsUserAndCreateResponse(String phoneNumber) {
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .map(user -> USER_EXISTS_RESPONSE)
+                .orElse(USER_NOT_EXISTS_RESPONSE);
     }
 
-    private CheckIsUserResponse checkIsUser(String phoneNumber) {
-        Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
-        if (existingUser.isPresent()) {
-            return USER_EXISTS_RESPONSE;
-        }
-        return USER_NOT_EXISTS_RESPONSE;
-    }
-
-    private void validateSmsAuth(String phoneNumber, String authCode) {
-        Optional<SmsAuth> existingSmsAuth = smsAuthRepository.findByPhoneNumber(phoneNumber);
-
-        if (existingSmsAuth.isEmpty()) {
-            throw new CustomException(USER_NOT_FOUND);
-        }
-        SmsAuth smsAuth = existingSmsAuth.get();
+    private void validateSmsAuthAndVerifying(String phoneNumber, String authCode) {
+        SmsAuth smsAuth = getSmsAuthOrThrow(phoneNumber, new CustomException(USER_NOT_FOUND));
 
         if (smsAuth.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new CustomException(AUTH_CODE_EXPIRED);
@@ -137,4 +119,16 @@ public class UserManagementService {
         }
     }
 
+    private SmsAuth getSmsAuthOrThrow(String phoneNumber, CustomException exception) {
+        return smsAuthRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> exception);
+    }
+
+    private void checkVerifiedSmsAuthOrThrow(String phoneNumber) {
+        SmsAuth smsAuth = getSmsAuthOrThrow(phoneNumber, new CustomException(SMS_AUTH_REQUIRED));
+        if (!smsAuth.isVerified()) {
+            throw new CustomException(SMS_AUTH_REQUIRED);
+        }
+    }
 }
+
