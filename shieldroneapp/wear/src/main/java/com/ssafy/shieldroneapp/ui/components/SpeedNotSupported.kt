@@ -22,7 +22,7 @@ import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 
 
 @Composable
-fun HeartRateNotSupported() {
+fun SpeedNotSupported() {
     Column(
         modifier = Modifier
             // .fillMaxSize()
@@ -34,10 +34,6 @@ fun HeartRateNotSupported() {
             imageVector = Icons.Default.Warning,
             contentDescription = stringResource(id = R.string.not_available),
             tint = Color.Red
-        )
-        Text(
-            text = stringResource(id = R.string.not_available),
-            textAlign = TextAlign.Center
         )
     }
 }
