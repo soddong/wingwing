@@ -1,0 +1,39 @@
+<!-- res/layout/activity_flight_control.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvAltitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Altitude: 0.0"
+        android:textSize="18sp"
+        android:layout_gravity="center_horizontal"/>
+    <TextView
+        android:id="@+id/tvDroneState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Drone State will appear here"
+        android:textSize="16sp"
+        android:padding="8dp" />
+    <Button
+        android:id="@+id/btnZAxisUp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Z Axis Up"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="20dp"/>
+
+    <Button
+        android:id="@+id/btnZAxisDown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Z Axis Down"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"/>
+
+</LinearLayout>

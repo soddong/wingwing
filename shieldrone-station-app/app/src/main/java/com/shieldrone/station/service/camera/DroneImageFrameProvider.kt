@@ -3,7 +3,16 @@ package com.shieldrone.station.service.camera
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import dji.sdk.keyvalue.key.CameraKey
+import dji.sdk.keyvalue.value.camera.CameraMode
+import dji.sdk.keyvalue.value.camera.VideoFrameRate
+import dji.sdk.keyvalue.value.camera.VideoResolution
+import dji.sdk.keyvalue.value.camera.VideoResolutionFrameRate
 import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.v5.common.callback.CommonCallbacks
+import dji.v5.common.error.IDJIError
+import dji.v5.et.create
+import dji.v5.manager.KeyManager
 import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
 import dji.v5.manager.interfaces.ICameraStreamManager.FrameFormat
@@ -28,8 +37,8 @@ class DroneImageFrameProvider(private val context: Context) : ImageFrameProvider
     companion object {
         private const val HOST = "192.168.0.2"
         private const val PORT = 65432
-        private const val FRAME_WIDTH = 640
-        private const val FRAME_HEIGHT = 640
+        private const val FRAME_WIDTH = 1920
+        private const val FRAME_HEIGHT = 1080
     }
 
     override fun startStream(callback: (Bitmap) -> Unit) {
@@ -37,16 +46,70 @@ class DroneImageFrameProvider(private val context: Context) : ImageFrameProvider
 
         val cameraStreamManager: ICameraStreamManager =
             MediaDataCenter.getInstance().cameraStreamManager
-
-        // CameraFrameListener를 추가하여 프레임 데이터 수신
-        cameraStreamManager.addFrameListener(
-            ComponentIndexType.LEFT_OR_MAIN,
-            ICameraStreamManager.FrameFormat.NV21
-        ) { frameData, offset, length, width, height, format ->
-            // 수신한 프레임 데이터를 처리하고 화면에 출력
-            processFrameData(frameData, offset, length, width, height, format, callback)
+        // 1. 카메라 모드를 VIDEO_NORMAL로 설정
+        setCameraModeToVideoNormal {
+            // 2. 해상도와 프레임 레이트를 설정
+            setVideoResolutionFrameRate {
+                // 3. 모든 설정이 완료된 후 프레임 리스너 추가
+                cameraStreamManager.addFrameListener(
+                    ComponentIndexType.LEFT_OR_MAIN,
+                    FrameFormat.NV21
+                ) { frameData, offset, length, width, height, format ->
+                    processFrameData(frameData, offset, length, width, height, format, callback)
+                }
+                Log.i("Drone", "Camera mode and resolution set, stream listener added.")
+            }
         }
     }
+
+    // 비동기 카메라 모드 설정 메서드
+    private fun setCameraModeToVideoNormal(onComplete: () -> Unit) {
+        val keyCameraMode = CameraKey.KeyCameraMode.create()
+        KeyManager.getInstance().setValue(
+            keyCameraMode,
+            CameraMode.VIDEO_NORMAL,
+            object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d("CameraMode", "Camera mode set to VIDEO_NORMAL successfully.")
+                    onComplete() // 성공 시 다음 단계 호출
+                }
+
+                override fun onFailure(error: IDJIError) {
+                    Log.e("CameraMode", "Failed to set camera mode: ${error.description()}")
+                }
+            })
+    }
+
+    // 비동기 해상도 및 프레임 레이트 설정 메서드
+    private fun setVideoResolutionFrameRate(onComplete: () -> Unit) {
+        val videoResolutionFrameRate =
+            VideoResolutionFrameRate(
+                VideoResolution.RESOLUTION_1920x1080,
+                VideoFrameRate.RATE_24FPS
+            )
+        val keyVideoResolutionFrameRate = CameraKey.KeyVideoResolutionFrameRate.create()
+
+        KeyManager.getInstance().setValue(
+            keyVideoResolutionFrameRate,
+            videoResolutionFrameRate,
+            object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(
+                        "CameraSettings",
+                        "Video resolution and frame rate set successfully to 640x512 at 30FPS."
+                    )
+                    onComplete() // 성공 시 다음 단계 호출
+                }
+
+                override fun onFailure(error: IDJIError) {
+                    Log.e(
+                        "CameraSettings",
+                        "Failed to set video resolution and frame rate: ${error.description()}"
+                    )
+                }
+            })
+    }
+
 
     override fun stopStream() {
     }
@@ -134,11 +197,5 @@ class DroneImageFrameProvider(private val context: Context) : ImageFrameProvider
                 Log.e("StreamController", "Error sending UDP packet: ${e.message}")
             }
         }
-    }
-
-    fun stopReceivingFrames() {
-        val cameraStreamManager = MediaDataCenter.getInstance().cameraStreamManager
-
-//        cameraStreamManager.removeFrameListener()
     }
 }

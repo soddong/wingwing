@@ -35,6 +35,8 @@ import com.shieldrone.station.controller.StreamController
 import com.shieldrone.station.model.MSDKManagerVM
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
+import com.shieldrone.station.ui.FlightControlActivity
+import com.shieldrone.station.ui.SimulatorActivity
 import dji.v5.manager.KeyManager
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.opencv.android.OpenCVLoader
@@ -177,6 +179,16 @@ class DJIMainActivity : AppCompatActivity() {
                             Button(onClick = { onModeSelected(false) }) {
                                 Text(text = "Drone Mode")
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // 시뮬레이터 모드 버튼 추가
+                            Button(onClick = { navigateToSimulator() }) {
+                                Text(text = "Simulator Mode")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // 버추얼 스틱 모드 버튼 추가
+                            Button(onClick = { navigateToFlightControl() }) {
+                                Text(text = "Virtual Stick Mode")
+                            }
                         }
                     } else if (!cameraPermissionGranted && isCameraMode) {
                         PermissionRequestButton(onRequestPermission = onRequestPermission)
@@ -199,6 +211,18 @@ class DJIMainActivity : AppCompatActivity() {
                 Text(text = "Request Camera Permission")
             }
         }
+    }
+
+    // SimulatorActivity로 이동하는 함수 추가
+    private fun navigateToSimulator() {
+        val intent = Intent(this, SimulatorActivity::class.java)
+        startActivity(intent)
+    }
+
+    // FlightControlActivity로 이동하는 함수 추가
+    private fun navigateToFlightControl() {
+        val intent = Intent(this, FlightControlActivity::class.java)
+        startActivity(intent)
     }
 }
 
