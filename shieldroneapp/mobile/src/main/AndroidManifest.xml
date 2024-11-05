@@ -17,9 +17,8 @@
     <!-- 인터넷 권한 (API 통신용) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- 워치와 통신을 위한 블루투스 권한 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- 오디오 권한 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- 알림 권한 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
