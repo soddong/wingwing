@@ -19,6 +19,7 @@ import java.io.IOException;
 public class JwtAuthorizationFilter implements Filter {
 
     private final JwtUtil jwtUtil;
+    private static final String CONTENT_TYPE = "application/json";
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
@@ -29,7 +30,7 @@ public class JwtAuthorizationFilter implements Filter {
 
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
+            response.setContentType(CONTENT_TYPE);
             response.getWriter().write("{\"code\": \"AUTHORIZATION_HEADER_MISSING\", \"message\": \"Authorization header is missing or invalid\"}");
             response.getWriter().flush();
             return;
@@ -38,7 +39,7 @@ public class JwtAuthorizationFilter implements Filter {
         String token = authorization.substring(7);
         if (!jwtUtil.validateToken(token)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json");
+            response.setContentType(CONTENT_TYPE);
             response.getWriter().write("{\"code\": \"INVALID_TOKEN\", \"message\": \"Invalid token\"}");
             response.getWriter().flush();
             return;
@@ -46,7 +47,7 @@ public class JwtAuthorizationFilter implements Filter {
 
         if (jwtUtil.isExpired(token)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
+            response.setContentType(CONTENT_TYPE);
             response.getWriter().write("{\"code\": \"TOKEN_EXPIRED\", \"message\": \"Token is expired\"}");
             response.getWriter().flush();
             return;
