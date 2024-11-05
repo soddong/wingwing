@@ -36,7 +36,7 @@ public class SmsAuthUtil {
         Message message = new Message();
         message.setFrom(fromPhoneNumber);
         message.setTo(to);
-        message.setText("Shieldrone 인증 코드입니다. [" + code + "]");
+        message.setText("Shieldrone 인증 코드입니다. [" + code + "] ");
         try {
             messageService.send(message);
         } catch (Exception e) {
