@@ -75,11 +75,8 @@ public class UserAuthService {
     }
 
     private User getUserOrThrow(String phoneNumber) {
-        Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
-        if (existingUser.isEmpty()) {
-            throw new CustomException(INVALID_USER);
-        }
-        return existingUser.get();
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new CustomException(INVALID_USER));
     }
 
     private void validateTokenDetails(String phoneNumber, String username) {
