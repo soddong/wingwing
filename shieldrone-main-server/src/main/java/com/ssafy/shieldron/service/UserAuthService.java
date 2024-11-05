@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_TOKEN;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_USER;
 import static com.ssafy.shieldron.global.exception.ErrorCode.SMS_AUTH_REQUIRED;
 
@@ -58,13 +59,13 @@ public class UserAuthService {
         String refreshToken = refreshRequest.refreshToken();
 
         if (!jwtUtil.validateToken(refreshToken)) {
-
+            throw new CustomException(INVALID_TOKEN);
         }
 
         String phoneNumber = jwtUtil.getPhoneNumber(refreshToken);
         String username = jwtUtil.getUsername(refreshToken);
         if (phoneNumber == null || username == null) {
-
+            throw new CustomException(INVALID_TOKEN);
         }
 
         String accessToken = jwtUtil.generateAccessToken(username, phoneNumber);

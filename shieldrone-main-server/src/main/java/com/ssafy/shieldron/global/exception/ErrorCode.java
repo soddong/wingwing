@@ -9,7 +9,8 @@ public enum ErrorCode {
     USER_NOT_FOUND("003", "사용자를 찾을 수 없습니다."),
     SMS_AUTH_REQUIRED("004", "번호 인증이 필요합니다."),
     DUPLICATE_USER("005", "이미 가입된 회원입니다."),
-    INVALID_USER("006", "존재하지 않은 유저입니다.")
+    INVALID_USER("006", "존재하지 않은 유저입니다."),
+    INVALID_TOKEN("007", "존재하니 않은 토큰입니다.")
     ;
 
     private final String code;
