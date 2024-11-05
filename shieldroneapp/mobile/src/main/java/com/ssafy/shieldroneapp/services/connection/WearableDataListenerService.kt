@@ -16,7 +16,7 @@ class WearableDataListenerService : BaseMobileService() {
     lateinit var sensorDataRepository: SensorDataRepository
 
     companion object {
-        private const val TAG = "WearableDataListener"
+        private const val TAG = "모바일: 웨어러블 기기 리스너"
         private const val PATH_HEART_RATE = "/sendPulseFlag"
     }
 

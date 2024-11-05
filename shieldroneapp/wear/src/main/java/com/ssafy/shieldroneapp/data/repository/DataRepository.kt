@@ -14,7 +14,7 @@ class DataRepository(private val context: Context) {
     companion object {
         private const val THRESHOLD_BPM = 82.0
         private const val SUSTAINED_DURATION = 10000L 
-        private const val TAG = "DataRepository"
+        private const val TAG = "워치: 데이터 레포"
     }
 
     private var highBpmStartTime: Long? = null

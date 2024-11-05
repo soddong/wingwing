@@ -28,7 +28,7 @@ class HeartRateService : LifecycleService() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "HeartRateService"
         private const val CHANNEL_NAME = "Heart Rate Monitoring"
-        private const val TAG = "HeartRateService"
+        private const val TAG = "워치: 심박수 레포"
     }
 
     override fun onCreate() {

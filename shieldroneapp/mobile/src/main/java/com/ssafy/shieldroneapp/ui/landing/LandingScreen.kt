@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.ui.landing
 
 import android.Manifest
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +19,8 @@ import com.ssafy.shieldroneapp.ui.components.ButtonType
 import com.ssafy.shieldroneapp.ui.components.CustomButton
 import com.ssafy.shieldroneapp.ui.components.Layout
 
+private const val TAG = "모바일: 랜딩 스크린"
+
 @Composable
 fun LandingScreen(
     permissionViewModel: PermissionViewModel = hiltViewModel(),
@@ -29,6 +32,7 @@ fun LandingScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        Log.d(TAG, "권한 요청 결과: $isGranted")
         permissionViewModel.updateAudioPermissionStatus(isGranted)
         if (!isGranted) {
             Toast.makeText(
@@ -36,12 +40,16 @@ fun LandingScreen(
                 "음성 인식을 위해 마이크 권한이 필요합니다",
                 Toast.LENGTH_LONG
             ).show()
+            Log.d(TAG, "권한 거부 메시지 표시")
         }
     }
 
     LaunchedEffect(Unit) {
         if (!permissionState) {
+            Log.d(TAG, "RECORD_AUDIO 권한 요청")
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            Log.d(TAG, "RECORD_AUDIO 권한 이미 부여됨")
         }
     }
 
@@ -77,8 +85,10 @@ fun LandingScreen(
                 text = "시작하기",
                 onClick = {
                     if (permissionState) {
+                        Log.d(TAG, "권한이 부여된 상태에서 시작 버튼이 클릭됨")
                         onStartClick()
                     } else {
+                        Log.d(TAG, "권한이 없는 상태에서 시작 버튼이 클릭되어 권한을 요청함")
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 },
