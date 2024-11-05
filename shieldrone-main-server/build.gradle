@@ -36,6 +36,7 @@ dependencies {
     testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.34'
+    annotationProcessor("org.projectlombok:lombok")
 }
 
 tasks.named('test') {
