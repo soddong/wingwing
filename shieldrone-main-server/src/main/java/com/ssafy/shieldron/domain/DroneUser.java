@@ -1,4 +1,4 @@
-package com.ssafy.shieldron.model;
+package com.ssafy.shieldron.domain;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
