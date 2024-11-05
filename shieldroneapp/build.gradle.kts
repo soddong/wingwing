@@ -10,7 +10,7 @@ plugins {
 
 buildscript {
     //val kotlinVersion by extra("1.9.25")
-    val hiltVersion by extra("2.52")
+    val hiltVersion by extra("2.48")
     //val lifecycleVersion by extra("2.3.1")
 
     dependencies {
