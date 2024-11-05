@@ -7,7 +7,7 @@ import javax.inject.Inject
 class PermissionManager @Inject constructor(
     private val context: Context
 ) {
-    //  음성 권한
+    //  녹음 권한
     fun hasAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
