@@ -2,7 +2,9 @@ package com.ssafy.shieldron.service;
 
 import com.ssafy.shieldron.domain.SmsAuth;
 import com.ssafy.shieldron.domain.User;
+import com.ssafy.shieldron.dto.request.RefreshRequest;
 import com.ssafy.shieldron.dto.request.SignInRequest;
+import com.ssafy.shieldron.dto.response.RefreshResponse;
 import com.ssafy.shieldron.dto.response.SignInResponse;
 import com.ssafy.shieldron.global.exception.CustomException;
 import com.ssafy.shieldron.repository.SmsAuthRepository;
@@ -49,5 +51,25 @@ public class UserAuthService {
         String refreshToken = jwtUtil.generateRefreshToken(username, phoneNumber);
 
         return new SignInResponse(accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public RefreshResponse refresh(RefreshRequest refreshRequest) {
+        String refreshToken = refreshRequest.refreshToken();
+
+        if (!jwtUtil.validateToken(refreshToken)) {
+
+        }
+
+        String phoneNumber = jwtUtil.getPhoneNumber(refreshToken);
+        String username = jwtUtil.getUsername(refreshToken);
+        if (phoneNumber == null || username == null) {
+
+        }
+
+        String accessToken = jwtUtil.generateAccessToken(username, phoneNumber);
+        String newRefreshToken = jwtUtil.generateRefreshToken(username, phoneNumber);
+
+        return new RefreshResponse(accessToken, newRefreshToken);
     }
 }

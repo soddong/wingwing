@@ -1,10 +1,12 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.request.RefreshRequest;
 import com.ssafy.shieldron.dto.request.SignInRequest;
 import com.ssafy.shieldron.dto.request.SignUpRequest;
 import com.ssafy.shieldron.dto.request.AuthCodeVerifyRequest;
 import com.ssafy.shieldron.dto.request.SmsAuthRequest;
 import com.ssafy.shieldron.dto.response.CheckIsUserResponse;
+import com.ssafy.shieldron.dto.response.RefreshResponse;
 import com.ssafy.shieldron.dto.response.SignInResponse;
 import com.ssafy.shieldron.service.UserAuthService;
 import com.ssafy.shieldron.service.UserManagementService;
@@ -52,5 +54,12 @@ public class UserController {
         // TODO 검증
         SignInResponse signInResponse = userAuthService.signIn(signInRequest);
         return ResponseEntity.ok().body(signInResponse);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody RefreshRequest refreshRequest) {
+        // TODO 검증
+        RefreshResponse refreshResponse = userAuthService.refresh(refreshRequest);
+        return ResponseEntity.ok().body(refreshResponse);
     }
 }

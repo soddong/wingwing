@@ -26,6 +26,10 @@ public class JwtUtil {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("phoneNumber", String.class);
     }
 
+    public String getUsername(String token) {
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("username", String.class);
+    }
+
     public String generateAccessToken(String username, String phoneNumber) {
         return createToken(username, phoneNumber, (long) (1000 * 60 * 15));
     }
