@@ -58,4 +58,9 @@ public class User extends BaseEntity {
         this.username = username;
     }
 
+    public void updateEndPos(String detail, BigDecimal lat, BigDecimal lng) {
+        this.detailAddress = detail;
+        this.endLat = lat;
+        this.endLng = lng;
+    }
 }
