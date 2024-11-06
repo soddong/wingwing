@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.authentication
+package com.ssafy.shieldroneapp.ui.authentication.screens
 
 /**
  * 서비스 약관 동의 화면.

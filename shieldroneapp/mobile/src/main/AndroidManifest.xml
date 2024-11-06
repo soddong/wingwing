@@ -10,8 +10,11 @@
   <!-- Android 31 이상 버전 지원 -->
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
-  <!-- 인터넷 권한 (API 통신용) -->
-  <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 인터넷 권한 (API 통신용) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 네트워크 상태 확인 권한 (ConnectivityManager 사용) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
   <!-- 오디오 권한 -->
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>

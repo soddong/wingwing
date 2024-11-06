@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.authentication
+package com.ssafy.shieldroneapp.ui.authentication.screens
 
 /**
  * 인증 번호를 입력하여 본인 인증을 완료하는 화면.
