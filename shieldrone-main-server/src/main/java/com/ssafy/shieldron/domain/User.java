@@ -48,6 +48,9 @@ public class User extends BaseEntity {
     @Column(name = "username")
     private String username;
 
+    @Column(name = "detail_address")
+    private String detailAddress;
+
     @Builder
     public User(String phoneNumber, LocalDate birthday, String username) {
         this.phoneNumber = phoneNumber;
@@ -55,4 +58,9 @@ public class User extends BaseEntity {
         this.username = username;
     }
 
+    public void updateEndPos(String detail, BigDecimal lat, BigDecimal lng) {
+        this.detailAddress = detail;
+        this.endLat = lat;
+        this.endLng = lng;
+    }
 }
