@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.authentication
+package com.ssafy.shieldroneapp.ui.authentication.screens
 
 /**
  * 사용자의 이름을 입력받는 화면.

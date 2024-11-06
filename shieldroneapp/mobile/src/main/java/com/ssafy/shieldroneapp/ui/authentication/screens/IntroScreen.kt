@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.authentication
+package com.ssafy.shieldroneapp.ui.authentication.screens
 
 /**
  * 서비스 초기 안내 화면.
@@ -7,12 +7,10 @@ package com.ssafy.shieldroneapp.ui.authentication
  * "인증하기" 버튼을 제공하여 인증 절차를 시작할 수 있도록 한다.
  */
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
