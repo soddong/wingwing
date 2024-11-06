@@ -7,12 +7,10 @@ import android.util.Log
 import android.widget.Button
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import com.dji.industry.mission.natives.util.NativeCallbackUtils.CommonCallback
 import com.shieldrone.station.R
 import com.shieldrone.station.databinding.FragmentFlightControlBinding
 import com.shieldrone.station.model.FlightControlVM
-import dji.sdk.keyvalue.key.CameraKey
-import dji.sdk.keyvalue.key.CameraKey.*
+import dji.sdk.keyvalue.key.CameraKey.KeyCameraMode
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.value.camera.CameraMode
@@ -23,14 +21,12 @@ import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import dji.v5.et.create
 import dji.v5.et.get
-import dji.v5.et.isKeySupported
 import dji.v5.et.listen
 import dji.v5.manager.KeyManager
 import dji.v5.manager.SDKManager
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.aircraft.virtualstick.VirtualStickState
 import dji.v5.manager.aircraft.virtualstick.VirtualStickStateListener
-import io.reactivex.rxjava3.internal.util.HalfSerializer.onComplete
 
 class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control) {
 
@@ -52,16 +48,12 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
         super.onCreate(savedInstanceState)
 
         binding = FragmentFlightControlBinding.inflate(layoutInflater)
-//        VirtualStickManager.getInstance().init()
+        VirtualStickManager.getInstance().init()
 
-//        setContentView(R.layout.fragment_flight_control)
         setContentView(binding.root)
-//        setVirtualStickStateListener()
+        setVirtualStickStateListener()
 
-        // 드론 고도 관찰
-        observeDroneAltitude()
 
-        Log.d("DJI", "고도 관찰중")
         // Z축 상승 버튼 클릭 리스너
         findViewById<Button>(R.id.btnZAxisUp).setOnClickListener {
             adjustAltitudeBy(VERTICAL_THROTTLE) // 0.1m/s 상승
@@ -78,55 +70,23 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
         findViewById<Button>(R.id.btnDisableVirtualStick).setOnClickListener {
             disableVirtualStickMode()
         }
+        findViewById<Button>(R.id.checkAltitude).setOnClickListener {
+            checkAltitude()
+        }
 
         startSendingControlData()
-
-        val keyCameraMode = KeyCameraMode.create()
-
-        KeyManager.getInstance().setValue(
-            keyCameraMode,
-            CameraMode.VIDEO_NORMAL,
-            object : CommonCallbacks.CompletionCallback {
-                override fun onSuccess() {
-                    Log.d("CameraMode", "Camera mode set to VIDEO_NORMAL successfully.")
-                    // 성공 시 다음 호출
-                }
-
-                override fun onFailure(error: IDJIError) {
-                    Log.e("CameraMode", "Failed to set camera mode: ${error.description()}")
-                }
-            })
     }
+
     private fun observeDroneAltitude() {
         val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
 
-        KeyManager.getInstance().listen(KeyTools.createKey(FlightControllerKey.KeyConnection),
-            this,
-            false,
-        ) { p0, p1 ->
-            if (p0 == true) {
-                Log.d("DJI", "드론이 연결되었습니다.")
-                keyAircraftLocation3D.get(
-                    onSuccess = { location: LocationCoordinate3D? ->
-                        Log.d("DJI", "get 호출 성공: ${location?.altitude}")
-                    },
-                    onFailure = { error: IDJIError ->
-                        Log.e("DJI", "get() 호출 실패: ${error.description()},${keyAircraftLocation3D.keyInfo}")
-                        Log.e("DJI","등록 여부 : ${SDKManager.getInstance().isRegistered}")
 
-                    },
-
-                    )
-            } else if (p1 == false) {
-                Log.d("DJI", "드론 연결이 해제되었습니다.")
-            }
-        }
-        KeyManager.getInstance().listen(keyAircraftLocation3D,
+        KeyManager.getInstance().listen(
+            keyAircraftLocation3D,
             this,
             false
         ) { p0, p1 -> TODO("Not yet implemented") }
 
-        Log.d("DJI", "get 호출 성공")
         // listen() 메서드를 사용하여 고도 데이터 지속적으로 수신
         keyAircraftLocation3D.listen(
             holder = this,      // 현재 Activity 또는 Fragment를 holder로 전달
@@ -147,6 +107,41 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
         }
     }
 
+    private fun checkAltitude() {
+        // 드론 고도 관찰
+        val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
+
+        if (keyAircraftLocation3D.canGet())
+        {
+            Log.d("DJI","3D NOT NULL")
+        }
+
+
+        val keyConnection = KeyTools.createKey(FlightControllerKey.KeyConnection)
+        if (keyConnection.canGet())
+        {
+            Log.d("DJI", "KC NOT NULL")
+
+        }
+        if (keyConnection.get() == true)
+        {
+            keyAircraftLocation3D.get(
+                onSuccess = { location: LocationCoordinate3D? ->
+                    Log.d("DJI", "get 호출 성공: ${location?.altitude}")
+                    binding.tvAltitude.text = location?.altitude.toString()
+                    observeDroneAltitude()
+                },
+                onFailure = { error: IDJIError ->
+                    Log.e(
+                        "DJI",
+                        "get() 호출 실패: ${error.description()},${keyAircraftLocation3D.keyInfo}"
+                    )
+                    Log.e("DJI", "등록 여부 : ${SDKManager.getInstance().isRegistered}")
+
+                },
+                )
+        }
+    }
     // Virtual Stick 상태 리스너 설정
     private fun setVirtualStickStateListener() {
         VirtualStickManager.getInstance()
@@ -230,7 +225,10 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
                     val currentAltitude = flightControlVM.altitude.value ?: 0.0
                     flightControlVM.updateAltitude(currentAltitude + ALTITUDE_INCREMENT)
 
-                    Log.d("Simulator", "Increasing altitude by $ALTITUDE_INCREMENT per ${UPDATE_INTERVAL_MS}ms, verticalThrottle set to $VERTICAL_THROTTLE m/s")
+                    Log.d(
+                        "Simulator",
+                        "Increasing altitude by $ALTITUDE_INCREMENT per ${UPDATE_INTERVAL_MS}ms, verticalThrottle set to $VERTICAL_THROTTLE m/s"
+                    )
 
                     // Virtual Stick 명령 전송
                     VirtualStickManager.getInstance().sendVirtualStickAdvancedParam(param)
