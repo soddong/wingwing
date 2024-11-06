@@ -19,14 +19,14 @@ import kotlinx.coroutines.cancel
 abstract class BaseMobileService : WearableListenerService() {
 
     companion object {
-        private const val TAG = "BaseMobileService"
+        private const val TAG = "모바일: 베이스 서비스"
     }
 
     protected val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "Service onCreate: ${this.javaClass.simpleName}")
+        Log.d(TAG, "서비스 생성: ${this.javaClass.simpleName}")
         initializeService()
     }
 

@@ -1,66 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 권한 설정 -->
+  <!-- 권한 설정 -->
 
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Android 30 이하의 버전 지원 -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
-    <!-- Android 31 이상 버전 지원 -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+  <!-- Android 30 이하의 버전 지원 -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+  <!-- Android 31 이상 버전 지원 -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
-    <!-- 인터넷 권한 (API 통신용) -->
-    <uses-permission android:name="android.permission.INTERNET" />
+  <!-- 인터넷 권한 (API 통신용) -->
+  <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- 워치와 통신을 위한 블루투스 권한 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <!-- 오디오 권한 -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <uses-permission android:name="android.permission.VOICE_RECOGNITION"/>
 
-    <!-- 알림 권한 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.VIBRATE" />
+  <!-- 알림 권한 -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
 
-    <application
-        android:name=".MobileMainApplication"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Shieldroneapp"
-        android:usesCleartextTraffic="true">  <!-- HTTP 통신 허용 (배포 시 HTTPS 권장) -->
+  <application android:name=".MobileMainApplication" android:allowBackup="true" android:dataExtractionRules="@xml/data_extraction_rules" android:fullBackupContent="@xml/backup_rules" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@style/Theme.Shieldroneapp" android:usesCleartextTraffic="true">
+    <!-- HTTP 통신 허용 (배포 시 HTTPS 권장) -->
 
-        <!-- WearOS 통신을 위한 Google Play Services Wearable API 사용 설정 -->
-        <meta-data
-            android:name="com.google.android.wearable.beta.app"
-            android:resource="@xml/wearable_app_desc" />
+    <!-- WearOS 통신을 위한 Google Play Services Wearable API 사용 설정 -->
+    <meta-data android:name="com.google.android.wearable.beta.app" android:resource="@xml/wearable_app_desc"/>
 
-        <activity
-            android:name=".MobileMainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+    <activity android:name=".MobileMainActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
 
-        <service
-            android:name=".services.connection.WearableDataListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data
-                    android:host="*"
-                    android:path="/sendPulseFlag"
-                    android:scheme="wear" />
-            </intent-filter>
-        </service>
-    </application>
+    <service android:name=".services.connection.WearableDataListenerService" android:exported="true">
+      <intent-filter>
+        <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+        <data android:host="*" android:path="/sendPulseFlag" android:scheme="wear"/>
+      </intent-filter>
+    </service>
+
+    <service android:name=".services.sensor.AudioRecordService" android:exported="false" android:foregroundServiceType="microphone"/>
+  </application>
 </manifest>

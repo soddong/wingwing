@@ -1,41 +1,68 @@
 package com.ssafy.shieldroneapp.ui.landing
 
-/**
- * 앱의 최초 시작 화면을 구성하는 Composable 함수.
- *
- * 앱의 이름과 설명 문구를 화면에 표시하고, 시작하기 버튼을 통해 인증 과정으로 전환할 수 있다.
- * 사용자가 시작하기 버튼을 누르면 `onStartClick` 콜백을 호출하여
- * authentication의 IntroScreen으로 화면이 전환된다.
- *
- * @param onStartClick 시작하기 버튼 클릭 시 호출되는 콜백 함수로, IntroScreen으로 전환된다.
- */
-
+import android.Manifest
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.ssafy.shieldroneapp.permissions.PermissionViewModel
 import com.ssafy.shieldroneapp.ui.components.ButtonType
 import com.ssafy.shieldroneapp.ui.components.CustomButton
 import com.ssafy.shieldroneapp.ui.components.Layout
 
+private const val TAG = "모바일: 랜딩 스크린"
+
 @Composable
 fun LandingScreen(
-    onStartClick: () -> Unit // 버튼 클릭 콜백
+    permissionViewModel: PermissionViewModel = hiltViewModel(),
+    onStartClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val permissionState by permissionViewModel.audioPermissionGranted.collectAsState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        Log.d(TAG, "권한 요청 결과: $isGranted")
+        permissionViewModel.updateAudioPermissionStatus(isGranted)
+        if (!isGranted) {
+            Toast.makeText(
+                context,
+                "음성 인식을 위해 마이크 권한이 필요합니다",
+                Toast.LENGTH_LONG
+            ).show()
+            Log.d(TAG, "권한 거부 메시지 표시")
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!permissionState) {
+            Log.d(TAG, "RECORD_AUDIO 권한 요청")
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            Log.d(TAG, "RECORD_AUDIO 권한 이미 부여됨")
+        }
+    }
+
     Layout {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(48.dp)
-                .padding(top = 78.dp, bottom = 64.dp), // 위아래 추가 패딩
+                .padding(top = 78.dp, bottom = 64.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(60.dp)
             ) {
                 Text(
@@ -49,15 +76,22 @@ fun LandingScreen(
                             "안전 귀가를 시작하세요.\n" +
                             "든든한 동행이 \n" +
                             "언제나 당신의 곁을 지킵니다.",
-                    style = MaterialTheme.typography.h5.copy(lineHeight = 32.sp), // 줄 간격 추가
+                    style = MaterialTheme.typography.h5.copy(lineHeight = 32.sp),
                     color = MaterialTheme.colors.onBackground
                 )
             }
 
-            // 시작하기 버튼
             CustomButton(
                 text = "시작하기",
-                onClick = onStartClick,
+                onClick = {
+                    if (permissionState) {
+                        Log.d(TAG, "권한이 부여된 상태에서 시작 버튼이 클릭됨")
+                        onStartClick()
+                    } else {
+                        Log.d(TAG, "권한이 없는 상태에서 시작 버튼이 클릭되어 권한을 요청함")
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
                 type = ButtonType.LARGE
             )
         }
