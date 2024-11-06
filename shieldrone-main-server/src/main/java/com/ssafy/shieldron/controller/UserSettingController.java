@@ -1,8 +1,11 @@
 package com.ssafy.shieldron.controller;
 
 import com.ssafy.shieldron.dto.request.EndPosRequest;
+import com.ssafy.shieldron.dto.request.GuardianDeleteRequest;
 import com.ssafy.shieldron.dto.request.GuardianRequest;
+import com.ssafy.shieldron.dto.request.GuardianUpdateRequest;
 import com.ssafy.shieldron.dto.response.EndPosResponse;
+import com.ssafy.shieldron.dto.response.GuardianResponse;
 import com.ssafy.shieldron.global.CurrentUser;
 import com.ssafy.shieldron.service.UserSettingService;
 import lombok.RequiredArgsConstructor;
@@ -12,9 +15,12 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -41,6 +47,26 @@ public class UserSettingController {
     public ResponseEntity<?> createGuardian(@RequestBody GuardianRequest guardianRequest,
                                             @CurrentUser String phoneNumber) {
         userSettingService.createGuardian(guardianRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/guardian")
+    public ResponseEntity<?> getGuardian(@CurrentUser String phoneNumber) {
+        List<GuardianResponse> guardians = userSettingService.getGuardian(phoneNumber);
+        return ResponseEntity.ok().body(guardians);
+    }
+
+    @PutMapping("/guardian")
+    public ResponseEntity<?> updateGuardian(@RequestBody GuardianUpdateRequest guardianUpdateRequest,
+                                            @CurrentUser String phoneNumber) {
+        userSettingService.updateGuardian(guardianUpdateRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/guardian")
+    public ResponseEntity<?> deleteGuardian(@RequestBody GuardianDeleteRequest guardianDeleteRequest,
+                                            @CurrentUser String phoneNumber) {
+        userSettingService.deleteGuardian(guardianDeleteRequest, phoneNumber);
         return ResponseEntity.ok().build();
     }
 

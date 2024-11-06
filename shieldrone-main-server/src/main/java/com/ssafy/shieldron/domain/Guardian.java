@@ -10,9 +10,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Guardian {
 
@@ -35,5 +37,10 @@ public class Guardian {
         this.user = user;
         this.relation = relation;
         this.phoneNumber = phoneNumber;
+    }
+
+    public void updateGuardianInfo(String relation, String guardianPhoneNumber) {
+        this.relation = relation;
+        this.phoneNumber = guardianPhoneNumber;
     }
 }
