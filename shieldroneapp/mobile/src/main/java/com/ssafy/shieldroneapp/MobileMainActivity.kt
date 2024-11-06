@@ -3,13 +3,20 @@ package com.ssafy.shieldroneapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.ssafy.shieldroneapp.ui.authentication.AuthenticationScreen
 import com.ssafy.shieldroneapp.ui.landing.LandingScreen
 import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
+import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
+import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
+
 
 @AndroidEntryPoint // Hilt 사용 위해 추가
 class MobileMainActivity : ComponentActivity() {
@@ -19,26 +26,42 @@ class MobileMainActivity : ComponentActivity() {
             val navController = rememberNavController() // NavController 생성
 
             ShieldroneappTheme {
+                // 상태바 스타일링
+                val systemUiController = rememberSystemUiController()
+                val useDarkIcons = !isSystemInDarkTheme() // 다크 모드 여부에 따라 아이콘 색상 결정
+
+                DisposableEffect(systemUiController, useDarkIcons) {
+                    systemUiController.setSystemBarsColor(
+                        color = Color.Transparent, // 상태바 배경을 투명하게
+                        darkIcons = useDarkIcons // 상태바 아이콘 true면 검정, false는 흰색
+                    )
+                    onDispose { } // 화면이 dispose될 때 정리
+                }
+
                 NavHost(
                     navController = navController,
-                    startDestination = "landing_screen" // 시작 화면 설정
+                    startDestination = ROUTE_LANDING // 시작 화면 설정
                 ) {
-                    composable("landing_screen") {
+                    composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick =  {
-                            navController.navigate("authentication")
-//                            {
-//                                 Landing 화면은 백스택에서 제거
-//                                popUpTo("landing_screen") { inclusive = true }
-//                            }
+                            navController.navigate(ROUTE_AUTHENTICATION) {
+                                // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
+                                popUpTo(ROUTE_LANDING) { inclusive = true }
+                            }
                         })
                     }
-                    composable("authentication") {
+                    composable(ROUTE_AUTHENTICATION) {
                         AuthenticationScreen(
                                 onAuthComplete = {
-                                    // 인증 성공 후 메인 화면으로 이동 (지금은 임의로 landing screen)
-                                    navController.navigate("landing screen") {
+                                    // 추후 메인 화면으로 이동할 때를 위한 주석
+                                    // navController.navigate(ROUTE_MAIN) {
+                                    //     popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
+                                    // }
+
+                                    // 임시로 landing screen
+                                    navController.navigate(ROUTE_LANDING) {
                                         // 인증 화면들도 백스택에서 제거
-                                        // popUpTo("authentication") { inclusive = true }
+                                         popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                     }
                                 }
                         )

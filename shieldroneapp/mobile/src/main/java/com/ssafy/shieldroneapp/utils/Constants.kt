@@ -1,8 +1,21 @@
 package com.ssafy.shieldroneapp.utils
 
 /**
- * 프로젝트에서 사용되는 상수를 정의하는 파일.
+ * 앱 전역에서 사용되는 상수 값들을 관리하는 객체
  *
- * 여러 곳에서 재 사용되는 상수 값을 관리.
- * ex) 타임아웃 시간 (네트워크 요청 시 서버로부터 응답을 기다리는 최대 시간. 타임아웃이 지나면 요청 실패)
+ * 사용
+ * - 사용자 관련 상수들
+ * - 앱 내 화면 간 Navigation 경로 상수
  */
+
+object Constants {
+    object User {
+        const val MAX_GUARDIANS = 3 // 최대 보호자 수
+    }
+
+    object Navigation {
+        const val ROUTE_LANDING = "landing_screen"
+        const val ROUTE_AUTHENTICATION = "authentication"
+        // const val ROUTE_MAIN = "main_screen"  // 추후 메인 화면 추가 시 사용
+    }
+}
