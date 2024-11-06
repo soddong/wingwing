@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import retrofit2.http.DELETE;
 
 import java.util.List;
 
@@ -41,6 +42,13 @@ public class UserSettingController {
     public ResponseEntity<?> getEndPos(@CurrentUser String phoneNumber) {
         EndPosResponse endPosResponse = userSettingService.getEndPos(phoneNumber);
         return ResponseEntity.ok().body(endPosResponse);
+    }
+
+    @DeleteMapping("/end-pos")
+    public ResponseEntity<?> deleteEndPos(@CurrentUser String phoneNumber) {
+        EndPosRequest endPosRequest = new EndPosRequest(null, null, null);
+        userSettingService.updateEndPos(endPosRequest, phoneNumber);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/guardian")
