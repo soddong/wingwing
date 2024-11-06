@@ -1,19 +1,75 @@
 package com.ssafy.shieldroneapp.data.source.remote
 
-/**
- * WebSocket 연결을 관리하는 클래스.
- *
- * WebSocket 연결 설정 및 해제, 연결 상태를 확인하는 기능을 제공
- *
- * 주요 메서드
- * - connect(): WebSocket 서버에 연결
- * - disconnect(): WebSocket 연결을 해제
- * - isConnected(): WebSocket 연결 상태를 반환
- * - handleReconnect(): 연결 끊김 시 재연결 처리
- *
- * 이 클래스는 WebSocketService에 의해 import됩니다.
- *
- * 추가적으로 다음 클래스들과 협력합니다.
- * - WebSocketConfig: 설정 값을 가져와 연결 옵션(예: 재연결 간격, 타임아웃)을 설정
- * - WebSocketErrorHandler: 연결 중 발생하는 오류를 처리
- */
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import android.util.Log
+import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicBoolean
+
+ class WebSocketConnectionManager(
+     private val webSocketService: WebSocketService,
+     private val errorHandler: WebSocketErrorHandler
+ ) {
+     private val client = OkHttpClient()
+     private var webSocket: WebSocket? = null
+     private val isReconnecting = AtomicBoolean(false)
+     private val reconnectScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+     // WebSocket 서버 연결
+     fun connect() {
+         val request = Request.Builder().url(WebSocketConfig.getWebSocketUrl()).build()
+         webSocket = client.newWebSocket(request, object : WebSocketListener() {
+             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
+                 Log.d("WebSocket", "서버 연결")
+                 isReconnecting.set(false)
+             }
+
+             override fun onMessage(webSocket: WebSocket, text: String) {
+                 Log.d("WebSocket", "메시지 수신: $text")
+             }
+
+             override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
+                 Log.e("WebSocket", "연결 실패", t)
+                 errorHandler.handleConnectionError(t)
+                 handleReconnect()
+             }
+
+             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                 Log.d("WebSocket", "연결 해제 예정: $reason")
+                 webSocket.close(code, reason)
+             }
+
+             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                 Log.d("WebSocket", "연결 해제: $reason")
+                 handleReconnect()
+             }
+         })
+     }
+
+     // WebSocket 연결 해제
+     fun disconnect() {
+         webSocket?.close(1000, "Disconnecting")
+         webSocket = null
+         // 재연결 작업 중지
+         reconnectScope.coroutineContext.cancelChildren()
+     }
+
+     // WebSocket 연결 상태 반환
+     fun isConnected(): Boolean {
+         return webSocket != null
+     }
+
+     // 연결 끊김 시 재연결 처리
+     private fun handleReconnect() {
+         if (isReconnecting.compareAndSet(false, true)) {
+             reconnectScope.launch {
+                 delay(WebSocketConfig.getReconnectInterval())
+                 Log.d("WebSocket", "재연결 시도중...")
+                 connect()
+             }
+         }
+     }
+ }
+ 

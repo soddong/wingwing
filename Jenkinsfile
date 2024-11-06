@@ -48,6 +48,7 @@ pipeline {
                     sh 'docker-compose -f main-server-compose.yml stop'
                     sh 'docker rm -f main-server || true'
                     sh 'docker rm -f mysql || true'
+                    echo "JWT_KEY_SERVER: ${JWT_KEY_SERVER}"
                     sh 'docker-compose -f mysql-compose.yml up -d'
                     sh 'docker-compose -f main-server-compose.yml up -d'
                     echo '********** shieldrone-main-server Deploy End **********'

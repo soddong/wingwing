@@ -64,11 +64,8 @@ class MobileMainActivity : ComponentActivity() {
                                          popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                     }
                                 }
-                        )
+                            )
                     }
-
-
-
                 }
             }
         }

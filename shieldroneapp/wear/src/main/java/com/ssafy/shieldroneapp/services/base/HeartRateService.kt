@@ -66,24 +66,21 @@ class HeartRateService : LifecycleService() {
                     return@launch
                 }
 
-                while (isActive) {  // 코루틴이 활성화되어 있는 동안 계속 실행
+                while (isActive) { 
                     try {
                         sensorRepository.heartRateMeasureFlow()
                             .collect { measureMessage ->
                                 when (measureMessage) {
                                     is MeasureMessage.MeasureData -> {
                                         val bpm = measureMessage.data.last().value
-                                        if (bpm > 0) {  // 유효한 심박수인 경우만 처리
-                                            Log.d(TAG, "심박수: $bpm")
+                                        if (bpm > 0) { 
                                             val viewModel = WearableService.getHeartRateViewModel()
                                             if (viewModel != null) {
                                                 viewModel.updateHeartRate(bpm)
-                                                Log.d(TAG, "ViewModel에 심박수 업데이트: $bpm")
                                             }
                                             sendHeartRateData(bpm, DataTypeAvailability.AVAILABLE)
                                         } else {
-                                            Log.d(TAG, "유효하지 않은 심박수($bpm), 재측정 시도")
-                                            delay(1000) // 1초 대기 후 재시도
+                                            delay(1000) 
                                         }
                                     }
                                     is MeasureMessage.MeasureAvailability -> {
@@ -91,7 +88,7 @@ class HeartRateService : LifecycleService() {
                                         Log.d(TAG, "가용성 변경: $newAvailability")
                                         if (newAvailability == DataTypeAvailability.UNAVAILABLE) {
                                             Log.d(TAG, "센서 연결 끊김, 재연결 시도")
-                                            delay(1000) // 1초 대기 후 재시도
+                                            delay(1000) 
                                         }
                                         WearableService.getHeartRateViewModel()?.updateAvailability(newAvailability)
                                     }
@@ -99,13 +96,13 @@ class HeartRateService : LifecycleService() {
                             }
                     } catch (e: Exception) {
                         Log.e(TAG, "측정 중 오류 발생, 재시도", e)
-                        delay(1000) // 1초 대기 후 재시도
+                        delay(1000) 
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "서비스 실행 중 치명적 오류 발생", e)
                 delay(1000)
-                startHeartRateMonitoring() // 서비스 재시작
+                startHeartRateMonitoring()
             }
         }
     }
