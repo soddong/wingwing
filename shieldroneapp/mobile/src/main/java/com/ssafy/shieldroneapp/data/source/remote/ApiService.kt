@@ -11,3 +11,44 @@ package com.ssafy.shieldroneapp.data.source.remote
  * - 네트워크 상태 확인은 NetworkUtils를 통해 별도로 수행하며,
  *   서버 응답 오류 처리는 ApiService 내에서 집중적으로 처리합니다.
  */
+
+import com.ssafy.shieldroneapp.data.model.Guardian
+import com.ssafy.shieldroneapp.data.model.Tokens
+import com.ssafy.shieldroneapp.data.model.User
+import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.VerificationResponse
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Query
+
+interface ApiService {
+
+    @POST("/users/send")
+    suspend fun sendVerificationCode(@Query("phoneNumber") phoneNumber: String)
+
+    @POST("/users/verify")
+    suspend fun verifyCode(
+        @Query("phoneNumber") phoneNumber: String,
+        @Query("code") code: String
+    ): VerificationResponse
+
+    @POST("/users/sign-up")
+    suspend fun signUp(@Body userData: UserAuthData): User
+
+    @POST("/users/sign-in")
+    suspend fun signIn(@Query("phoneNumber") phoneNumber: String): Tokens
+
+    @POST("/tokens/refresh")
+    suspend fun refreshToken(@Body refreshToken: String): Tokens
+
+    @POST("/settings/end-pos")
+    suspend fun setEndPos(
+        @Query("homeAddress") homeAddress: String,
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double
+    )
+
+    @POST("/settings/guardian")
+    suspend fun addGuardian(@Body guardian: Guardian)
+}
