@@ -42,6 +42,14 @@
         android:text="Simulator Location"
         android:textSize="16sp"
         android:padding="8dp" />
+    <!-- 시뮬레이터의 고도 정보를 표시하는 TextView -->
+    <TextView
+        android:id="@+id/tvSimulatorAltitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simulator Altitude"
+        android:textSize="16sp"
+        android:padding="8dp" />
     <!-- Z축 상승 버튼 -->
     <Button
         android:id="@+id/btnZAxisUp"

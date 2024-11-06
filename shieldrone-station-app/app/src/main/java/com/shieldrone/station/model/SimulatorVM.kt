@@ -55,7 +55,10 @@ class SimulatorVM : ViewModel() {
         addSimulatorListener() // 시뮬레이터 상태 리스너 추가
     }
 
-    // 시뮬레이터 활성화 메서드
+    // 시뮬레이터 활성화 메서드S11P31A307-304
+    //
+    //
+    //[BE] PC 서버 - 앱 서버간 GPS 위치 정보 타입 확인, 제어
     fun enableSimulator(
         initializationSettings: InitializationSettings,
         callback: CommonCallbacks.CompletionCallback

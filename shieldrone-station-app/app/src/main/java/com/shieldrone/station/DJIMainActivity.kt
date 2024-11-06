@@ -41,14 +41,6 @@ import dji.v5.manager.KeyManager
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.opencv.android.OpenCVLoader
 
-/**
- * Class Description
- *
- * @author Hoker
- * @date 2022/2/10
- *
- * Copyright (c) 2022, DJI All Rights Reserved.
- */
 class DJIMainActivity : AppCompatActivity() {
 
     private lateinit var streamController: StreamController
@@ -69,10 +61,14 @@ class DJIMainActivity : AppCompatActivity() {
         }
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
+    private var isOpenCVInitialized = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        OpenCVLoader.initDebug()
+        if (!isOpenCVInitialized) {
+            OpenCVLoader.initDebug()
+            isOpenCVInitialized = true
+        }
         if (!isTaskRoot && intent.hasCategory(Intent.CATEGORY_LAUNCHER) && Intent.ACTION_MAIN == intent.action) {
 
             finish()
@@ -106,7 +102,6 @@ class DJIMainActivity : AppCompatActivity() {
             streamController.stopLive()
         }
         KeyManager.getInstance().cancelListen(this)
-        msdkManagerVM.destroyMobileSDK()
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
     }
@@ -179,16 +174,17 @@ class DJIMainActivity : AppCompatActivity() {
                             Button(onClick = { onModeSelected(false) }) {
                                 Text(text = "Drone Mode")
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             // 시뮬레이터 모드 버튼 추가
                             Button(onClick = { navigateToSimulator() }) {
                                 Text(text = "Simulator Mode")
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // 버추얼 스틱 모드 버튼 추가
-                            Button(onClick = { navigateToFlightControl() }) {
-                                Text(text = "Virtual Stick Mode")
-                            }
+
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        // 버추얼 스틱 모드 버튼 추가
+                        Button(onClick = { navigateToFlightControl() }) {
+                            Text(text = "Virtual Stick Mode")
                         }
                     } else if (!cameraPermissionGranted && isCameraMode) {
                         PermissionRequestButton(onRequestPermission = onRequestPermission)

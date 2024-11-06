@@ -3,14 +3,17 @@ package com.shieldrone.station.model
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import dji.sdk.keyvalue.key.FlightControllerKey
+import dji.sdk.keyvalue.value.common.LocationCoordinate3D
+import dji.v5.et.create
+import dji.v5.et.listen
 
 class FlightControlVM : ViewModel() {
 
-    private val _altitude = MutableLiveData<Double>().apply { value = 0.0 } // 초기 고도 0.0m
+    private val _altitude = MutableLiveData<Double>()
     val altitude: LiveData<Double> get() = _altitude
 
-    // 고도 업데이트 메서드
-    fun updateAltitude(deltaZ: Double) {
-        _altitude.value = (_altitude.value ?: 0.0) + deltaZ
+    fun updateAltitude(altitude: Double) {
+        _altitude.postValue(altitude)
     }
 }

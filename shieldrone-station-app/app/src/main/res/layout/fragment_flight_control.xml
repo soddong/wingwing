@@ -36,4 +36,18 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="10dp"/>
 
+    <Button
+        android:id="@+id/btnEnableVirtualStick"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Virtual ON"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="20dp"/>
+    <Button
+        android:id="@+id/btnDisableVirtualStick"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Virtual OFF"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="30dp"/>
 </LinearLayout>

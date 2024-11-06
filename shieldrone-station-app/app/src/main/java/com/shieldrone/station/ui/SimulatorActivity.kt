@@ -28,6 +28,12 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
     private var verticalThrottle = 0.0  // Z축 이동을 위한 스로틀 값
     private var isVirtualStickEnabled = false
 
+    companion object {
+        var throttle = 1.0
+        const val OPERATION_SIMULATOR = "simulator"
+        const val VALUE_ALTITUDE = "altitude"
+    }
+
     // Virtual Stick 모드를 활성화하는 함수
     private fun enableVirtualStickMode() {
         // 초기화
@@ -85,14 +91,9 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
                         "VirtualStickState",
                         "Advanced Mode Enabled: ${stickState.isVirtualStickAdvancedModeEnabled()}"
                     )
-                    Log.d(
-                        "VirtualStickState",
-                        "Flight Control Authority Owner: ${stickState.currentFlightControlAuthorityOwner}"
-                    )
                 }
 
                 override fun onChangeReasonUpdate(reason: FlightControlAuthorityChangeReason) {
-                    TODO("Not yet implemented")
                 }
             })
     }
@@ -109,12 +110,12 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
                         verticalThrottle = this@SimulatorActivity.verticalThrottle  // Z축 이동 설정
                     }
                     // 고도 계산 및 업데이트
-                    val altitudeChange = verticalThrottle * 0.2 // 200ms 마다 업데이트되므로 초당 변화량 조정
+                    val altitudeChange = verticalThrottle // 1000ms 마다 업데이트
                     simulatorVM.updateAltitude(altitudeChange)
                     Log.d("Simulator", "Sending verticalThrottle value: $verticalThrottle")
                     VirtualStickManager.getInstance().sendVirtualStickAdvancedParam(param)
 
-                    handler.postDelayed(this, 200)  // 200ms (5Hz) 간격으로 명령 전송
+                    handler.postDelayed(this, 1000)  // 1000ms (25Hz) 간격으로 명령 전송
                 }
             }
         })
@@ -137,16 +138,16 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
         setContentView(binding.root)
         setVirtualStickStateListener()
         simulatorVM.altitude.observe(this) { altitude ->
-            binding.tvSimulatorLocation.text = "Altitude: $altitude"
+            binding.tvSimulatorAltitude.text = getString(R.string.view_value,VALUE_ALTITUDE,altitude.toString())
         }
         // Z축 상승 버튼 클릭 리스너
         binding.btnZAxisUp.setOnClickListener {
-            adjustAltitudeBy(this.verticalThrottle + 1.0) // 1.0m/s 상승
+            adjustAltitudeBy(this.verticalThrottle + throttle) // 1.0m/s 상승
         }
 
         // Z축 하강 버튼 클릭 리스너
         binding.btnZAxisDown.setOnClickListener {
-            adjustAltitudeBy(this.verticalThrottle - 1.0) // 1.0m/s 하강
+            adjustAltitudeBy(this.verticalThrottle - throttle) // 1.0m/s 하강
         }
 
         // 시뮬레이터 활성화 버튼 클릭 리스너
@@ -156,13 +157,14 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
 
             simulatorVM.enableSimulator(settings, object : CommonCallbacks.CompletionCallback {
                 override fun onSuccess() {
-                    binding.tvSimulatorConnectionStatus.text = "Succeed"
+                    binding.tvSimulatorConnectionStatus.text = getString(R.string.operation_success,
+                        OPERATION_SIMULATOR)
                     enableVirtualStickMode()
                 }
 
                 override fun onFailure(error: IDJIError) {
                     binding.tvSimulatorConnectionStatus.text =
-                        "Failed to enable simulator: ${error.description()}"
+                    getString(R.string.operation_failed, OPERATION_SIMULATOR, error.description())
                 }
             })
         }
@@ -172,12 +174,12 @@ class SimulatorActivity : AppCompatActivity(R.layout.fragment_simulator) {
             simulatorVM.disableSimulator(object : CommonCallbacks.CompletionCallback {
                 override fun onSuccess() {
                     disableVirtualStickMode()  // 시뮬레이터 비활성화 시 Virtual Stick 모드도 비활성화
-                    binding.tvSimulatorConnectionStatus.text = "Simulator disabled successfully."
+                    binding.tvSimulatorConnectionStatus.text = getString(R.string.operation_disable)
                 }
 
                 override fun onFailure(error: IDJIError) {
                     binding.tvSimulatorConnectionStatus.text =
-                        "Failed to disable simulator: ${error.description()}"
+                        getString(R.string.operation_failed,"DISABLE",error.description())
                 }
             })
         }
