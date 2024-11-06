@@ -44,7 +44,5 @@ public class Hive extends BaseEntity {
     @Column(name = "hive_ip", length = 15, nullable = false)
     private String hiveIp;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean isActive;
 
 }
