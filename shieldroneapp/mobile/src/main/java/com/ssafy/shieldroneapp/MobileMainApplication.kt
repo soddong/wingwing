@@ -8,10 +8,15 @@ package com.ssafy.shieldroneapp
  * */
 
 import android.app.Application
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class MobileMainApplication : Application() {
+    companion object {
+        private const val TAG = "모바일: 메인 앱"
+    }
+
     override fun onCreate() {
         super.onCreate()
         // 앱 시작시 필요한 초기화 작업
@@ -19,5 +24,11 @@ class MobileMainApplication : Application() {
         // - SharedPreferences 초기화
         // - 네트워크 설정
         // - 푸시 알림 설정 등
+        setupLogging()
+    }
+    private fun setupLogging() {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "디버그 빌드에서만 상세 로깅 활성화")
+        }
     }
 }

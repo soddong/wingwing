@@ -8,7 +8,7 @@ class SensorDataRepository(
     private val webSocketService: WebSocketService
 ) {
     companion object {
-        private const val TAG = "SensorDataRepository"
+        private const val TAG = "모바일: 심박수 데이터 레포"
     }
 
     suspend fun processHeartRateData(data: HeartRateData) {
