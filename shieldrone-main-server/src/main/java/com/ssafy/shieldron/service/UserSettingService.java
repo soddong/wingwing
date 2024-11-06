@@ -66,8 +66,6 @@ public class UserSettingService {
             throw new CustomException(MAX_GUARDIAN_REACHED);
         }
 
-        guardianRepository.findByUserAndPhoneNumber(user, phoneNumber)
-                .orElseThrow(() -> new CustomException(GUARDIAN_ALREADY_EXISTS));
 
         Guardian guardian = Guardian.builder()
                 .user(user)
