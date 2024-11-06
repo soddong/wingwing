@@ -21,3 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "My Application"
 include ':app'
+def opencvsdk='C:\\Users\\SSAFY\\project\\OpenCV-android-sdk'
+   include ':opencv'
+   project(':opencv').projectDir = new File(opencvsdk + '/sdk')

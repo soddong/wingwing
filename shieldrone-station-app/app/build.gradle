@@ -4,11 +4,12 @@ plugins {
 }
 
 android {
-    namespace 'com.sheildron.station'
+    namespace 'com.shieldrone.station'
     compileSdk 33
 
+    // 버전에 맞게 minSdk = 33, targetSdk = 33으로 설정
     defaultConfig {
-        applicationId "com.sheildron.station"
+        applicationId "com.shieldrone.station"
         minSdk 23
         targetSdk 33
         versionCode 1
@@ -19,7 +20,9 @@ android {
             useSupportLibrary true
         }
     }
-
+    viewBinding {
+        enabled = true
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -27,11 +30,13 @@ android {
         }
     }
 
+//    Java 버전 17로 컴파일
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
+//    코틀린도 버전 17에 맞추기
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -49,6 +54,15 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+//    openCV 네이티브 라이브러리 사용 시 컴파일 오류 해결을 위한 코드
+    packagingOptions {
+        pickFirst 'lib/x86/libc++_shared.so'
+        pickFirst 'lib/x86_64/libc++_shared.so'
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+    }
+
+
 }
 
 dependencies {
@@ -70,7 +84,9 @@ dependencies {
     implementation 'androidx.camera:camera-lifecycle:1.1.0'
     implementation 'androidx.camera:camera-view:1.1.0'
     implementation 'androidx.camera:camera-extensions:1.1.0'
-
+    implementation project(':opencv')
+    implementation 'androidx.appcompat:appcompat-resources:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
     // Testing dependencies
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
@@ -80,7 +96,9 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling:1.2.1'
     debugImplementation 'androidx.compose.ui:ui-test-manifest:1.2.1'
 
+//    24.11.05 기준 최신 버전
     implementation 'com.dji:dji-sdk-v5-aircraft:5.10.0'
     compileOnly 'com.dji:dji-sdk-v5-aircraft-provided:5.10.0'
     runtimeOnly 'com.dji:dji-sdk-v5-networkImp:5.10.0'
+
 }

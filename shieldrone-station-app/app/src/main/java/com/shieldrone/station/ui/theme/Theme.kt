@@ -21,7 +21,7 @@ private val DarkColorScheme = darkColorScheme(
 
 // 앱 테마
 @Composable
-fun SheildronStationTheme(
+fun ShieldronStationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

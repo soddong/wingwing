@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btn_enable_simulator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enable Simulator" />
+
+    <Button
+        android:id="@+id/btn_disable_simulator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Disable Simulator" />
+
+    <!-- 시뮬레이터 상태를 표시하는 TextView -->
+    <TextView
+        android:id="@+id/tvSimulatorState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simulator State will appear here"
+        android:textSize="16sp"
+        android:padding="8dp" />
+    <!-- 시뮬레이터 연결 상태를 표시하는 TextView -->
+    <TextView
+        android:id="@+id/tvSimulatorConnectionStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simulator Connection Status"
+        android:textSize="16sp"
+        android:padding="8dp" />
+
+    <!-- 시뮬레이터 위치 정보를 표시하는 TextView -->
+    <TextView
+        android:id="@+id/tvSimulatorLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simulator Location"
+        android:textSize="16sp"
+        android:padding="8dp" />
+    <!-- 시뮬레이터의 고도 정보를 표시하는 TextView -->
+    <TextView
+        android:id="@+id/tvSimulatorAltitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simulator Altitude"
+        android:textSize="16sp"
+        android:padding="8dp" />
+    <!-- Z축 상승 버튼 -->
+    <Button
+        android:id="@+id/btnZAxisUp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Z Axis Up" />
+
+    <!-- Z축 하강 버튼 -->
+    <Button
+        android:id="@+id/btnZAxisDown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Z Axis Down"
+        android:layout_marginTop="8dp" />
+</LinearLayout>

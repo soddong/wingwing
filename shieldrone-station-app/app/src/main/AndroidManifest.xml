@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.usb.host" />
     <uses-feature
         android:name="android.hardware.camera"
@@ -8,6 +7,12 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature
+        android:name="android.hardware.usb.accessory"
+        android:required="true"/>
+
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -17,17 +22,28 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
-        tools:targetApi="31">
+        android:name=".DJIAircraftApplication"
+        >
+
+
+<!--        API KEY는 공식 홈페이지 참고해서 발급받기 -->
+        <meta-data
+            android:name="com.dji.sdk.API_KEY"
+            android:value="9f4465093baeb1a51fc878c9"/>
+
         <activity
-            android:name="com.shieldrone.station.MainActivity"
+            android:name="com.shieldrone.station.DJIMainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
+<!--            intent-filter의 action을 통해 해당 액티비티가 가장 먼저 시작될 액티비티임을 지정-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".ui.SimulatorActivity" />
+        <activity android:name=".ui.FlightControlActivity" />
+
     </application>
+
 </manifest>
