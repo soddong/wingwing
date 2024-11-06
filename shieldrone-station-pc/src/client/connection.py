@@ -28,9 +28,12 @@ class Server:
         ZeroMQ 소켓을 설정하고 TCP 주소와 타임아웃을 5초로 지정.
         """
         self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.PUSH)
-        self.socket.bind("tcp://127.0.0.1:5560") 
-        self.socket.setsockopt(zmq.SNDTIMEO, 5000)
+        self.socket_danger = self.context.socket(zmq.PUSH)
+        self.socket_route = self.context.socket(zmq.PUSH)
+        self.socket_danger.bind("tcp://127.0.0.1:5560") 
+        self.socket_route.bind("tcp://127.0.0.1:5570") 
+        self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
+        self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
 
     def test(self):
         """
@@ -49,7 +52,6 @@ class Server:
             Response: user_id가 없을 경우 400 에러 발생, 성공 시 200 상태 코드 반환.
         """
         data = request.get_json()
-        user_id = data.get("user_id")
 
         if user_id:
             print(f"유저 {user_id}가 연결되었습니다. 이제 WebSocket을 통해 실시간 데이터를 전송할 수 있습니다.")
@@ -104,7 +106,7 @@ class Server:
             "time": time,
             "location": {"lat": lat, "lng": lng}
         })
-        self.socket.send_string(zmq_data)
+        self.socket_route.send_string(zmq_data)
 
     async def handle_send_pulse_flag(self, data):
         """
@@ -123,7 +125,7 @@ class Server:
             "time": time,
             "pulseFlag": pulse_flag
         })
-        self.socket.send_string(zmq_data)
+        self.socket_danger.send_string(zmq_data)
 
     async def handle_send_db_flag(self, data):
         """
@@ -142,7 +144,7 @@ class Server:
             "time": time,
             "dbFlag": db_flag
         })
-        self.socket.send_string(zmq_data)
+        self.socket_danger.send_string(zmq_data)
 
     async def send_warning_beep(self):
         """
