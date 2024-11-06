@@ -17,14 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.ui.theme.SheildronStationTheme
-import com.shieldrone.station.src.controller.StreamController
-import com.shieldrone.station.src.service.camera.CameraImageFrameProvider
-import com.shieldrone.station.src.service.camera.DroneImageFrameProvider
+import com.shieldrone.station.controller.StreamController
+import com.shieldrone.station.service.camera.CameraImageFrameProvider
+import com.shieldrone.station.service.camera.DroneImageFrameProvider
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var streamController: StreamController
+    private lateinit var routeController: RouteController
     private var cameraPermissionGranted by mutableStateOf(false)
     private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
@@ -77,13 +79,16 @@ class MainActivity : ComponentActivity() {
     // 카메라 또는 드론 모드에서 스트리밍 시작
     private fun startStreaming() {
         Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
-        streamController = if (isCameraMode) {
-            StreamController(CameraImageFrameProvider(this))
+        routeController = RouteController()
+
+        if (isCameraMode) {
+            streamController = StreamController(CameraImageFrameProvider(this))
         } else {
-            StreamController(DroneImageFrameProvider(this))
+            streamController = StreamController(DroneImageFrameProvider(this))
         }
 
         streamController.startLive()
+        routeController.startReceivingLocation()
         isStreaming = true
     }
 
@@ -91,6 +96,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         if (isStreaming) {
             streamController.stopLive()
+            routeController.stopReceivingLocation()
         }
     }
 }
