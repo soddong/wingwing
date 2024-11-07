@@ -92,6 +92,15 @@ fun MainScreen(
                     fontWeight = FontWeight.Medium
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 음성 감지 상태 표시
+            Text(
+                text = "음성 감지: 활성화됨",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
 
         // 워치 앱 실행 요청 다이얼로그

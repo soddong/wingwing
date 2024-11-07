@@ -42,7 +42,7 @@ class HeartRateLocalDataSource @Inject constructor(@ApplicationContext context: 
                     Log.d(TAG, "로컬에서 심박수 데이터 불러옴: $heartRateData")
                     heartRateData
                 } else {
-                    Log.d(TAG, "로컬에 저장된 심박수 데이터가 없습니다.")
+//                    Log.d(TAG, "로컬에 저장된 심박수 데이터가 없습니다.")
                     null
                 }
             } catch (e: Exception) {
