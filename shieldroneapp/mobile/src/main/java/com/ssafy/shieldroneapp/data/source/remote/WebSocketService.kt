@@ -21,15 +21,12 @@ package com.ssafy.shieldroneapp.data.source.remote
 
 import android.content.Context
 import android.util.Log
-import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class WebSocketState {
     object Connected : WebSocketState()
@@ -37,8 +34,7 @@ sealed class WebSocketState {
     data class Error(val throwable: Throwable) : WebSocketState()
 }
 
-class WebSocketService(
-
+class WebSocketService @Inject constructor(
     private val context: Context,
     private val webSocketMessageSender: WebSocketMessageSender
 ) {
@@ -58,33 +54,48 @@ class WebSocketService(
         webSocketConnectionManager = manager
     }
 
-    private fun updateConnectionState(state: WebSocketState) {
+    fun updateConnectionState(state: WebSocketState) {
         _connectionState.value = state
-        Log.d(TAG, "웹소켓 상태 변경: $state")
+        isConnected = (state == WebSocketState.Connected)
+        Log.d(TAG, "WebSocket 상태 변경: $state, isConnected: $isConnected, webSocket: ${webSocketMessageSender.getWebSocket() != null}")
     }
 
     // WebSocket 초기 설정 및 구독 시작
     fun initialize() {
         try {
+            Log.d(TAG, "WebSocket 초기화 시작")
             webSocketConnectionManager?.connect()
-            isConnected = webSocketConnectionManager?.isConnected() ?: false
-            if (isConnected) {
-                updateConnectionState(WebSocketState.Connected)
-            } else {
-                updateConnectionState(WebSocketState.Disconnected)
+
+            // 연결이 완료될 때까지 약간의 지연
+            recordingScope.launch {
+                delay(1000)  // 1초 대기
+                isConnected = webSocketConnectionManager?.isConnected() ?: false
+                if (isConnected && webSocketMessageSender.getWebSocket() != null) {
+                    Log.d(TAG, "WebSocket 연결 성공")
+                    updateConnectionState(WebSocketState.Connected)
+                } else {
+                    Log.e(TAG, "WebSocket 연결 실패")
+                    updateConnectionState(WebSocketState.Disconnected)
+                    handleReconnect()
+                }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "WebSocket 초기화 중 에러 발생", e)
             updateConnectionState(WebSocketState.Error(e))
+            handleReconnect()
         }
     }
 
     // WebSocket 서비스 종료 및 연결 해제
     fun shutdown() {
         try {
+            Log.d(TAG, "WebSocket 서비스 종료 시작")
             webSocketConnectionManager?.disconnect()
             isConnected = false
-            Log.d(TAG, "WebSocket 서비스 종료")
+            updateConnectionState(WebSocketState.Disconnected)
+            Log.d(TAG, "WebSocket 서비스 종료 완료")
         } catch (e: Exception) {
+            Log.e(TAG, "WebSocket 종료 중 에러 발생", e)
             errorHandler.handleConnectionError(e)
         }
     }
@@ -103,36 +114,19 @@ class WebSocketService(
         }
     }
 
-    fun sendAudioData(audioData: AudioData) {
-        if (isConnected) {
-            try {
-                webSocketMessageSender.sendAudioData(audioData)
-            } catch (e: Exception) {
-                errorHandler.handleMessageError(e)
-                handleReconnect()
-            }
-        } else {
-            errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
-            handleReconnect()
-        }
-    }
-
     fun handleReconnect() {
-        Log.d(TAG, "재연결 시도 중...")
+        Log.d(TAG, "WebSocket 재연결 시도 중...")
         try {
             shutdown()
-            initialize()
-        } catch (e: Exception) {
-            errorHandler.handleConnectionError(e)
-        }
-    }
-
-    // 상태 변경 시 AudioRecorder에 알림
-    fun setAudioRecorderCallback(callback: (WebSocketState) -> Unit) {
-        recordingScope.launch {
-            connectionState.collect { state ->
-                callback(state)
+            // 약간의 지연을 주어 이전 연결이 완전히 종료되도록 함
+            recordingScope.launch {
+                kotlinx.coroutines.delay(1000)
+                initialize()
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "재연결 중 에러 발생", e)
+            errorHandler.handleConnectionError(e)
+            updateConnectionState(WebSocketState.Error(e))
         }
     }
 }
