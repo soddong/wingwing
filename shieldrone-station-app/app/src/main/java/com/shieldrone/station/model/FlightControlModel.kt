@@ -38,8 +38,8 @@ class FlightControlModel {
     )
 
     data class StickPosition(
-        val verticalPosition: Float,
-        val horizontalPosition: Float
+        val verticalPosition: Int,
+        val horizontalPosition: Int
     )
 
     var isVirtualStickEnabled = false
@@ -216,4 +216,85 @@ class FlightControlModel {
             }
         }
     }
+
+    /**
+     * 드론의 leftStick과 rightStick 위치 값을 설정하여 제어하는 함수
+     */
+    fun setControlValues(controls: Controls, callback: CommonCallbacks.CompletionCallback) {
+        if (!isVirtualStickEnabled) {
+            callback.onFailure(object : IDJIError {
+                override fun errorType() = ErrorType.UNKNOWN
+                override fun errorCode() = "VIRTUAL_STICK_DISABLED"
+                override fun innerCode() = "VIRTUAL_STICK_DISABLED"
+                override fun hint() = "Virtual Stick 모드가 활성화되지 않았습니다."
+                override fun description() = "Virtual Stick 모드를 활성화 후 시도하세요."
+                override fun isError(p0: String?) = true
+            })
+            return
+        }
+
+        val stickManager = virtualStickManager
+
+        stickManager.leftStick.verticalPosition = controls.leftStick.verticalPosition
+        stickManager.leftStick.horizontalPosition = controls.leftStick.horizontalPosition
+        stickManager.rightStick.verticalPosition = controls.rightStick.verticalPosition
+        stickManager.rightStick.horizontalPosition = controls.rightStick.horizontalPosition
+
+        handler.post {
+            callback.onSuccess()
+        }
+
+        Log.d(virtualStickTag, "leftStick (vertical: ${controls.leftStick.verticalPosition}, horizontal: ${controls.leftStick.horizontalPosition}), " +
+                "rightStick (vertical: ${controls.rightStick.verticalPosition}, horizontal: ${controls.rightStick.horizontalPosition})")
+    }
+
+    /**
+     * 드론의 control 값을 구독하고 지속적으로 업데이트하여 제어하는 함수
+     */
+    fun subscribeControlValues(onUpdate: (Controls) -> Unit) {
+        if (!isVirtualStickEnabled) {
+            Log.e(virtualStickTag, "Virtual Stick 모드가 활성화되지 않았습니다.")
+            return
+        }
+
+        val stickManager = virtualStickManager
+
+        // 초기 control 값을 설정
+        var currentControls = Controls(
+            StickPosition(stickManager.leftStick.verticalPosition, stickManager.leftStick.horizontalPosition),
+            StickPosition(stickManager.rightStick.verticalPosition, stickManager.rightStick.horizontalPosition)
+        )
+
+        // 일정 간격으로 control 값을 갱신하고 콜백 호출
+        handler.post(object : Runnable {
+            override fun run() {
+                // 새로운 Controls 상태를 구독
+                val newControls = Controls(
+                    StickPosition(stickManager.leftStick.verticalPosition, stickManager.leftStick.horizontalPosition),
+                    StickPosition(stickManager.rightStick.verticalPosition, stickManager.rightStick.horizontalPosition)
+                )
+
+                // 새로운 control 값을 onUpdate 콜백으로 전달
+                onUpdate(newControls)
+
+                // 이전 상태와 새로운 상태 비교 후 변경이 있을 때만 적용
+                if (currentControls != newControls) {
+                    stickManager.leftStick.verticalPosition = newControls.leftStick.verticalPosition
+                    stickManager.leftStick.horizontalPosition = newControls.leftStick.horizontalPosition
+                    stickManager.rightStick.verticalPosition = newControls.rightStick.verticalPosition
+                    stickManager.rightStick.horizontalPosition = newControls.rightStick.horizontalPosition
+                    Log.d(virtualStickTag, "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
+                            "rightStick(vertical: ${newControls.rightStick.verticalPosition}, horizontal: ${newControls.rightStick.horizontalPosition})")
+
+                    // 현재 상태를 업데이트
+                    currentControls = newControls
+                }
+
+                // 구독을 지속적으로 수행
+                handler.postDelayed(this, 100) // 100ms 주기로 업데이트
+            }
+        })
+    }
+
+
 }
