@@ -16,6 +16,13 @@ class FlightControlActivity : AppCompatActivity() {
 
     private lateinit var btnTakeOff: Button
     private lateinit var btnLand: Button
+    private lateinit var btnMoveForward: Button
+    private lateinit var btnMoveBackward: Button
+    private lateinit var btnMoveLeft: Button
+    private lateinit var btnMoveRight: Button
+    private lateinit var btnMoveUp: Button
+    private lateinit var btnMoveDown: Button
+
     private lateinit var btnEnableVirtualStick: Button
     private lateinit var btnDisableVirtualStick: Button
     private lateinit var txtDroneStatus: TextView
@@ -32,6 +39,12 @@ class FlightControlActivity : AppCompatActivity() {
         btnDisableVirtualStick = findViewById(R.id.btnDisableVirtualStick)
         txtDroneStatus = findViewById(R.id.txtDroneStatus)
         txtMessage = findViewById(R.id.txtMessage)
+        btnMoveForward = findViewById(R.id.btnMoveForward)
+        btnMoveBackward = findViewById(R.id.btnMoveBackward)
+        btnMoveLeft = findViewById(R.id.btnMoveLeft)
+        btnMoveRight = findViewById(R.id.btnMoveRight)
+        btnMoveUp = findViewById(R.id.btnMoveUp)
+        btnMoveDown = findViewById(R.id.btnMoveDown)
 
         // 버튼 클릭 리스너 설정
         btnTakeOff.setOnClickListener {
@@ -40,6 +53,30 @@ class FlightControlActivity : AppCompatActivity() {
 
         btnLand.setOnClickListener {
             flightControlVM.startLanding()
+        }
+
+        btnMoveForward.setOnClickListener {
+            flightControlVM.moveForward()
+        }
+
+        btnMoveBackward.setOnClickListener {
+            flightControlVM.moveBackward()
+        }
+
+        btnMoveUp.setOnClickListener {
+            flightControlVM.moveUp()
+        }
+
+        btnMoveDown.setOnClickListener {
+            flightControlVM.moveDown()
+        }
+
+        btnMoveLeft.setOnClickListener {
+            flightControlVM.moveLeft()
+        }
+
+        btnMoveRight.setOnClickListener {
+            flightControlVM.moveRight()
         }
 
         btnEnableVirtualStick.setOnClickListener {
@@ -70,7 +107,8 @@ class FlightControlActivity : AppCompatActivity() {
             Log.d("FlightControlActivity", message)
         })
 
-        // 드론 위치 정보 구독 시작
+        // 드론 위치/제어 정보 구독 시작
         flightControlVM.subscribeDroneLocation()
+        flightControlVM.subscribeDroneControlValues()
     }
 }

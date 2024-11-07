@@ -38,6 +38,42 @@
         android:text="착륙" />
 
     <Button
+        android:id="@+id/btnMoveForward"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="전진" />
+
+    <Button
+        android:id="@+id/btnMoveBackward"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="후진" />
+
+    <Button
+        android:id="@+id/btnMoveLeft"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="왼쪽" />
+
+    <Button
+        android:id="@+id/btnMoveRight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="오른쪽" />
+
+    <Button
+        android:id="@+id/btnMoveUp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="위로 이동" />
+
+    <Button
+        android:id="@+id/btnMoveDown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="아래로 이동" />
+
+    <Button
         android:id="@+id/btnEnableVirtualStick"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
