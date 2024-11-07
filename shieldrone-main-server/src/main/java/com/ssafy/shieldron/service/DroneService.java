@@ -169,8 +169,7 @@ public class DroneService {
     }
 
     private Drone findAvailableDrone(double requiredBattery) {
-        PageRequest pageRequest = PageRequest.of(0, 1);
-        return droneRepository.findFirstAvailableDroneWithLock(requiredBattery, pageRequest)
+        return droneRepository.findFirstAvailableDroneWithLock(requiredBattery)
                 .orElseThrow(() -> new CustomException(DRONE_NOT_AVAILABLE));
     }
 
