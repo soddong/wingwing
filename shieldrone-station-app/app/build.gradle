@@ -82,9 +82,9 @@ dependencies {
     implementation 'androidx.camera:camera-lifecycle:1.1.0'
     implementation 'androidx.camera:camera-view:1.1.0'
     implementation 'androidx.camera:camera-extensions:1.1.0'
-    implementation project(':opencv')
     implementation 'androidx.appcompat:appcompat-resources:1.4.0'
     implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation project(':opencv')
     // Testing dependencies
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
