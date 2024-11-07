@@ -12,8 +12,8 @@ class DataRepository(private val context: Context) {
     private val dataClient: DataClient = Wearable.getDataClient(context)
 
     companion object {
-        private const val THRESHOLD_BPM = 82.0
-        private const val SUSTAINED_DURATION = 10000L 
+        private const val THRESHOLD_BPM = 75.0
+        private const val SUSTAINED_DURATION = 10000L
         private const val TAG = "워치: 데이터 레포"
     }
 
@@ -26,20 +26,28 @@ class DataRepository(private val context: Context) {
             val currentTime = System.currentTimeMillis()
             val currentBpm = heartRateData.bpm
 
+            Log.d(TAG, "심박수 데이터 전송 시도 - BPM: $currentBpm")
+
             when {
                 currentBpm >= THRESHOLD_BPM -> {
                     if (!isCurrentlyHighBpm) {
                         highBpmStartTime = currentTime
                         isCurrentlyHighBpm = true
-                        Log.d(TAG, "현재 심박수: $currentBpm, 타이머 시작")
+                        Log.d(TAG, "높은 심박수 감지됨, 타이머 시작")
                     } else {
                         highBpmStartTime?.let { startTime ->
                             val duration = currentTime - startTime
+                            Log.d(TAG, "높은 심박수 지속 시간: ${duration}ms")
+
                             if (duration >= SUSTAINED_DURATION) {
                                 if (currentTime - lastTransmissionTime >= SUSTAINED_DURATION) {
-                                    sendData(true, heartRateData.timestamp)
-                                    lastTransmissionTime = currentTime
-                                    Log.d(TAG, "10초이상 높은 심박수 유지됨: 데이터 전송")
+                                    val success = sendData(true, heartRateData.timestamp)
+                                    if (success) {
+                                        lastTransmissionTime = currentTime
+                                        Log.d(TAG, "데이터 전송 성공")
+                                    }
+                                } else {
+                                    Log.d(TAG, "전송 대기 중... (마지막 전송 후 ${currentTime - lastTransmissionTime}ms)")
                                 }
                             }
                         }
@@ -49,25 +57,39 @@ class DataRepository(private val context: Context) {
                     if (isCurrentlyHighBpm) {
                         isCurrentlyHighBpm = false
                         highBpmStartTime = null
-                        Log.d(TAG, "BPM dropped below threshold: $currentBpm")
+                        val success = sendData(false, heartRateData.timestamp)
+                        if (success) {
+                            Log.d(TAG, "정상 심박수 데이터 전송 성공")
+                        }
                     }
                 }
             }
-
         } catch (e: Exception) {
-            Log.e(TAG, "심박수 데이터 전송 에러", e)
+            Log.e(TAG, "데이터 전송 중 오류 발생", e)
             e.printStackTrace()
         }
     }
 
-    private suspend fun sendData(pulseFlag: Boolean, timestamp: Long) {
-        val putDataMapRequest = PutDataMapRequest.create("/sendPulseFlag").apply {
-            dataMap.putBoolean("pulseFlag", pulseFlag)
-            dataMap.putLong("timestamp", timestamp)
-            dataMap.putBoolean("sustained", true)
+    private suspend fun sendData(pulseFlag: Boolean, timestamp: Long): Boolean {
+        try {
+            Log.d(TAG, "데이터 전송 시작 - pulseFlag: $pulseFlag")
+            val putDataMapRequest = PutDataMapRequest.create("/sendPulseFlag").apply {
+                dataMap.putBoolean("pulseFlag", pulseFlag)
+                dataMap.putLong("timestamp", timestamp)
+                dataMap.putBoolean("sustained", true)
+            }
+
+            val putDataRequest = putDataMapRequest.asPutDataRequest().apply {
+                setUrgent()
+            }
+
+            val result = dataClient.putDataItem(putDataRequest).await()
+            Log.d(TAG, "데이터 아이템 전송 완료 - URI: ${result.uri}")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "데이터 전송 실패", e)
+            e.printStackTrace()
+            return false
         }
-        val putDataRequest = putDataMapRequest.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(putDataRequest).await()
-        Log.d(TAG, "Heart rate data sent: pulseFlag=$pulseFlag, sustained=true")
     }
 }
