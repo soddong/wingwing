@@ -244,8 +244,8 @@ class FlightControlModel {
             callback.onSuccess()
         }
 
-        Log.d(virtualStickTag, "leftStick (vertical: ${controls.leftStick.verticalPosition}, horizontal: ${controls.leftStick.horizontalPosition}), " +
-                "rightStick (vertical: ${controls.rightStick.verticalPosition}, horizontal: ${controls.rightStick.horizontalPosition})")
+        Log.d(virtualStickTag, "leftStick (vertical-고도: ${controls.leftStick.verticalPosition}, horizontal-좌우회전: ${controls.leftStick.horizontalPosition}), " +
+                "rightStick (vertical-앞뒤: ${controls.rightStick.verticalPosition}, horizontal-좌우이동: ${controls.rightStick.horizontalPosition})")
     }
 
     /**
