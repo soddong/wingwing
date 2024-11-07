@@ -14,40 +14,31 @@ package com.ssafy.shieldroneapp.data.source.remote
  */
 
 import android.util.Log
-import com.google.gson.Gson
-import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import okhttp3.WebSocket
-import okio.ByteString
 import javax.inject.Inject
 
-class WebSocketMessageSender @Inject constructor(private val webSocket: WebSocket?) {
+class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocket?) {
 
     companion object {
         private const val TAG = "모바일: 웹소켓 메시지 센더"
     }
 
     fun sendWatchSensorData(data: HeartRateData) {
-        val json = data.toJson()
-        webSocket?.send(json)
+        // WebSocket이 null이 아니면 전송
+        if (webSocket == null || !webSocket!!.send(data.toJson())) {
+            Log.e(TAG, "웹소켓 전송 실패 또는 WebSocket이 null입니다.")
+        } else {
+            Log.d(TAG, "심박수 데이터 전송 성공")
+        }
     }
 
-    fun sendAudioData(data: AudioData) {
-        try {
-            // raw 오디오 데이터를 ByteString으로 변환하여 전송
-            val byteString = ByteString.of(*data.audioData)
-            webSocket?.send(byteString)
+    fun getWebSocket(): WebSocket? {
+        return webSocket
+    }
 
-            // 시간 정보는 별도 메타데이터로 전송
-            val metadata = mapOf(
-                "time" to data.time,
-                "type" to "audio"
-            ).let { Gson().toJson(it) }
-
-            webSocket?.send(metadata)
-        } catch (e: Exception) {
-            Log.e(TAG, "오디오 데이터 전송 중 에러 발생", e)
-            throw e
-        }
+    fun setWebSocket(socket: WebSocket?) {
+        webSocket = socket
+        Log.d(TAG, "새로운 WebSocket ${if (socket != null) "설정됨" else "해제됨"}")
     }
 }
