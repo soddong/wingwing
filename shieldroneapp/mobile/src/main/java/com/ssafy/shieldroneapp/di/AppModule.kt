@@ -1,7 +1,9 @@
 package com.ssafy.shieldroneapp.di
 
 import android.content.Context
+import com.ssafy.shieldroneapp.data.audio.AudioRecorder
 import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
+import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
 import com.ssafy.shieldroneapp.data.source.local.HeartRateLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketErrorHandler
@@ -72,6 +74,23 @@ object AppModule {
         val connectionManager = provideWebSocketConnectionManager(service, webSocketMessageSender, provideWebSocketErrorHandler(context))
         service.setConnectionManager(connectionManager)
         return service
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioRecorder(
+        @ApplicationContext context: Context,
+        webSocketService: WebSocketService
+    ): AudioRecorder {
+        return AudioRecorder(context, webSocketService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioDataLocalSource(
+        @ApplicationContext context: Context
+    ): AudioDataLocalSource {
+        return AudioDataLocalSource(context)
     }
 
     @Provides
