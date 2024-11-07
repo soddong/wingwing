@@ -7,6 +7,7 @@ import okhttp3.WebSocketListener
 import android.util.Log
 import kotlinx.coroutines.*
 import okhttp3.Response
+import java.net.SocketException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
@@ -21,14 +22,14 @@ class WebSocketConnectionManager(
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
     private var webSocket: WebSocket? = null
     private val isReconnecting = AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
-        private const val TAG = "WebSocketConnectionManager"
-        private const val MAX_RETRY_ATTEMPTS = 5
+        private const val TAG = "웹소켓 연결 매니저"
     }
 
     fun connect() {
@@ -52,25 +53,34 @@ class WebSocketConnectionManager(
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Log.e(
-                        TAG,
-                        "연결 실패 - URL: ${WebSocketConfig.getWebSocketUrl()}, 응답: ${response?.message}",
-                        t
-                    )
-                    errorHandler.handleConnectionError(t)
-                    handleReconnect()
+                    Log.e(TAG, "연결 실패 - URL: ${WebSocketConfig.getWebSocketUrl()}, 응답: ${response?.message}", t)
+
+                    // Broken pipe 에러인 경우 즉시 재연결 시도
+                    if (t is SocketException && t.message?.contains("Broken pipe") == true) {
+                        Log.d(TAG, "Broken pipe 에러 감지, 즉시 재연결 시도")
+                        handleReconnect()
+                    } else {
+                        errorHandler.handleConnectionError(t)
+                        handleReconnect()
+                    }
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                     Log.d(TAG, "연결 해제 예정: $reason")
-                    webSocket.close(code, reason)
+                    if (reason == "Disconnecting") {
+                        webSocket.close(code, reason)
+                    }
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     Log.d(TAG, "웹소켓 연결 종료: $reason")
                     webSocketMessageSender.setWebSocket(null)
                     webSocketService.updateConnectionState(WebSocketState.Disconnected)
-                    handleReconnect()
+
+                    // 의도적인 종료("Disconnecting")가 아닌 경우에만 재연결 시도
+                    if (reason != "Disconnecting") {
+                        handleReconnect()
+                    }
                 }
             })
         } catch (e: Exception) {
@@ -93,10 +103,18 @@ class WebSocketConnectionManager(
     private fun handleReconnect() {
         if (isReconnecting.compareAndSet(false, true)) {
             reconnectScope.launch {
-                delay(WebSocketConfig.getReconnectInterval())
-                Log.d(TAG, "재연결 시도중...")
-                connect()
+                try {
+                    // 재연결 전에 기존 연결 정리
+                    webSocket?.cancel()
+                    webSocket = null
+                    delay(WebSocketConfig.getReconnectInterval())
+                    connect()
+                } finally {
+                    isReconnecting.set(false)
+                }
             }
+        } else {
+            Log.d(TAG, "재연결이 이미 진행 중입니다.")
         }
     }
 }

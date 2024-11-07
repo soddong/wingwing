@@ -14,6 +14,7 @@ package com.ssafy.shieldroneapp.data.source.remote
  */
 
 import android.util.Log
+import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import okhttp3.WebSocket
 import javax.inject.Inject
@@ -25,11 +26,34 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
     }
 
     fun sendWatchSensorData(data: HeartRateData) {
-        // WebSocket이 null이 아니면 전송
-        if (webSocket == null || !webSocket!!.send(data.toJson())) {
-            Log.e(TAG, "웹소켓 전송 실패 또는 WebSocket이 null입니다.")
-        } else {
-            Log.d(TAG, "심박수 데이터 전송 성공")
+        try {
+            val jsonData = Gson().toJson(mapOf(
+                "type" to "sendPulseFlag",
+                "time" to data.timestamp,
+                "pulseFlag" to data.pulseFlag
+            ))
+            Log.d(TAG, "전송할 데이터: $jsonData")
+
+            if (webSocket == null) {
+                Log.e(TAG, "WebSocket이 null입니다")
+                throw Exception("WebSocket이 초기화되지 않았습니다")
+            }
+
+            val success = webSocket?.send(jsonData) ?: false
+            if (success) {
+                Log.d(TAG, "심박수 데이터 전송 성공: $jsonData")
+            } else {
+                Log.e(TAG, "데이터 전송 실패 - WebSocket 상태: ${webSocket != null}, 데이터: $jsonData")
+                // WebSocket이 존재하지만 전송에 실패한 경우
+                if (webSocket != null) {
+                    Log.d(TAG, "WebSocket 상태 확인 필요")
+                    // WebSocket 상태를 체크하고 필요한 경우 재연결을 위해 예외 발생
+                    throw Exception("WebSocket이 연결되어 있지만 전송에 실패했습니다")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "심박수 데이터 전송 중 에러 발생: ${e.message}", e)
+            throw e
         }
     }
 
