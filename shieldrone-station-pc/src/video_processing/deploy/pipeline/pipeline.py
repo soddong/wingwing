@@ -20,11 +20,9 @@ import math
 import paddle
 import sys
 import copy
-import threading
 import queue
 import time
 from collections import defaultdict
-import socket
 import zmq
 
 # add deploy path of PaddleDetection to sys.path
@@ -33,7 +31,7 @@ sys.path.insert(0, parent_path)
 
 from datacollector import DataCollector, Result
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer, StreamingTimer, HandAboveHeadTracker, VideoHandler
+from pipe_utils import PipeTimer, HandAboveHeadTracker, VideoHandler
 from pipe_utils import crop_image_with_mot, parse_mot_res
 from spatial_info_utils import SpatialInfoTracker
 
@@ -438,9 +436,15 @@ class PipePredictor(object):
                         self.pipeline_res.update(kpt_res, 'kpt')
                     else:
                         self.pipeline_res.clear('kpt')
+            
             if self.target_id is not None:
-                target_mot_res = mot_res[int(mot_res[:, 0]) == self.target_id]
-                other_mot_res = mot_res[int(mot_res[:, 0]) != self.target_id]
+                boxes = mot_res['boxes']
+
+                target_mot_res = boxes[boxes[:, 0].astype(int) == self.target_id]
+                other_mot_res = boxes[boxes[:, 0].astype(int) != self.target_id]
+
+                drone_control =  self.drone_controller.adjust_drone(target_mot_res[0])
+                frame_rgb = self.drone_controller.visualize_control(frame_rgb, drone_control)
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
