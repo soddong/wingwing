@@ -15,6 +15,24 @@
         android:textSize="16sp"
         android:padding="8dp" />
 
+    <!-- 드론 상태 표시 -->
+    <TextView
+        android:id="@+id/txtDroneControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="드론 제어 정보"
+        android:textSize="16sp"
+        android:padding="8dp" />
+
+    <!-- 드론 위치 표시 -->
+    <TextView
+        android:id="@+id/txtDronePosition"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="드론 제어 정보"
+        android:textSize="16sp"
+        android:padding="8dp" />
+
     <!-- 메시지 표시 -->
     <TextView
         android:id="@+id/txtMessage"
@@ -25,64 +43,109 @@
         android:padding="8dp" />
 
     <!-- 버튼들 -->
-    <Button
-        android:id="@+id/btnTakeOff"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="이륙" />
+        android:orientation="horizontal"
+        android:weightSum="2">
 
-    <Button
-        android:id="@+id/btnLand"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="착륙" />
+        <Button
+            android:id="@+id/btnTakeOff"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="이륙" />
 
-    <Button
-        android:id="@+id/btnMoveForward"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="전진" />
+        <Button
+            android:id="@+id/btnLand"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="착륙" />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/btnMoveBackward"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="후진" />
+        android:orientation="horizontal"
+        android:weightSum="2">
 
-    <Button
-        android:id="@+id/btnMoveLeft"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="왼쪽" />
+        <Button
+            android:id="@+id/btnMoveForward"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="전진" />
 
-    <Button
-        android:id="@+id/btnMoveRight"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="오른쪽" />
+        <Button
+            android:id="@+id/btnMoveBackward"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="후진" />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/btnMoveUp"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="위로 이동" />
+        android:orientation="horizontal"
+        android:weightSum="2">
 
-    <Button
-        android:id="@+id/btnMoveDown"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="아래로 이동" />
+        <Button
+            android:id="@+id/btnMoveLeft"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="왼쪽" />
 
-    <Button
-        android:id="@+id/btnEnableVirtualStick"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Virtual Stick 활성화" />
+        <Button
+            android:id="@+id/btnMoveRight"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="오른쪽" />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/btnDisableVirtualStick"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Virtual Stick 비활성화" />
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/btnMoveUp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="위로 이동" />
+
+        <Button
+            android:id="@+id/btnMoveDown"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="아래로 이동" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/btnEnableVirtualStick"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Virtual Stick 활성화" />
+
+        <Button
+            android:id="@+id/btnDisableVirtualStick"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Virtual Stick 비활성화" />
+    </LinearLayout>
 
 </LinearLayout>

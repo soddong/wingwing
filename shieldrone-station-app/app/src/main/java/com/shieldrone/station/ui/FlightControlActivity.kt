@@ -26,6 +26,8 @@ class FlightControlActivity : AppCompatActivity() {
     private lateinit var btnEnableVirtualStick: Button
     private lateinit var btnDisableVirtualStick: Button
     private lateinit var txtDroneStatus: TextView
+    private lateinit var txtDroneControls: TextView
+    private lateinit var txtDronePosition: TextView
     private lateinit var txtMessage: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +40,8 @@ class FlightControlActivity : AppCompatActivity() {
         btnEnableVirtualStick = findViewById(R.id.btnEnableVirtualStick)
         btnDisableVirtualStick = findViewById(R.id.btnDisableVirtualStick)
         txtDroneStatus = findViewById(R.id.txtDroneStatus)
+        txtDroneControls = findViewById(R.id.txtDroneControls)
+        txtDronePosition = findViewById(R.id.txtDronePosition)
         txtMessage = findViewById(R.id.txtMessage)
         btnMoveForward = findViewById(R.id.btnMoveForward)
         btnMoveBackward = findViewById(R.id.btnMoveBackward)
@@ -107,8 +111,30 @@ class FlightControlActivity : AppCompatActivity() {
             Log.d("FlightControlActivity", message)
         })
 
+        // 드론 제어 정보 관찰
+        flightControlVM.droneControls.observe(this, Observer { control ->
+            val statusText = """
+                leftStick (VERT-고도): ${control.leftStick.verticalPosition}
+                leftStick (HORI-좌우회전): ${control.leftStick.horizontalPosition}
+                rightStick (VERT-앞뒤): ${control.rightStick.verticalPosition}
+                rightStick (HORI-좌우이동): ${control.rightStick.horizontalPosition}
+            """.trimIndent()
+            txtDroneControls.text = statusText
+        })
+
+        // 드론 위치 정보 관찰
+        flightControlVM.dronePosition.observe(this, Observer { position ->
+            val positionText = """
+            위도: ${position.latitude}
+            경도: ${position.longitude}
+            고도: ${position.altitude}
+        """.trimIndent()
+            txtDronePosition.text = positionText
+        })
+
         // 드론 위치/제어 정보 구독 시작
         flightControlVM.subscribeDroneLocation()
         flightControlVM.subscribeDroneControlValues()
+        flightControlVM.subscribeDronePositionValues()
     }
 }
