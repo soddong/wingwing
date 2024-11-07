@@ -64,7 +64,7 @@ public class DroneService {
 
 
         double distanceInMeters = calculateDistanceBetweenHiveAndEndLocation(hive, droneAssignmentRequest);
-        double requiredBattery = calculateRequiredBattery(distanceInMeters);
+        Integer requiredBattery = calculateRequiredBattery(distanceInMeters);
 
         Drone drone = findAvailableDrone(requiredBattery);
         drone.updateActive(true);
@@ -164,11 +164,12 @@ public class DroneService {
         return earthRadius * c;
     }
 
-    private double calculateRequiredBattery(double distanceInMeters) {
-        return (distanceInMeters * BATTERY_PER_METER) + MINIMUM_REQUIRED_BATTERY;
+    private Integer calculateRequiredBattery(double distanceInMeters) {
+        double battery = (distanceInMeters * BATTERY_PER_METER) + MINIMUM_REQUIRED_BATTERY;
+        return (int) Math.ceil(battery);
     }
 
-    private Drone findAvailableDrone(double requiredBattery) {
+    private Drone findAvailableDrone(Integer requiredBattery) {
         return droneRepository.findFirstAvailableDroneWithLock(requiredBattery)
                 .orElseThrow(() -> new CustomException(DRONE_NOT_AVAILABLE));
     }
@@ -177,7 +178,7 @@ public class DroneService {
         Hive hive = hiveRepository.findById(hiveId)
                 .orElseThrow(() -> new CustomException(INVALID_HIVE));
 
-        if (!hive.getDrone().isActive()) {
+        if (hive.getDrone().isActive()) {
             throw new CustomException(ALREADY_MATCHED_HIVE);
         }
 

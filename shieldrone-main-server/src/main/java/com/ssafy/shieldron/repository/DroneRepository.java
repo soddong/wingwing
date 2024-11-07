@@ -19,5 +19,5 @@ public interface DroneRepository extends JpaRepository<Drone, Integer> {
     AND d.battery >= :requiredBattery
     ORDER BY d.battery DESC
 """)
-    Optional<Drone> findFirstAvailableDroneWithLock(@Param("requiredBattery") double requiredBattery);
+    Optional<Drone> findFirstAvailableDroneWithLock(@Param("requiredBattery") Integer requiredBattery);
 }

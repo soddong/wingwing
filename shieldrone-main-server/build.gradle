@@ -49,3 +49,7 @@ tasks.named('asciidoctor') {
     inputs.dir snippetsDir
     dependsOn test
 }
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-parameters"
+}
