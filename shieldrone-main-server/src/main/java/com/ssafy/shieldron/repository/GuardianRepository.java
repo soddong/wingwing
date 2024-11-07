@@ -9,7 +9,6 @@ import java.util.Optional;
 
 public interface GuardianRepository extends JpaRepository<Guardian, Integer> {
 
-    Optional<Guardian> findByUserAndPhoneNumber(User user, String phoneNumber);
     int countByUser(User user);
 
     List<Guardian> findAllByUser(User user);

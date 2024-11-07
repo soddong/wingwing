@@ -48,7 +48,7 @@ public class SmsAuthUtil {
 
     private String generateCode() {
         StringBuilder numStr = new StringBuilder();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 6; i++) {
             numStr.append(rand.nextInt(10));
         }
         return numStr.toString();

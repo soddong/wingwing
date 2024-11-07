@@ -30,35 +30,30 @@ public class UserController {
 
     @PostMapping("/send")
     public ResponseEntity<?> sendSms(@Valid @RequestBody SmsAuthRequest authSmsRequest) throws Exception {
-        // TODO 검증
         userManagementService.sendSmsAuth(authSmsRequest);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<?> verifyAuthCode(@RequestBody AuthCodeVerifyRequest authCodeVerifyRequest) {
-        // TODO 검증
+    public ResponseEntity<?> verifyAuthCode(@Valid @RequestBody AuthCodeVerifyRequest authCodeVerifyRequest) {
         CheckIsUserResponse checkIsUserResponse = userManagementService.verifyAuthCode(authCodeVerifyRequest);
         return ResponseEntity.ok().body(checkIsUserResponse);
     }
 
     @PostMapping("/sign-up")
-    public ResponseEntity<?> signUp(@RequestBody SignUpRequest signUpRequest) {
-        // TODO 검증
+    public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest signUpRequest) {
         userManagementService.signUp(signUpRequest);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/sign-in")
-    public ResponseEntity<?> signIn(@RequestBody SignInRequest signInRequest) {
-        // TODO 검증
+    public ResponseEntity<?> signIn(@Valid @RequestBody SignInRequest signInRequest) {
         SignInResponse signInResponse = userAuthService.signIn(signInRequest);
         return ResponseEntity.ok().body(signInResponse);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody RefreshRequest refreshRequest) {
-        // TODO 검증
+    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest refreshRequest) {
         RefreshResponse refreshResponse = userAuthService.refresh(refreshRequest);
         return ResponseEntity.ok().body(refreshResponse);
     }
