@@ -19,9 +19,9 @@
   <uses-permission android:name="android.permission.BLUETOOTH"/>
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
   <!-- 포그라운드 권한 -->
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
   <!-- 알림 보내기 권한 -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
@@ -40,28 +40,19 @@
       </intent-filter>
     </service>
 
-    <service
-        android:name=".services.HeartRateService"
-        android:foregroundServiceType="mediaPlayback"
-        android:exported="false">
-    </service>
+    <service android:name=".services.HeartRateService" android:foregroundServiceType="mediaPlayback" android:exported="false"></service>
 
-    <service
-        android:name=".services.DataReceiverService"
-        android:exported="true">
+    <service android:name=".services.DataReceiverService" android:exported="true">
       <intent-filter>
-        <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-        <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag" />
+        <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag"/>
       </intent-filter>
     </service>
 
-    <receiver
-        android:name=".receivers.ScreenReceiver"
-        android:enabled="true"
-        android:exported="false">
+    <receiver android:name=".receivers.ScreenReceiver" android:enabled="true" android:exported="false">
       <intent-filter>
-        <action android:name="android.intent.action.SCREEN_OFF" />
-        <action android:name="android.intent.action.SCREEN_ON" />
+        <action android:name="android.intent.action.SCREEN_OFF"/>
+        <action android:name="android.intent.action.SCREEN_ON"/>
       </intent-filter>
     </receiver>
 
