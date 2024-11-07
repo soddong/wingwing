@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.shieldrone.station.model.FlightControlModel.Controls
+import com.shieldrone.station.model.FlightControlModel.Position
 import com.shieldrone.station.model.FlightControlModel.State
 import com.shieldrone.station.model.FlightControlModel.StickPosition
 import dji.v5.common.callback.CommonCallbacks
@@ -24,6 +25,11 @@ class FlightControlVM : ViewModel() {
     // 드론 제어 상태를 관찰하기 위한 LiveData
     private val _droneControls = MutableLiveData<Controls>()
     val droneControls: LiveData<Controls> get() = _droneControls
+
+    // 드론 위치를 관찰하기 위한 LiveData
+    private val _dronePosition = MutableLiveData<Position>()
+    val dronePosition: LiveData<Position> get() = _dronePosition
+
 
     // 이륙 시작
     fun startTakeOff() {
@@ -159,4 +165,13 @@ class FlightControlVM : ViewModel() {
             _droneControls.postValue(control)
         }
     }
+
+    // 드론 위치 정보 구독 시작
+    fun subscribeDronePositionValues() {
+        flightControlModel.subscribePosition { position ->
+            _dronePosition.postValue(position)
+        }
+    }
+
+
 }

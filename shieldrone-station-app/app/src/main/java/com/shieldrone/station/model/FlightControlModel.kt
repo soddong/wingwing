@@ -296,5 +296,43 @@ class FlightControlModel {
         })
     }
 
+    /**
+     * 드론의 위치 정보 (altitude, latitude, longitude)를 구독하여 지속적으로 업데이트하는 함수
+     */
+    fun subscribePosition(onUpdate: (Position) -> Unit) {
+        val handler = Handler(Looper.getMainLooper())
 
+        // 초기 위치 설정
+        var currentPosition = Position(
+            altitude = location3D.get()?.altitude ?: 0.0,
+            latitude = location3D.get()?.latitude ?: 0.0,
+            longitude = location3D.get()?.longitude ?: 0.0
+        )
+
+        // 위치 정보를 일정 간격으로 업데이트
+        handler.post(object : Runnable {
+            override fun run() {
+                // 새로운 위치 정보를 가져옴
+                val newAltitude = location3D.get()?.altitude ?: 0.0
+                val newLatitude = location3D.get()?.latitude ?: 0.0
+                val newLongitude = location3D.get()?.longitude ?: 0.0
+
+                // 새로운 위치 정보로 Position 객체 생성
+                val newPosition = Position(newAltitude, newLatitude, newLongitude)
+
+                // 위치 값이 변경된 경우에만 업데이트
+                if (currentPosition != newPosition) {
+                    currentPosition = newPosition
+                    onUpdate(newPosition)
+                    Log.d(
+                        flightControlTag,
+                        "Position updated: altitude = $newAltitude, latitude = $newLatitude, longitude = $newLongitude"
+                    )
+                }
+
+                // 100ms 주기로 위치 정보를 업데이트
+                handler.postDelayed(this, 100)
+            }
+        })
+    }
 }
