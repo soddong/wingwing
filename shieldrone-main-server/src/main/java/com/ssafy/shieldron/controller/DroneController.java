@@ -1,7 +1,10 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.request.DroneMatchRequest;
 import com.ssafy.shieldron.dto.request.DroneAssignmentRequest;
+import com.ssafy.shieldron.dto.request.DroneCancelRequest;
 import com.ssafy.shieldron.dto.response.DroneAssignmentResponse;
+import com.ssafy.shieldron.dto.response.DroneMatchResponse;
 import com.ssafy.shieldron.global.CurrentUser;
 import com.ssafy.shieldron.service.DroneService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,20 @@ public class DroneController {
                                              @CurrentUser String phoneNumber) {
         DroneAssignmentResponse droneAssignmentResponse = droneService.droneAssignment(droneAssignmentRequest, phoneNumber);
         return ResponseEntity.ok().body(droneAssignmentResponse);
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<?> droneCancel(@RequestBody DroneCancelRequest droneCancelRequest,
+                                         @CurrentUser String phoneNumber) {
+        droneService.droneCancel(droneCancelRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/match")
+    public ResponseEntity<?> droneMatch(@RequestBody DroneMatchRequest droneMatchRequest,
+                                        @CurrentUser String phoneNumber) {
+        DroneMatchResponse droneMatchResponse = droneService.droneMatch(droneMatchRequest, phoneNumber);
+        return ResponseEntity.ok().body(droneMatchResponse);
     }
 
 }

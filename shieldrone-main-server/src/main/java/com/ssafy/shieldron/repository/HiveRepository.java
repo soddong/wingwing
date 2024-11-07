@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.repository;
 
+import com.ssafy.shieldron.domain.Drone;
 import com.ssafy.shieldron.domain.Hive;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface HiveRepository extends JpaRepository<Hive, Integer> {
 
@@ -36,4 +38,6 @@ public interface HiveRepository extends JpaRepository<Hive, Integer> {
             h.hiveName ASC
         """)
     List<Hive> searchByKeyword(@Param("keyword") String keyword);
+
+    Optional<Hive> findByDrone(Drone drone);
 }

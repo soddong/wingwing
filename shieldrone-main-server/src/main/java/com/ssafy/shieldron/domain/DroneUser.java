@@ -11,10 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+@Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DroneUser {
@@ -57,5 +59,9 @@ public class DroneUser {
         this.endLat = endLat;
         this.endLng = endLng;
         this.status = DroneUserStatus.TEMPORARY;
+    }
+
+    public void updateStatus(DroneUserStatus droneUserStatus) {
+        this.status = droneUserStatus;
     }
 }
