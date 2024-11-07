@@ -212,11 +212,7 @@ def preprocess_reid(imgs,
 
 def flow_statistic(result,
                    secs_interval,
-                   do_entrance_counting,
-                   do_break_in_counting,
-                   region_type,
                    video_fps,
-                   entrance,
                    id_set,
                    interval_id_set,
                    in_id_list,
@@ -230,80 +226,6 @@ def flow_statistic(result,
     # 'horizontal' and 'vertical' means entrance is the center line as the entrance when do_entrance_counting, 
     # 'custom' means entrance is a region defined by users when do_break_in_counting.
 
-    if do_entrance_counting:
-        assert region_type in [
-            'horizontal', 'vertical'
-        ], "region_type should be 'horizontal' or 'vertical' when do entrance counting."
-        entrance_x, entrance_y = entrance[0], entrance[1]
-        frame_id, tlwhs, tscores, track_ids = result
-        for tlwh, score, track_id in zip(tlwhs, tscores, track_ids):
-            if track_id < 0: continue
-            if data_type == 'kitti':
-                frame_id -= 1
-            x1, y1, w, h = tlwh
-            center_x = x1 + w / 2.
-            center_y = y1 + h / 2.
-            if track_id in prev_center:
-                if region_type == 'horizontal':
-                    # horizontal center line
-                    if prev_center[track_id][1] <= entrance_y and \
-                    center_y > entrance_y:
-                        in_id_list.append(track_id)
-                    if prev_center[track_id][1] >= entrance_y and \
-                    center_y < entrance_y:
-                        out_id_list.append(track_id)
-                else:
-                    # vertical center line
-                    if prev_center[track_id][0] <= entrance_x and \
-                    center_x > entrance_x:
-                        in_id_list.append(track_id)
-                    if prev_center[track_id][0] >= entrance_x and \
-                    center_x < entrance_x:
-                        out_id_list.append(track_id)
-                prev_center[track_id][0] = center_x
-                prev_center[track_id][1] = center_y
-            else:
-                prev_center[track_id] = [center_x, center_y]
-
-    if do_break_in_counting:
-        assert region_type in [
-            'custom'
-        ], "region_type should be 'custom' when do break_in counting."
-        assert len(
-            entrance
-        ) >= 4, "entrance should be at least 3 points and (w,h) of image when do break_in counting."
-        im_w, im_h = entrance[-1][:]
-        entrance = np.array(entrance[:-1])
-
-        frame_id, tlwhs, tscores, track_ids = result
-        for tlwh, score, track_id in zip(tlwhs, tscores, track_ids):
-            if track_id < 0: continue
-            if data_type == 'kitti':
-                frame_id -= 1
-            x1, y1, w, h = tlwh
-            center_x = min(x1 + w / 2., im_w - 1)
-            if ids2names[0] == 'pedestrian':
-                center_y = min(y1 + h, im_h - 1)
-            else:
-                center_y = min(y1 + h / 2, im_h - 1)
-
-            # counting objects in region of the first frame
-            if frame_id == 1:
-                if in_quadrangle([center_x, center_y], entrance, im_h, im_w):
-                    in_id_list.append(-1)
-                else:
-                    prev_center[track_id] = [center_x, center_y]
-            else:
-                if track_id in prev_center:
-                    if not in_quadrangle(prev_center[track_id], entrance, im_h,
-                                         im_w) and in_quadrangle(
-                                             [center_x, center_y], entrance,
-                                             im_h, im_w):
-                        in_id_list.append(track_id)
-                    prev_center[track_id] = [center_x, center_y]
-                else:
-                    prev_center[track_id] = [center_x, center_y]
-
 # Count totol number, number at a manual-setting interval
     frame_id, tlwhs, tscores, track_ids = result
     for tlwh, score, track_id in zip(tlwhs, tscores, track_ids):
@@ -316,11 +238,6 @@ def flow_statistic(result,
         curr_interval_count = len(interval_id_set)
         interval_id_set.clear()
     info = "Frame id: {}, Total count: {}".format(frame_id, len(id_set))
-    if do_entrance_counting:
-        info += ", In count: {}, Out count: {}".format(
-            len(in_id_list), len(out_id_list))
-    if do_break_in_counting:
-        info += ", Break_in count: {}".format(len(in_id_list))
     if frame_id % video_fps == 0 and frame_id / video_fps % secs_interval == 0:
         info += ", Count during {} secs: {}".format(secs_interval,
                                                     curr_interval_count)

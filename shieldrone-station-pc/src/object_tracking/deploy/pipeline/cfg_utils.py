@@ -57,26 +57,20 @@ def argsparser():
         help="Path of video file, `video_file` or `camera_id` has a highest priority."
     )
     parser.add_argument(
-        "--rtsp",
-        type=str,
-        nargs='+',
-        default=None,
-        help="list of rtsp inputs, for one or multiple rtsp input.")
-    parser.add_argument(
         "--camera_id",
         type=int,
         default=-1,
         help="device id of camera to predict.")
     parser.add_argument(
+        "--udp_config",
+        type=str,
+        default=None,
+        help="recive udp ex '0.0.0.0:65432'")
+    parser.add_argument(
         "--output_dir",
         type=str,
         default="output",
         help="Directory of output visualization files.")
-    parser.add_argument(
-        "--pushurl",
-        type=str,
-        default="",
-        help="url of output visualization stream.")
     parser.add_argument(
         "--run_mode",
         type=str,

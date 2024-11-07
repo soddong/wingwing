@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 import cv2
 import numpy as np
 import math
@@ -61,42 +62,56 @@ class Pipeline(object):
     """
 
     def __init__(self, args, cfg):
-        self.illegal_parking_time = -1
-        self.is_video = False
+        self.is_video = True
         self.output_dir = args.output_dir
         self.vis_result = cfg['visual']
-        self.input = self._parse_input(None, None,
-                                       args.video_file, None,
-                                       args.camera_id, args.rtsp)
+        self.input, input_type = self._parse_input(args.video_file, args.camera_id, args.udp_config)
 
-        self.predictor = PipePredictor(args, cfg, self.is_video)
+        self.predictor = PipePredictor(args, cfg, self.input, input_type)
         if self.is_video:
             self.predictor.set_file_name(self.input)
-
-    def _parse_input(self, image_file, image_dir, video_file, video_dir,
-                     camera_id, rtsp):
+            
+    def is_valid_ip_port(self, input_string):
+        # 정규표현식 패턴
+        pattern = r"^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):([0-9]{1,5})$"
+        
+        # 패턴 매칭
+        match = re.match(pattern, input_string)
+        
+        # 포트 범위 확인 (0 ~ 65535)
+        if match:
+            port = int(match.group(4))
+            return 0 <= port <= 65535
+        return False
+    
+    def _parse_input(self, video_file, camera_id, udp):
         # parse input as is_video and multi_camera
-
+        input_type = None
         if video_file is not None:
             assert os.path.exists(
                 video_file
-            ) or 'rtsp' in video_file, "video_file not exists and not an rtsp site."
+            ) , "video_file not exists."
             input = video_file
-            self.is_video = True
+            input_type = "file"
 
         elif camera_id != -1:
             input = camera_id
-            self.is_video = True
+            input_type = "camera"
+
+        elif udp is not None:
+            assert self.is_valid_ip_port(udp.strip())
+            input = udp.strip()
+            input_type = "udp"
 
         else:
             raise ValueError(
-                "Illegal Input, please set one of ['video_file', 'camera_id', 'image_file', 'image_dir']"
+                "Illegal Input, please set one of ['video_file', 'camera_id', 'udp_config']"
             )
 
-        return input
+        return input, input_type
 
     def run_multithreads(self):
-        self.predictor.run(self.input)
+        self.predictor.run()
 
 
 def get_model_dir(cfg):
@@ -139,11 +154,9 @@ class PipePredictor(object):
         args (argparse.Namespace): arguments in pipeline, which contains environment and runtime settings
         cfg (dict): config of models in pipeline
         is_video (bool): whether the input is video, default as False
-        multi_camera (bool): whether to use multi camera in pipeline, 
-            default as False
     """
 
-    def __init__(self, args, cfg, is_video=True, multi_camera=False):
+    def __init__(self, args, cfg, input_source, input_type, is_video=True):
         # general module for pphuman and ppvehicle
         self.with_mot = cfg.get('MOT', False)['enable'] if cfg.get(
             'MOT', False) else False
@@ -151,8 +164,6 @@ class PipePredictor(object):
             print('Multi-Object Tracking enabled')
 
         self.modebase = {
-            "framebased": False,
-            "videobased": False,
             "idbased": False,
             "skeletonbased": False
         }
@@ -163,6 +174,8 @@ class PipePredictor(object):
 
         self.is_video = is_video
         self.cfg = cfg
+        self.input_type = input_type
+        self.input_source = input_source
 
         self.output_dir = args.output_dir
         self.draw_center_traj = args.draw_center_traj
@@ -173,8 +186,6 @@ class PipePredictor(object):
         self.pipe_timer = PipeTimer()
         self.file_name = None
         self.collector = DataCollector()
-
-        self.pushurl = args.pushurl
 
         # auto download inference model
         get_model_dir(self.cfg)
@@ -235,8 +246,8 @@ class PipePredictor(object):
     def get_result(self):
         return self.collector.get_res()
 
-    def run(self, input, thread_idx=0):
-        self.predict_video(input, thread_idx=thread_idx)
+    def run(self, thread_idx=0):
+        self.predict_video(thread_idx=thread_idx)
         self.pipe_timer.info()
         if hasattr(self, 'mot_predictor'):
             self.mot_predictor.det_times.tracking_info(average=True)
@@ -273,8 +284,8 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
-    def capturevideo(self, capture, queue):
-        frame_id = 0
+    def capture_video(self, capture, queue):
+        assert self.input_type == "file"
         while (1):
             if queue.full():
                 time.sleep(0.1)
@@ -287,8 +298,9 @@ class PipePredictor(object):
 
     def receive_frames(self, queue):
         # 소켓 초기화 및 바인딩
+        assert self.input_type == "udp"
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_socket.bind(("0.0.0.0", 65432))
+        server_socket.bind((self.input_source.split(":")[0], self.input_source.split(":")[1]))
         print(f"서버가 대기 중입니다...")
 
         frame_count = 0
@@ -333,7 +345,8 @@ class PipePredictor(object):
             server_socket.close()
 
     def capture_webcam(self, queue):
-        cap = cv2.VideoCapture(0)  # 기본 웹캠
+        assert self.input_type == "camera"
+        cap = cv2.VideoCapture(int(self.input_source))  # 기본 웹캠
         start_time = time.time()
         self.streaming_timer.clear()
         try:
@@ -373,29 +386,19 @@ class PipePredictor(object):
         finally:
             cap.release()
 
-    def predict_video(self, video_file, thread_idx=0, udp=True):
+    def predict_video(self, thread_idx=0, udp=True):
         # mot
         # mot -> attr
-        # mot -> pose -> action
 
         # Get Video info : resolution, fps, frame count
-        width = 640
-        height = 640
+        width = 1280
+        height = 720
         fps = 20
 
-        if len(self.pushurl) > 0:
-            video_out_name = 'output' if self.file_name is None else self.file_name
-            pushurl = os.path.join(self.pushurl, video_out_name)
-            print("the result will push stream to url:{}".format(pushurl))
-            pushstream = PushStream(pushurl)
-            pushstream.initcmd(fps, width, height)
-        elif self.cfg['visual']:
+        if self.cfg['visual']:
             video_out_name = 'output' if (
                 self.file_name is None or
                 type(self.file_name) == int) else self.file_name
-            if type(video_file) == str and "rtsp" in video_file:
-                video_out_name = video_out_name + "_t" + str(thread_idx).zfill(
-                    2) + "_rtsp"
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
             out_path = os.path.join(self.output_dir, video_out_name + ".mp4")
@@ -404,7 +407,7 @@ class PipePredictor(object):
 
         frame_id = 0
 
-        entrance, records, center_traj = None, None, None
+        records, center_traj = None, None
         if self.draw_center_traj:
             center_traj = [{}]
         id_set = set()
@@ -417,7 +420,6 @@ class PipePredictor(object):
         video_fps = fps
      
         framequeue = queue.Queue(10)
-
         thread = threading.Thread(
             target=self.capture_webcam, args=(framequeue,))
         # thread = threading.Thread(
@@ -492,11 +494,7 @@ class PipePredictor(object):
                 statistic = flow_statistic(
                     mot_result,
                     self.secs_interval,
-                    False,
-                    False,
-                    "custom",
                     video_fps,
-                    entrance,
                     id_set,
                     interval_id_set,
                     in_id_list,
@@ -516,21 +514,17 @@ class PipePredictor(object):
                     if self.cfg['visual']:
                         _, _, fps = self.pipe_timer.get_total_time()
                         im = self.visualize_video(
-                            frame_rgb, mot_res, self.collector, frame_id, fps,
-                            entrance, records, center_traj,  latency = frame_time)  # visualize
-                        if len(self.pushurl) > 0:
-                            pushstream.pipe.stdin.write(im.tobytes())
+                            frame_rgb, mot_res, frame_id, fps, records, center_traj,  latency = frame_time)  # visualize
+                        if udp:
+                            cv2.imshow('Paddle-Pipeline', im)
+                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                                break
                         else:
-                            if udp:
+                            writer.write(im)
+                            if self.file_name is None:  # use camera_id
                                 cv2.imshow('Paddle-Pipeline', im)
                                 if cv2.waitKey(1) & 0xFF == ord('q'):
                                     break
-                            else:
-                                writer.write(im)
-                                if self.file_name is None:  # use camera_id
-                                    cv2.imshow('Paddle-Pipeline', im)
-                                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                                        break
                     continue
 
                 self.pipeline_res.update(mot_res, 'mot')
@@ -570,40 +564,32 @@ class PipePredictor(object):
                 _, _, fps = self.pipe_timer.get_total_time()
 
                 im = self.visualize_video(frame_rgb, self.pipeline_res,
-                                          self.collector, frame_id, fps,
-                                          entrance, records, center_traj, latency = frame_time)  # visualize
+                                          frame_id, fps, records, center_traj, latency = frame_time)  # visualize
 
-                if len(self.pushurl) > 0:
-                    pushstream.pipe.stdin.write(im.tobytes())
+                if udp:
+                    cv2.imshow('Paddle-Pipeline', im)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
                 else:
-                    if udp:
+                    writer.write(im)
+                    if self.file_name is None:  # use camera_id
                         cv2.imshow('Paddle-Pipeline', im)
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
-                    else:
-                        writer.write(im)
-                        if self.file_name is None:  # use camera_id
-                            cv2.imshow('Paddle-Pipeline', im)
-                            if cv2.waitKey(1) & 0xFF == ord('q'):
-                                break
         socket.close()
         context.term()
 
-        if self.cfg['visual'] and len(self.pushurl) == 0:
+        if self.cfg['visual']:
             writer.release()
             print('save result to {}'.format(out_path))
 
     def visualize_video(self,
                         image_rgb,
                         result,
-                        collector,
                         frame_id,
                         fps,
-                        entrance=None,
                         records=None,
                         center_traj=None,
-                        do_illegal_parking_recognition=False,
-                        illegal_parking_dict=None,
                         latency=None):
         image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
         mot_res = copy.deepcopy(result.get('mot'))
