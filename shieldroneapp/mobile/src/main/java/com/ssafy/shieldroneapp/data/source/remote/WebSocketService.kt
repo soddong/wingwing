@@ -106,7 +106,10 @@ class WebSocketService @Inject constructor(
                 webSocketMessageSender.sendWatchSensorData(data)
             } catch (e: Exception) {
                 errorHandler.handleMessageError(e)
-                handleReconnect()
+                // 연결이 끊어진 경우가 아니면 재연결 시도하지 않음
+                if (!isConnected) {
+                    handleReconnect()
+                }
             }
         } else {
             errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")

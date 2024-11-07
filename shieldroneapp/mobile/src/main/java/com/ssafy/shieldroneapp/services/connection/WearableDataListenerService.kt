@@ -31,6 +31,8 @@ class WearableDataListenerService : BaseMobileService() {
         super.onCreate()
         Log.d(TAG, "WearableDataListenerService 생성됨")
         dataClient = Wearable.getDataClient(this)
+        // 서비스 시작 시 로컬 데이터 전송 시작
+        heartRateDataRepository.startSendingLocalHeartRateData()
 
         // 현재 저장된 데이터 확인
         checkExistingData()
@@ -132,6 +134,7 @@ class WearableDataListenerService : BaseMobileService() {
                         timestamp = timestamp
                     )
                 )
+                heartRateDataRepository.startSendingLocalHeartRateData()
             }
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리중 에러 발생", e)
