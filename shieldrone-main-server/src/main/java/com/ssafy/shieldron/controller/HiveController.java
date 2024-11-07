@@ -5,6 +5,7 @@ import com.ssafy.shieldron.dto.request.KeywordRequest;
 import com.ssafy.shieldron.dto.response.HiveResponse;
 import com.ssafy.shieldron.dto.response.HiveSearchResponse;
 import com.ssafy.shieldron.service.HiveService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,15 +23,14 @@ public class HiveController {
 
     private final HiveService hiveService;
 
-    // TODO 유효성 검증
     @GetMapping
-    public ResponseEntity<?> getHivesInfoByGPS(@RequestBody GetHivesInfoRequest getHivesInfoRequest) {
+    public ResponseEntity<?> getHivesInfoByGPS(@Valid @RequestBody GetHivesInfoRequest getHivesInfoRequest) {
         List<HiveResponse> hivesInfo = hiveService.getHivesInfo(getHivesInfoRequest);
         return ResponseEntity.ok().body(hivesInfo);
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> getHivesInfoByKeyword(@RequestBody KeywordRequest keywordRequest) {
+    public ResponseEntity<?> getHivesInfoByKeyword(@Valid @RequestBody KeywordRequest keywordRequest) {
         List<HiveSearchResponse> hivesInfo = hiveService.getHivesInfoByKeyword(keywordRequest);
         return ResponseEntity.ok().body(hivesInfo);
     }
