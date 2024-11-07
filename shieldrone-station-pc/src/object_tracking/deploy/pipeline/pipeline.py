@@ -24,7 +24,6 @@ import threading
 import queue
 import time
 from collections import defaultdict
-from datacollector import DataCollector, Result
 import socket
 import zmq
 
@@ -32,10 +31,10 @@ import zmq
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
 sys.path.insert(0, parent_path)
 
+from datacollector import DataCollector, Result
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer, StreamingTimer
+from pipe_utils import PipeTimer, StreamingTimer, HandAboveHeadTracker
 from pipe_utils import crop_image_with_mot, parse_mot_res
-from pipe_utils import PushStream
 
 # from python.infer import Detector
 from python.keypoint_infer import KeyPointDetector
@@ -46,8 +45,6 @@ from python.visualize import visualize_box_mask, visualize_pose
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
 from pptracking.python.mot.utils import flow_statistic
-
-from pphuman.action_utils import HandAboveHeadTracker
 
 from download import auto_download_model
 
@@ -516,6 +513,7 @@ class PipePredictor(object):
 
             self.pipeline_res.update(mot_res, 'mot')
 
+            # update target
             if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
                 self.target_id=None
             if self.target_id is None:
@@ -541,6 +539,32 @@ class PipePredictor(object):
                         self.pipeline_res.update(kpt_res, 'kpt')
                     else:
                         self.pipeline_res.clear('kpt')
+            # else:
+            #     # 목표 사람 추적 및 제어
+            #     target_found = False
+            #     for box in mot_res['boxes']:
+            #         obj_id, obj_class, score, xmin, ymin, xmax, ymax = box
+            #         if obj_id == self.target_id:
+            #             target_found = True
+            #             # 바운딩 박스 중심 계산
+            #             target_x = (xmin + xmax) / 2
+            #             target_y = (ymin + ymax) / 2
+            #             box_width = xmax - xmin
+            #             box_height = ymax - ymin
+
+            #             # 오프셋 계산
+            #             frame_center_x = frame_rgb.shape[1] / 2
+            #             frame_center_y = frame_rgb.shape[0] / 2
+            #             offset_x = target_x - frame_center_x
+            #             offset_y = target_y - frame_center_y
+
+            #             # 카메라 및 드론 제어 함수 호출
+            #             self.adjust_camera_and_drone(frame_rgb, offset_x, offset_y, box_width, box_height)
+            #             break
+
+            #     if not target_found:
+            #         # 목표 사람을 찾지 못한 경우 처리 (필요에 따라 작성)
+            #         pass
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1

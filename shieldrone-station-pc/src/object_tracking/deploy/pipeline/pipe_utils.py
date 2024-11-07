@@ -14,14 +14,11 @@
 
 import time
 import os
-import ast
 import glob
-import yaml
-import copy
 import numpy as np
 import subprocess as sp
 
-from python.keypoint_preprocess import EvalAffine, TopDownEvalAffine, expand_crop
+from python.keypoint_preprocess import expand_crop
 
 
 class Times(object):
@@ -276,3 +273,47 @@ def parse_mot_keypoint(input, coord_size):
     parsed_skeleton_with_mot["mot_id"] = ids
     parsed_skeleton_with_mot["skeleton"] = skeleton
     return parsed_skeleton_with_mot
+
+class HandAboveHeadTracker(object):
+    def __init__(self, min_hold_time=5):
+        self.holding_ids=dict()
+        self.min_hold_time = min_hold_time
+
+    def update(self, kpt_pred, mot_res):
+        # 신뢰도 임계값 설정
+        confidence_threshold = 0.5
+        mot_bboxes = mot_res.get('boxes')
+
+        # 키포인트 좌표 및 신뢰도 점수
+        keypoints = kpt_pred['keypoint']  # (num_persons, num_keypoints, 2)
+        scores = kpt_pred['score']  # (num_persons, num_keypoints)
+        
+        # COCO 포맷 기준으로 인덱스 설정
+        head_y = keypoints[:, 0, 1]  # 코(nose)의 y 좌표
+        left_wrist_y = keypoints[:, 9, 1]  # 왼쪽 손목 y 좌표
+        right_wrist_y = keypoints[:, 10, 1]  # 오른쪽 손목 y 좌표
+
+        # 신뢰도 기준을 충족하는 경우에만 손이 머리 위에 있는지 확인
+        is_left_hand_above_head = (left_wrist_y < head_y) 
+        is_right_hand_above_head = (right_wrist_y < head_y)
+
+        # 결과: 왼쪽 또는 오른쪽 손이 머리 위에 있는지 여부
+        is_hands_above_head = is_left_hand_above_head | is_right_hand_above_head
+        cur_holding_trackers={key:False for key in self.holding_ids.keys()}
+        for idx in range(len(is_hands_above_head)):
+            if not is_hands_above_head[idx]:
+                continue
+            tracker_id = mot_bboxes[idx, 0]
+            cur_holding_trackers[tracker_id]=True
+            if tracker_id not in self.holding_ids:
+                self.holding_ids[tracker_id]=time.time()
+                print(f"{str(self.holding_ids)} is holding hand above head")
+            else:
+                if time.time() - self.holding_ids[tracker_id] >= self.min_hold_time:
+                    self.holding_ids = dict()
+                    print(f"{tracker_id} target Lock-in")
+                    return int(tracker_id)
+        for tracker, is_holding in cur_holding_trackers.items():
+            if not is_holding:
+                del self.holding_ids[tracker]
+        return None
