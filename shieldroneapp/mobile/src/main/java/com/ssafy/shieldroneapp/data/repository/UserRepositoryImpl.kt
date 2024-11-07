@@ -5,8 +5,8 @@ import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.Guardian
 import com.ssafy.shieldroneapp.data.model.User
 import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.response.AuthenticationErrorResponse
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
-import com.ssafy.shieldroneapp.data.model.response.VerificationErrorResponse
 import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
@@ -78,7 +78,7 @@ class UserRepositoryImpl @Inject constructor(
             } else {
                 // 실패한 경우, errorBody를 VerificationErrorResponse로 변환(Gson 이용)하여 실패 처리
                 val errorResponse = response.errorBody()?.string()?.let {
-                    gson.fromJson(it, VerificationErrorResponse::class.java)
+                    gson.fromJson(it, AuthenticationErrorResponse::class.java)
                 }
                 Result.failure(Exception(errorResponse?.message ?: "인증 실패"))
             }

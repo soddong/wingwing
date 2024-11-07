@@ -13,6 +13,8 @@ package com.ssafy.shieldroneapp.data.source.remote
  * - 401 응답 시 토큰 갱신 및 요청 재시도
  */
 
+import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.response.AuthenticationErrorResponse
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -22,7 +24,8 @@ import javax.inject.Inject
 
 class ApiInterceptor @Inject constructor(
     private val userLocalDataSource: UserLocalDataSourceImpl, // 토큰을 가져오기 위해
-    private val apiService: ApiService
+    private val tokenRefresher: TokenRefresher,
+    private val gson: Gson
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -51,6 +54,21 @@ class ApiInterceptor @Inject constructor(
         val modifiedRequest = requestBuilder.build()
         val response = chain.proceed(modifiedRequest)
 
+        // 400 응답 처리
+        if (response.code == 400) {
+            // response.peekBody를 사용하여 okhttp3.Response에서 응답 본문을 읽기
+            val errorResponse = response.peekBody(Long.MAX_VALUE).string().let { responseBody ->
+                gson.fromJson(responseBody, AuthenticationErrorResponse::class.java)
+            }
+
+            when (errorResponse?.code) {
+                "001" -> throw IOException("인증 코드가 만료되었습니다.")
+                "002" -> throw IOException("유효하지 않은 인증 코드입니다.")
+                "004" -> throw IOException("번호 인증이 완료되지 않았습니다.")
+                "005" -> throw IOException("이미 가입된 회원입니다.")
+            }
+        }
+
         // 인증 실패(401 응답) 처리: 토큰 갱신 및 요청 재시도
         if (response.code == 401) {
             val refreshToken = userLocalDataSource.getTokensSync()?.refreshToken
@@ -61,19 +79,18 @@ class ApiInterceptor @Inject constructor(
                 throw IOException("로그인이 만료되었습니다. 다시 로그인해 주세요.")
             }
 
+            // 리프레시 토큰 있으면, 새로운 액세스 토큰 요청
             try {
-                // 리프레시 토큰으로 새로운 액세스 토큰 요청
-
                 // **OkHttp 인터셉터의 동기적 특성**으로 suspend 함수인 refreshToken을 호출할 수 없어
                 // runBlocking을 임시로 사용
                 // [주의] runBlocking 사용 시 네트워크 지연이 발생하면 애플리케이션 성능에 영향을 줄 수 있음
                 // => TODO: 추후 개선 필요
                 val newTokens = runBlocking {
-                    apiService.refreshToken(refreshToken)
+                    tokenRefresher.refreshToken(refreshToken)
                 }
                 userLocalDataSource.saveTokensSync(newTokens) // **동기적으로(OKHttp 특성 때문)** 저장
 
-                // 새로운 토큰을 사용하여 원래 요청 재시도
+                // 새로운 액세스 토큰을 사용하여 원래 요청 재시도
                 val newRequest = requestBuilder
                     .removeHeader("Authorization")
                     .addHeader("Authorization", "Bearer ${newTokens.accessToken}")
@@ -82,7 +99,6 @@ class ApiInterceptor @Inject constructor(
             } catch (e: Exception) {
                 throw IOException("토큰 갱신 실패: ${e.message}")
             }
-
         }
 
         // 응답이 성공적이지 않은 경우, 적절한 에러 메시지를 반환
