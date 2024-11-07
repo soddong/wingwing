@@ -7,6 +7,7 @@ import com.ssafy.shieldron.dto.response.DroneAssignmentResponse;
 import com.ssafy.shieldron.dto.response.DroneMatchResponse;
 import com.ssafy.shieldron.global.CurrentUser;
 import com.ssafy.shieldron.service.DroneService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,23 +22,22 @@ public class DroneController {
 
     private final DroneService droneService;
 
-    // TODO 유효성 검증
     @PostMapping("/routes")
-    public ResponseEntity<?> droneAssignment(@RequestBody DroneAssignmentRequest droneAssignmentRequest,
+    public ResponseEntity<?> droneAssignment(@Valid @RequestBody DroneAssignmentRequest droneAssignmentRequest,
                                              @CurrentUser String phoneNumber) {
         DroneAssignmentResponse droneAssignmentResponse = droneService.droneAssignment(droneAssignmentRequest, phoneNumber);
         return ResponseEntity.ok().body(droneAssignmentResponse);
     }
 
     @PostMapping("/cancel")
-    public ResponseEntity<?> droneCancel(@RequestBody DroneCancelRequest droneCancelRequest,
+    public ResponseEntity<?> droneCancel(@Valid @RequestBody DroneCancelRequest droneCancelRequest,
                                          @CurrentUser String phoneNumber) {
         droneService.droneCancel(droneCancelRequest, phoneNumber);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/match")
-    public ResponseEntity<?> droneMatch(@RequestBody DroneMatchRequest droneMatchRequest,
+    public ResponseEntity<?> droneMatch(@Valid @RequestBody DroneMatchRequest droneMatchRequest,
                                         @CurrentUser String phoneNumber) {
         DroneMatchResponse droneMatchResponse = droneService.droneMatch(droneMatchRequest, phoneNumber);
         return ResponseEntity.ok().body(droneMatchResponse);
