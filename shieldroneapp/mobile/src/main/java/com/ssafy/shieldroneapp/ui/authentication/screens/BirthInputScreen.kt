@@ -36,7 +36,7 @@ import com.ssafy.shieldroneapp.utils.ValidationUtils
  */
 @Composable
 fun BirthInputScreen(
-    initialBirth: String = "", // viewModel에서 전달받을 초기 값
+    initialBirth: String = "",
     onBirthSubmit: (String) -> Unit,
     onBackClick: () -> Unit
 ) {
