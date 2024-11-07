@@ -1,0 +1,6 @@
+org.opencv.test.opencv-androidTest-0 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\generated\res\resValues\androidTest\debug
+org.opencv.test.opencv-androidTest-1 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\generated\res\rs\androidTest\debug
+org.opencv.test.opencv-mergeDebugAndroidTestResources-2 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+org.opencv.test.opencv-mergeDebugAndroidTestResources-3 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+org.opencv.test.opencv-merged_res-4 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\intermediates\merged_res\debugAndroidTest
+org.opencv.test.opencv-packaged_res-5 C:\Users\SSAFY\project\S11P31A307\shieldrone-station-app\opencv\build\intermediates\packaged_res\debug

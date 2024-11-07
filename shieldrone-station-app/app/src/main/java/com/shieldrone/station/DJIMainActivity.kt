@@ -48,8 +48,33 @@ class DJIMainActivity : AppCompatActivity() {
     private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
 
+    companion object {
+        private const val PERMISSIONS_REQUEST_CODE = 1001
+        private val REQUIRED_PERMISSIONS = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.INTERNET,
+            Manifest.permission.FOREGROUND_SERVICE,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    }
+
     // ViewModel 인스턴스 생성
     private val msdkManagerVM: MSDKManagerVM by viewModels()
+    private var allPermissionsGranted by mutableStateOf(false)
+
+    // 다중 권한 요청을 위한 런처
+    private val permissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        allPermissionsGranted = permissions.all { it.value }
+        if (allPermissionsGranted) {
+            // 모든 권한이 허용되었을 때 필요한 초기화
+            initializeWithPermissions()
+        } else {
+            // 권한이 거부되었을 때 처리
+            showPermissionContextPopup()
+        }
+    }
 
     // 카메라 권한 요청 런처
     private val cameraPermissionLauncher =
@@ -62,30 +87,27 @@ class DJIMainActivity : AppCompatActivity() {
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
     private var isOpenCVInitialized = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (!isOpenCVInitialized) {
-            OpenCVLoader.initDebug()
-            isOpenCVInitialized = true
-        }
+        checkAndRequestPermissions()
         if (!isTaskRoot && intent.hasCategory(Intent.CATEGORY_LAUNCHER) && Intent.ACTION_MAIN == intent.action) {
 
             finish()
             return
 
         }
-        setContent {
-            com.shieldrone.station.ui.theme.ShieldronStationTheme {
-                CameraPermissionScreen(
-                    onRequestPermission = { requestCameraPermission() },
-                    onModeSelected = { isCamera -> onModeSelected(isCamera) },
-                    cameraPermissionGranted = cameraPermissionGranted,
-                    isCameraMode = isCameraMode,
-                    isStreaming = isStreaming
-                )
-            }
-        }
+//        setContent {
+//            com.shieldrone.station.ui.theme.ShieldronStationTheme {
+//                CameraPermissionScreen(
+//                    onRequestPermission = { requestCameraPermission() },
+//                    onModeSelected = { isCamera -> onModeSelected(isCamera) },
+//                    cameraPermissionGranted = cameraPermissionGranted,
+//                    isCameraMode = isCameraMode,
+//                    isStreaming = isStreaming
+//                )
+//            }
+//        }
     }
 
     override fun onRequestPermissionsResult(
@@ -104,6 +126,41 @@ class DJIMainActivity : AppCompatActivity() {
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
+    }
+
+    private fun checkAndRequestPermissions() {
+        val permissionsToRequest = REQUIRED_PERMISSIONS.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+
+        if (permissionsToRequest.isEmpty()) {
+            allPermissionsGranted = true
+            initializeWithPermissions()
+        } else {
+            permissionsLauncher.launch(permissionsToRequest)
+        }
+    }
+
+    private fun initializeWithPermissions() {
+        if (!isOpenCVInitialized) {
+            OpenCVLoader.initDebug()
+            isOpenCVInitialized = true
+        }
+        setContent {
+            com.shieldrone.station.ui.theme.ShieldronStationTheme {
+                if (!allPermissionsGranted) {
+                    PermissionsRequiredScreen()
+                } else {
+                    CameraPermissionScreen(
+                        onRequestPermission = { requestCameraPermission() },
+                        onModeSelected = { isCamera -> onModeSelected(isCamera) },
+                        cameraPermissionGranted = cameraPermissionGranted,
+                        isCameraMode = isCameraMode,
+                        isStreaming = isStreaming
+                    )
+                }
+            }
+        }
     }
 
     // 모드 선택 시 호출
@@ -127,6 +184,40 @@ class DJIMainActivity : AppCompatActivity() {
             startStreaming()
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+    private fun showPermissionContextPopup() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("권한이 필요합니다")
+            .setMessage(
+                "앱을 사용하기 위해서는 다음 권한이 필요합니다:\n" +
+                        "- 카메라: 영상 촬영\n" +
+                        "- 위치: 드론 위치 추적\n" +
+                        "- 인터넷: 데이터 통신\n" +
+                        "- 포그라운드 서비스: 백그라운드 작업"
+            )
+            .setPositiveButton("다시 요청") { _, _ ->
+                checkAndRequestPermissions()
+            }
+            .setNegativeButton("종료") { _, _ ->
+                finish()
+            }
+            .create()
+            .show()
+    }
+
+    @Composable
+    private fun PermissionsRequiredScreen() {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("필요한 권한이 없습니다")
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { checkAndRequestPermissions() }) {
+                Text("권한 요청")
+            }
         }
     }
 

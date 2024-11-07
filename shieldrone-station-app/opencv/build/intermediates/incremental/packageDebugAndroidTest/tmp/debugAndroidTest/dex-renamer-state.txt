@@ -1,0 +1,13 @@
+#Thu Nov 07 11:22:50 KST 2024
+base.0=C\:\\Users\\SSAFY\\project\\S11P31A307\\shieldrone-station-app\\opencv\\build\\intermediates\\dex\\debugAndroidTest\\mergeExtDexDebugAndroidTest\\classes.dex
+base.1=C\:\\Users\\SSAFY\\project\\S11P31A307\\shieldrone-station-app\\opencv\\build\\intermediates\\dex\\debugAndroidTest\\mergeLibDexDebugAndroidTest\\0\\classes.dex
+base.2=C\:\\Users\\SSAFY\\project\\S11P31A307\\shieldrone-station-app\\opencv\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\0\\classes.dex
+base.3=C\:\\Users\\SSAFY\\project\\S11P31A307\\shieldrone-station-app\\opencv\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\2\\classes.dex
+path.0=classes.dex
+path.1=0/classes.dex
+path.2=0/classes.dex
+path.3=2/classes.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex
+renamed.2=classes3.dex
+renamed.3=classes4.dex

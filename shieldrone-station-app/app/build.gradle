@@ -32,13 +32,13 @@ android {
 
 //    Java 버전 17로 컴파일
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
 //    코틀린도 버전 17에 맞추기
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
 
     buildFeatures {
@@ -49,17 +49,15 @@ android {
         kotlinCompilerExtensionVersion '1.5.1'
     }
 
-    packaging {
-        resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
-        }
-    }
 //    openCV 네이티브 라이브러리 사용 시 컴파일 오류 해결을 위한 코드
     packagingOptions {
         pickFirst 'lib/x86/libc++_shared.so'
         pickFirst 'lib/x86_64/libc++_shared.so'
         pickFirst 'lib/armeabi-v7a/libc++_shared.so'
         pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
     }
 
 
@@ -84,9 +82,9 @@ dependencies {
     implementation 'androidx.camera:camera-lifecycle:1.1.0'
     implementation 'androidx.camera:camera-view:1.1.0'
     implementation 'androidx.camera:camera-extensions:1.1.0'
-    implementation project(':opencv')
     implementation 'androidx.appcompat:appcompat-resources:1.4.0'
     implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation project(':opencv')
     // Testing dependencies
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
