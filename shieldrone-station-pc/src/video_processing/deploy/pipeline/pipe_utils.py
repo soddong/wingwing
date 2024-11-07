@@ -17,6 +17,10 @@ import os
 import glob
 import numpy as np
 import subprocess as sp
+import cv2
+import threading
+import time
+import socket
 
 from python.keypoint_preprocess import expand_crop
 
@@ -61,6 +65,7 @@ class StreamingTimer(object):
         self.video_time = time.time()
         self.frame_count = 0
         self.skip_frame_num = 0
+
 class PipeTimer(Times):
     def __init__(self):
         super(PipeTimer, self).__init__()
@@ -317,3 +322,139 @@ class HandAboveHeadTracker(object):
             if not is_holding:
                 del self.holding_ids[tracker]
         return None
+
+class VideoHandler:
+    def __init__(self, input_type, input_source):
+        self.input_type = input_type
+        self.input_source = input_source
+        self.streaming_timer = self.StreamingTimer()
+        self.start_time = time.time()  # FPS 측정 시작 시간
+        self.fps_measured = False  # 첫 번째 FPS 측정 여부
+        self.height = None
+        self.width = None
+        self.fps = None
+
+    class StreamingTimer:
+        def __init__(self):
+            self.clear()
+
+        def clear(self):
+            self.frame_count = 0
+            self.skip_frame_num = 0
+
+        def increment_frame(self):
+            self.frame_count += 1
+
+        def increment_skip(self):
+            self.skip_frame_num += 1
+
+        def reset(self):
+            self.clear()
+
+    def update_fps(self):
+        current_time = time.time()
+        elapsed_time = current_time - self.start_time
+        if elapsed_time >= 5.0:
+            self.fps = self.streaming_timer.frame_count / elapsed_time
+            skipped_frames = self.streaming_timer.skip_frame_num
+            print("5초 요약:")
+            print(f" - 건너뛴 프레임 수: {skipped_frames}")
+            print(f" - 초당 프레임 수 (FPS): {self.fps:.2f}")
+            self.streaming_timer.reset()
+            self.start_time = current_time
+            self.fps_measured = True  # 첫 번째 FPS 측정 완료
+
+    def capture_video(self, queue, is_prepareing = False):
+        assert self.input_type == "file"
+        capture = cv2.VideoCapture(self.input_source)
+        ret, frame = capture.read()
+        if ret:
+            self.height, self.width = frame.shape[:2]
+
+        while is_prepareing ^ self.fps_measured:
+            if queue.full():
+                time.sleep(0.1)
+            else:
+                ret, frame = capture.read()
+                if not ret:
+                    return
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                if self.fps_measured:
+                    queue.put({"frame": frame_rgb, "inputTime": time.time()})
+                self.streaming_timer.increment_frame()
+            self.update_fps()
+
+    def receive_frames(self, queue, is_prepareing = False):
+        assert self.input_type == "udp"
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_socket.bind((self.input_source.split(":")[0], int(self.input_source.split(":")[1])))
+        print("서버가 대기 중입니다...")
+
+        try:
+            while is_prepareing ^ self.fps_measured:
+                packet, addr = server_socket.recvfrom(65507)
+                frame = np.frombuffer(packet, dtype=np.uint8)
+                img = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                if img is not None:
+                    frame_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    self.height, self.width = frame_rgb.shape[:2]
+                    if self.fps_measured and not queue.full():
+                        queue.put({"frame": frame_rgb, "inputTime": time.time()})
+                    self.streaming_timer.increment_frame()
+                else:
+                    print("수신한 이미지를 디코딩하는데 실패했습니다.")
+                self.update_fps()
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            server_socket.close()
+
+    def capture_webcam(self, queue, is_prepareing = False):
+        assert self.input_type == "camera"
+        cap = cv2.VideoCapture(int(self.input_source))
+        self.width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        try:
+            while is_prepareing ^ self.fps_measured:
+                ret, frame = cap.read()
+                if not ret:
+                    print("웹캠에서 프레임을 읽지 못했습니다.")
+                    break
+
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                if frame_rgb is not None:
+                    if self.fps_measured and not queue.full():
+                        queue.put({"frame": frame_rgb, "inputTime": time.time()})
+                    self.streaming_timer.increment_frame()
+                self.update_fps()
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            cap.release()
+
+    def start_video(self, framequeue):
+        self.start_time = time.time()  # FPS 측정 시작 시간
+        if self.input_type == "file":
+            thread = threading.Thread(
+                target=self.capture_video, args=(framequeue,))
+        elif self.input_type == "camera":
+            thread = threading.Thread(
+                target=self.capture_webcam, args=(framequeue,))
+        elif self.input_type == "udp":
+            thread = threading.Thread(
+                target=self.receive_frames, args=(framequeue,))
+        thread.start()
+        time.sleep(1)
+
+    def prepare_video(self, framequeue):
+        print("FPS 측정중")
+        self.start_time = time.time()  # FPS 측정 시작 시간
+        if self.input_type == "file":
+            self.capture_video(framequeue, is_prepareing = True)
+        elif self.input_type == "camera":
+            self.capture_webcam(framequeue, is_prepareing = True)
+        elif self.input_type == "udp":
+            self.receive_frames(framequeue, is_prepareing = True)
+        

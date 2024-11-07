@@ -33,14 +33,15 @@ sys.path.insert(0, parent_path)
 
 from datacollector import DataCollector, Result
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer, StreamingTimer, HandAboveHeadTracker
+from pipe_utils import PipeTimer, StreamingTimer, HandAboveHeadTracker, VideoHandler
 from pipe_utils import crop_image_with_mot, parse_mot_res
+from spatial_info_utils import SpatialInfoTracker
 
-# from python.infer import Detector
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image
 from python.visualize import visualize_box_mask, visualize_pose
+from python.drone_control import DroneController
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -227,7 +228,8 @@ class PipePredictor(object):
             secs_interval=self.secs_interval,)
         self.handAboveHeadTracker = HandAboveHeadTracker()
         self.target_id = None
-        self.streaming_timer = StreamingTimer()
+        self.drone_controller = DroneController()
+        self.video_handler = VideoHandler(self.input_type,self.input_source)
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -281,107 +283,6 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
-    def capture_video(self, capture, queue):
-        assert self.input_type == "file"
-        while (1):
-            if queue.full():
-                time.sleep(0.1)
-            else:
-                ret, frame = capture.read()
-                if not ret:
-                    return
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                queue.put({"frame":frame_rgb,"inputTime":time.time()})
-
-    def receive_frames(self, queue):
-        # 소켓 초기화 및 바인딩
-        assert self.input_type == "udp"
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_socket.bind((self.input_source.split(":")[0], self.input_source.split(":")[1]))
-        print(f"서버가 대기 중입니다...")
-
-        frame_count = 0
-        skip_frame_num = 0
-        start_time = time.time()
-
-        try:
-            while True:
-                # 프레임 수신
-                packet, addr = server_socket.recvfrom(65507)
-                frame = np.frombuffer(packet, dtype=np.uint8)
-                img = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-                frame_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-                if frame_rgb is not None:
-                    if not queue.full():
-                        queue.put({"frame":frame_rgb,"inputTime":time.time()})
-                        frame_count += 1  # 프레임 수 카운트 증가
-                    else:
-                        skip_frame_num += 1
-                else:
-                    print("수신한 이미지를 디코딩하는데 실패했습니다.")
-
-                # 5초마다 FPS 출력
-                current_time = time.time()
-                elapsed_time = current_time - start_time
-                if elapsed_time >= 5.0:
-                    fps = frame_count / elapsed_time  # FPS 계산
-                    print("5초 요약:")
-                    print(f" - 수신한 프레임 수: {frame_count}")
-                    print(f" - 건너뛴 프레임 수: {skip_frame_num}")
-                    print(f" - 초당 프레임 수 (FPS): {fps:.2f}")
-                    
-                    # 카운터와 타이머 초기화
-                    frame_count = 0
-                    skip_frame_num = 0
-                    start_time = current_time
-                
-        except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            server_socket.close()
-
-    def capture_webcam(self, queue):
-        assert self.input_type == "camera"
-        cap = cv2.VideoCapture(int(self.input_source))  # 기본 웹캠
-        start_time = time.time()
-        self.streaming_timer.clear()
-        try:
-            while True:
-                # 프레임 수신
-                ret, frame = cap.read()
-
-                if not ret:
-                    print("웹캠에서 프레임을 읽지 못했습니다.")
-                    break
-
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-                if frame_rgb is not None:
-                    if not queue.full():
-                        queue.put({"frame":frame_rgb,"inputTime":time.time()})
-                        self.streaming_timer.frame_count += 1  # 프레임 수 카운트 증가
-                    else:
-                        self.streaming_timer.skip_frame_num += 1
-                else:
-                    print("수신한 이미지를 디코딩하는데 실패했습니다.")
-
-                # 5초마다 FPS 출력
-                current_time = time.time()
-                elapsed_time = current_time - start_time
-                if elapsed_time >= 5.0:
-                    fps,skiped_frame = self.streaming_timer.info()
-
-                    print("5초 요약:")
-                    print(f" - 건너뛴 프레임 수: {skiped_frame}")
-                    print(f" - 초당 프레임 수 (FPS): {fps:.2f}")
-
-                    start_time = current_time
-                
-        except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            cap.release()
 
     def predict_video(self, thread_idx=0):
         width = 1280
@@ -413,11 +314,9 @@ class PipePredictor(object):
         video_fps = fps
      
         framequeue = queue.Queue(10)
-        thread = threading.Thread(
-            target=self.capture_webcam, args=(framequeue,))
-            
-        thread.start()
-        time.sleep(1)
+        self.video_handler.prepare_video(framequeue)
+        self.drone_controller.init(self.video_handler.width, self.video_handler.height, self.video_handler.fps)
+        self.video_handler.start_video(framequeue)
 
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
@@ -539,32 +438,9 @@ class PipePredictor(object):
                         self.pipeline_res.update(kpt_res, 'kpt')
                     else:
                         self.pipeline_res.clear('kpt')
-            # else:
-            #     # 목표 사람 추적 및 제어
-            #     target_found = False
-            #     for box in mot_res['boxes']:
-            #         obj_id, obj_class, score, xmin, ymin, xmax, ymax = box
-            #         if obj_id == self.target_id:
-            #             target_found = True
-            #             # 바운딩 박스 중심 계산
-            #             target_x = (xmin + xmax) / 2
-            #             target_y = (ymin + ymax) / 2
-            #             box_width = xmax - xmin
-            #             box_height = ymax - ymin
-
-            #             # 오프셋 계산
-            #             frame_center_x = frame_rgb.shape[1] / 2
-            #             frame_center_y = frame_rgb.shape[0] / 2
-            #             offset_x = target_x - frame_center_x
-            #             offset_y = target_y - frame_center_y
-
-            #             # 카메라 및 드론 제어 함수 호출
-            #             self.adjust_camera_and_drone(frame_rgb, offset_x, offset_y, box_width, box_height)
-            #             break
-
-            #     if not target_found:
-            #         # 목표 사람을 찾지 못한 경우 처리 (필요에 따라 작성)
-            #         pass
+            if self.target_id is not None:
+                target_mot_res = mot_res[int(mot_res[:, 0]) == self.target_id]
+                other_mot_res = mot_res[int(mot_res[:, 0]) != self.target_id]
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
