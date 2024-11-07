@@ -57,4 +57,19 @@
         android:text="Altitude"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="40dp"/>
+
+    <Button
+        android:id="@+id/btnTakeoffStart"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TakeoffStart"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="50dp"/>
+    <Button
+        android:id="@+id/btnTakeoffStop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TakeoffStop"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="50dp"/>
 </LinearLayout>

@@ -10,16 +10,14 @@ import androidx.appcompat.app.AppCompatActivity
 import com.shieldrone.station.R
 import com.shieldrone.station.databinding.FragmentFlightControlBinding
 import com.shieldrone.station.model.FlightControlVM
-import dji.sdk.keyvalue.key.CameraKey.KeyCameraMode
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
-import dji.sdk.keyvalue.value.camera.CameraMode
+import dji.sdk.keyvalue.value.common.EmptyMsg
 import dji.sdk.keyvalue.value.common.LocationCoordinate3D
 import dji.sdk.keyvalue.value.flightcontroller.FlightControlAuthorityChangeReason
 import dji.sdk.keyvalue.value.flightcontroller.VirtualStickFlightControlParam
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
-import dji.v5.et.create
 import dji.v5.et.get
 import dji.v5.et.listen
 import dji.v5.manager.KeyManager
@@ -40,8 +38,6 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
         const val ALTITUDE_INCREMENT = 0.02   // 매 200ms마다 고도가 0.02m 증가
         const val UPDATE_INTERVAL_MS = 200    // 200ms 간격으로 업데이트 (5Hz)
         const val VERTICAL_THROTTLE = 0.1     // 초당 0.1m 상승 속도
-        const val OPERATION_SIMULATOR = "simulator"
-        const val VALUE_ALTITUDE = "altitude"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +48,10 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
 
         setContentView(binding.root)
         setVirtualStickStateListener()
-
+        if (KeyManager.getInstance() == null) {
+            Log.e("DJI", "KeyManager is not initialized")
+            return
+        }
 
         // Z축 상승 버튼 클릭 리스너
         findViewById<Button>(R.id.btnZAxisUp).setOnClickListener {
@@ -71,77 +70,208 @@ class FlightControlActivity : AppCompatActivity(R.layout.fragment_flight_control
             disableVirtualStickMode()
         }
         findViewById<Button>(R.id.checkAltitude).setOnClickListener {
-            checkAltitude()
+//            checkAltitude()
+        }
+        findViewById<Button>(R.id.btnTakeoffStart).setOnClickListener {
+            checkAndStartTakeoff()
         }
 
+        findViewById<Button>(R.id.btnTakeoffStop).setOnClickListener {
+            checkAndStopTakeoff()
+        }
         startSendingControlData()
     }
 
-    private fun observeDroneAltitude() {
+//    private fun observeDroneAltitude() {
+//        val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
+//
+//
+//        // listen() 메서드를 사용하여 고도 데이터 지속적으로 수신
+//        keyAircraftLocation3D.listen(
+//            holder = this,      // 현재 Activity 또는 Fragment를 holder로 전달
+//            getOnce = false     // 지속적으로 데이터를 수신하기 위해 false 설정
+//        ) { location: LocationCoordinate3D? ->
+//            location?.let {
+//                val altitude = it.altitude
+//                val latitude = it.latitude
+//                val longitude = it.longitude
+//                Log.d("DJI", "현재 고도: $altitude 미터")
+//                Log.d("DJI", "현재 위도: $latitude")
+//                Log.d("DJI", "현재 경도: $longitude")
+//
+//                flightControlVM.updateAltitude(altitude)  // ViewModel의 LiveData 업데이트
+//            } ?: run {
+//                Log.d("DJI", "위치 정보를 가져올 수 없습니다.")
+//            }
+//        }
+//    }
+
+//    private fun checkAltitude() {
+//        // 드론 고도 관찰
+//        val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
+//
+//        if (keyAircraftLocation3D.canGet()) {
+//            Log.d("DJI", "3D NOT NULL")
+//        }
+//        val keyConnection = KeyTools.createKey(FlightControllerKey.KeyConnection)
+//        val keyIsFlying = KeyTools.createKey(FlightControllerKey.KeyIsFlying)
+//        val keyAreMotorsOn = KeyTools.createKey(FlightControllerKey.KeyAreMotorsOn)
+//        val keyFlightMode = KeyTools.createKey(FlightControllerKey.KeyFlightMode)
+//        // 드론 상태 체크
+//        Log.d("DJI", "Connection: ${keyConnection.get()}")
+//        Log.d("DJI", "Is Flying: ${keyIsFlying.get()}")
+//        Log.d("DJI", "Motors On: ${keyAreMotorsOn.get()}")
+//        Log.d("DJI", "Flight Mode: ${keyFlightMode.get()}")
+//
+//
+//        // 약간의 지연을 주어 시도
+//        Handler(Looper.getMainLooper()).postDelayed({
+//            if (keyConnection.get() == true) {
+//                keyAircraftLocation3D.get(
+//                    onSuccess = { location: LocationCoordinate3D? ->
+//                        Log.d("DJI", "get 호출 성공: ${location?.altitude}")
+//                        binding.tvAltitude.text = location?.altitude.toString()
+//                        observeDroneAltitude()
+//                    },
+//                    onFailure = { error: IDJIError ->
+//                        Log.e(
+//                            "DJI",
+//                            "get() 호출 실패: ${error.description()},${keyAircraftLocation3D.keyInfo}"
+//                        )
+//                        Log.e("DJI", "등록 여부 : ${SDKManager.getInstance().isRegistered}")
+//                    }
+//                )
+//            }
+//        }, 1000) // 1초 지연
+//    }
+
+    private fun checkAndStartTakeoff() {
+        val keyConnection = KeyTools.createKey(FlightControllerKey.KeyConnection)
+        val keyIsFlying = KeyTools.createKey(FlightControllerKey.KeyIsFlying)
+        val keyStartTakeoff = KeyTools.createKey(FlightControllerKey.KeyStartTakeoff)
+
+        // 상태 체크
+        if (keyConnection.get() != true) {
+            Log.e("DJI", "Flight Controller not connected")
+            return
+        }
+
+        if (keyIsFlying.get() == true) {
+            Log.e("DJI", "Drone is already flying")
+            return
+        }
+
+        // Virtual Stick 모드 체크
+        if (!isVirtualStickEnabled) {
+            enableVirtualStickMode()
+        }
+
+        // 이륙 시작
+        keyStartTakeoff.run {
+
+            // 상태 체크
+            if (keyConnection.get() != true) {
+                Log.e("DJI", "Flight Controller not connected")
+                return
+            }
+
+            if (keyIsFlying.get() == true) {
+                Log.e("DJI", "Drone is already flying")
+                return
+            }
+
+            // Virtual Stick 모드 체크
+            if (!isVirtualStickEnabled) {
+                enableVirtualStickMode()
+            }
+
+            KeyManager.getInstance().performAction(
+                keyStartTakeoff,
+                EmptyMsg(),
+                object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+                    override fun onSuccess(result: EmptyMsg?) {
+                        Log.d("DJI", "Takeoff started successfully")
+                        // 이륙 상태 모니터링 시작
+                        startSendingControlData()
+                        monitorTakeoffStatus()
+                    }
+
+                    override fun onFailure(error: IDJIError) {
+                        Log.e("DJI", "Failed to start takeoff: ${error.description()}")
+                    }
+                }
+            )
+        }
+    }
+    private fun checkAndStopTakeoff() {
+        val keyConnection = KeyTools.createKey(FlightControllerKey.KeyConnection)
+        val keyIsFlying = KeyTools.createKey(FlightControllerKey.KeyIsFlying)
+        val keyStopTakeOff = KeyTools.createKey(FlightControllerKey.KeyStopTakeoff)
+
+        KeyManager.getInstance().listen(keyIsFlying, this) { _, isFlying ->
+            if (isFlying == true) {
+                Log.d("DJI", "Drone is now flying")
+                // 이륙 성공 후 Virtual Stick 제어 시작
+                isVirtualStickEnabled = true
+                stopSendingControlData()
+            }
+            // Virtual Stick 모드 체크
+            if (!isVirtualStickEnabled) {
+                enableVirtualStickMode()
+            }
+
+
+        }
+        if (keyConnection.get() != true) {
+            Log.e("DJI", "Flight Controller not connected")
+            return
+        }
+
+        if (keyIsFlying.get() == false) {
+            Log.e("DJI", "Drone is not flying")
+            return
+        }
+        keyStopTakeOff.run {
+
+            KeyManager.getInstance().performAction(
+                keyStopTakeOff,
+                EmptyMsg(),
+                object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
+                    override fun onSuccess(result: EmptyMsg?) {
+                        Log.d("DJI", "Takeoff started successfully")
+                        // 착륙 상태 모니터링 시작
+                        monitorTakeoffStatus()
+                    }
+
+                    override fun onFailure(error: IDJIError) {
+                        Log.e("DJI", "Failed to takeoff: ${error.errorType()}")
+                    }
+                }
+            )
+            // 상태 체크
+
+        }
+    }
+    private fun monitorTakeoffStatus() {
+        val keyIsFlying = KeyTools.createKey(FlightControllerKey.KeyIsFlying)
+        val keyFlightMode = KeyTools.createKey(FlightControllerKey.KeyFlightMode)
         val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
-
-
-        KeyManager.getInstance().listen(
-            keyAircraftLocation3D,
-            this,
-            false
-        ) { p0, p1 -> TODO("Not yet implemented") }
-
-        // listen() 메서드를 사용하여 고도 데이터 지속적으로 수신
-        keyAircraftLocation3D.listen(
-            holder = this,      // 현재 Activity 또는 Fragment를 holder로 전달
-            getOnce = false     // 지속적으로 데이터를 수신하기 위해 false 설정
-        ) { location: LocationCoordinate3D? ->
-            location?.let {
-                val altitude = it.altitude
-                val latitude = it.latitude
-                val longitude = it.longitude
-                Log.d("DJI", "현재 고도: $altitude 미터")
-                Log.d("DJI", "현재 위도: $latitude")
-                Log.d("DJI", "현재 경도: $longitude")
-
-                flightControlVM.updateAltitude(altitude)  // ViewModel의 LiveData 업데이트
-            } ?: run {
-                Log.d("DJI", "위치 정보를 가져올 수 없습니다.")
+        KeyManager.getInstance().listen(keyIsFlying, this) { _, isFlying ->
+            if (isFlying == true) {
+                Log.d("DJI", "Drone is now flying")
+                // 이륙 성공 후 Virtual Stick 제어 시작
+                isVirtualStickEnabled = true
             }
         }
-    }
 
-    private fun checkAltitude() {
-        // 드론 고도 관찰
-        val keyAircraftLocation3D = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
-
-        if (keyAircraftLocation3D.canGet())
-        {
-            Log.d("DJI","3D NOT NULL")
+        KeyManager.getInstance().listen(keyFlightMode, this) { _, mode ->
+            Log.d("DJI", "Flight mode: $mode")
         }
-
-
-        val keyConnection = KeyTools.createKey(FlightControllerKey.KeyConnection)
-        if (keyConnection.canGet())
-        {
-            Log.d("DJI", "KC NOT NULL")
-
-        }
-        if (keyConnection.get() == true)
-        {
-            keyAircraftLocation3D.get(
-                onSuccess = { location: LocationCoordinate3D? ->
-                    Log.d("DJI", "get 호출 성공: ${location?.altitude}")
-                    binding.tvAltitude.text = location?.altitude.toString()
-                    observeDroneAltitude()
-                },
-                onFailure = { error: IDJIError ->
-                    Log.e(
-                        "DJI",
-                        "get() 호출 실패: ${error.description()},${keyAircraftLocation3D.keyInfo}"
-                    )
-                    Log.e("DJI", "등록 여부 : ${SDKManager.getInstance().isRegistered}")
-
-                },
-                )
+        KeyManager.getInstance().listen(keyAircraftLocation3D, this) {_, data ->
+            Log.d("DJI", "now data: $data")
         }
     }
+
     // Virtual Stick 상태 리스너 설정
     private fun setVirtualStickStateListener() {
         VirtualStickManager.getInstance()
