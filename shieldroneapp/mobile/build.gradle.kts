@@ -14,6 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ssafy.shieldroneapp"
+        // 테스트 기기와 호환
         minSdk = 31
         targetSdk = 34
         versionCode = 1
