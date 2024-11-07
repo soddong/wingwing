@@ -5,10 +5,10 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.Tokens
 import com.ssafy.shieldroneapp.data.model.User
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import javax.inject.Inject
 
 class UserLocalDataSourceImpl @Inject constructor(
@@ -38,7 +38,7 @@ class UserLocalDataSourceImpl @Inject constructor(
      *
      * @param tokens 저장할 인증 토큰 (액세스 토큰과 리프레시 토큰)
      */
-    override suspend fun saveTokens(tokens: Tokens) {
+    override suspend fun saveTokens(tokens: TokenResponse) {
         sharedPreferences.edit().apply {
             putString("accessToken", tokens.accessToken)
             putString("refreshToken", tokens.refreshToken)
@@ -54,7 +54,7 @@ class UserLocalDataSourceImpl @Inject constructor(
      *
      * @param tokens 저장할 인증 토큰 (액세스 토큰과 리프레시 토큰)
      */
-    fun saveTokensSync(tokens: Tokens) {
+    fun saveTokensSync(tokens: TokenResponse) {
         sharedPreferences.edit().apply {
             putString("accessToken", tokens.accessToken)
             putString("refreshToken", tokens.refreshToken)
@@ -67,11 +67,11 @@ class UserLocalDataSourceImpl @Inject constructor(
      *
      * @return 저장된 인증 토큰, 없을 경우 null 반환
      */
-    override suspend fun getTokens(): Tokens? {
+    override suspend fun getTokens(): TokenResponse? {
         val accessToken = sharedPreferences.getString("accessToken", null)
         val refreshToken = sharedPreferences.getString("refreshToken", null)
         return if (accessToken != null && refreshToken != null) {
-            Tokens(accessToken, refreshToken)
+            TokenResponse(accessToken, refreshToken)
         } else {
             null
         }
@@ -85,11 +85,11 @@ class UserLocalDataSourceImpl @Inject constructor(
      *
      * @return 저장된 인증 토큰, 없을 경우 null 반환
      */
-    fun getTokensSync(): Tokens? {
+    fun getTokensSync(): TokenResponse? {
         val accessToken = sharedPreferences.getString("accessToken", null)
         val refreshToken = sharedPreferences.getString("refreshToken", null)
         return if (accessToken != null && refreshToken != null) {
-            Tokens(accessToken, refreshToken)
+            TokenResponse(accessToken, refreshToken)
         } else {
             null
         }

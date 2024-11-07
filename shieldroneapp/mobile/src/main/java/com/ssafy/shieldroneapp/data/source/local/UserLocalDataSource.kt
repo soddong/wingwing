@@ -1,8 +1,8 @@
 package com.ssafy.shieldroneapp.data.source.local
 
 import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.Tokens
 import com.ssafy.shieldroneapp.data.model.User
+import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 
 /**
  * 로컬 데이터 저장 및 조회
@@ -14,8 +14,8 @@ import com.ssafy.shieldroneapp.data.model.User
 
 interface UserLocalDataSource {
 
-    suspend fun saveTokens(tokens: Tokens)
-    suspend fun getTokens(): Tokens?
+    suspend fun saveTokens(tokens: TokenResponse)
+    suspend fun getTokens(): TokenResponse?
 
     suspend fun saveUser(user: User)
     suspend fun getUser(): User?
