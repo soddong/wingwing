@@ -8,7 +8,7 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.HeartRateData
-import com.ssafy.shieldroneapp.data.repository.SensorDataRepository
+import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
 import com.ssafy.shieldroneapp.services.base.BaseMobileService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -18,7 +18,7 @@ import javax.inject.Inject
 class WearableDataListenerService : BaseMobileService() {
 
     @Inject
-    lateinit var sensorDataRepository: SensorDataRepository
+    lateinit var heartRateDataRepository: HeartRateDataRepository
 
     private lateinit var dataClient: DataClient
 
@@ -126,7 +126,7 @@ class WearableDataListenerService : BaseMobileService() {
             Log.d(TAG, "심박수 데이터 파싱 완료 - pulseFlag: $pulseFlag, timestamp: $timestamp, sustained: $sustained")
 
             serviceScope.launch {
-                sensorDataRepository.processHeartRateData(
+                heartRateDataRepository.processHeartRateData(
                     HeartRateData(
                         pulseFlag = pulseFlag,
                         timestamp = timestamp
