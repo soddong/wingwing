@@ -9,7 +9,6 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.StreamController
-import com.shieldrone.station.model.MSDKManagerVM
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
 import com.shieldrone.station.ui.FlightControlActivity
@@ -48,18 +46,18 @@ class DJIMainActivity : AppCompatActivity() {
     private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
 
+
     companion object {
         private const val PERMISSIONS_REQUEST_CODE = 1001
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.CAMERA,
             Manifest.permission.INTERNET,
             Manifest.permission.FOREGROUND_SERVICE,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS
         )
     }
 
-    // ViewModel 인스턴스 생성
-    private val msdkManagerVM: MSDKManagerVM by viewModels()
     private var allPermissionsGranted by mutableStateOf(false)
 
     // 다중 권한 요청을 위한 런처
@@ -186,6 +184,7 @@ class DJIMainActivity : AppCompatActivity() {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
+
     private fun showPermissionContextPopup() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("권한이 필요합니다")

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutFlightControl"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 드론 상태 표시 -->
+    <TextView
+        android:id="@+id/txtDroneStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="드론 상태"
+        android:textSize="16sp"
+        android:padding="8dp" />
+
+    <!-- 메시지 표시 -->
+    <TextView
+        android:id="@+id/txtMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="메시지"
+        android:textSize="16sp"
+        android:padding="8dp" />
+
+    <!-- 버튼들 -->
+    <Button
+        android:id="@+id/btnTakeOff"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="이륙" />
+
+    <Button
+        android:id="@+id/btnLand"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="착륙" />
+
+    <Button
+        android:id="@+id/btnEnableVirtualStick"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Virtual Stick 활성화" />
+
+    <Button
+        android:id="@+id/btnDisableVirtualStick"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Virtual Stick 비활성화" />
+
+</LinearLayout>
