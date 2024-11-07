@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ssafy.shieldroneapp.ui.authentication.screens.IntroScreen
 
 /**
  * 인증 단계를 정의하는 sealed class
