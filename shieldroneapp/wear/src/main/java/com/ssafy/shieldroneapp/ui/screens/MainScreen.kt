@@ -1,7 +1,6 @@
 package com.ssafy.shieldroneapp.ui.screens
 
 import android.util.Log
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.wear.compose.material.Text
 import androidx.compose.runtime.*
@@ -15,8 +14,9 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.ui.components.*
 import com.ssafy.shieldroneapp.viewmodels.*
-import androidx.compose.runtime.rememberCoroutineScope
 import com.ssafy.shieldroneapp.data.repository.DataRepository
+
+private const val TAG = "워치: 메인스크린"
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -30,23 +30,10 @@ fun MainScreen(
             dataRepository = dataRepository
         )
     )
-    val speedViewModel: SpeedViewModel = viewModel(
-        factory = SpeedViewModelFactory(
-            sensorRepository = sensorRepository
-        )
-    )
 
-    val scope = rememberCoroutineScope()
-
-    // HeartRate 상태
     val hr by heartRateViewModel.hr
     val hrAvailability by heartRateViewModel.availability
     val hrUiState by heartRateViewModel.uiState
-
-    // Speed 상태
-    val speed by speedViewModel.speed
-    val speedAvailability by speedViewModel.availability
-    val speedUiState by speedViewModel.uiState
 
     // 권한 상태 관리
     val hrPermissionState = rememberPermissionState(
@@ -62,33 +49,7 @@ fun MainScreen(
         permission = android.Manifest.permission.BODY_SENSORS_BACKGROUND,
         onPermissionResult = { granted ->
             if (granted) {
-                Log.d("MainScreen", "Background BODY_SENSORS permission granted")
-            }
-        }
-    )
-
-    val speedPermissionState = rememberPermissionState(
-        permission = android.Manifest.permission.ACTIVITY_RECOGNITION,
-        onPermissionResult = { granted ->
-            if (granted) {
-                scope.launch {
-                    Log.d("MainScreen", "Speed permission granted, checking capability")
-                    speedViewModel.recheckCapability()
-                    Log.d("MainScreen", "Capability check done, toggling enabled")
-                    speedViewModel.toggleEnabled()
-                }
-            }
-        }
-    )
-
-    val locationPermissionState = rememberPermissionState(
-        permission = android.Manifest.permission.ACCESS_FINE_LOCATION,
-        onPermissionResult = { granted ->
-            if (granted) {
-                scope.launch {
-                    speedViewModel.recheckCapability()
-                    speedViewModel.toggleEnabled()
-                }
+                Log.d(TAG, "바디 센서 권한 승인됨")
             }
         }
     )
@@ -98,123 +59,32 @@ fun MainScreen(
             hrBackgroundPermissionState.status is PermissionStatus.Denied
         ) {
             hrBackgroundPermissionState.launchPermissionRequest()
-        } else if (hrPermissionState.status is PermissionStatus.Granted &&
-            speedPermissionState.status is PermissionStatus.Denied
-        ) {
-            speedPermissionState.launchPermissionRequest()
         }
     }
 
     LaunchedEffect(hrBackgroundPermissionState.status) {
-        if (hrBackgroundPermissionState.status is PermissionStatus.Granted &&
-            speedPermissionState.status is PermissionStatus.Denied
-        ) {
-            speedPermissionState.launchPermissionRequest()
+        if (hrBackgroundPermissionState.status is PermissionStatus.Granted) {
+            Log.d(TAG, "모든 권한 승인 완료")
         }
     }
 
-    LaunchedEffect(speedPermissionState.status) {
-        if (speedPermissionState.status is PermissionStatus.Granted &&
-            locationPermissionState.status is PermissionStatus.Denied
-        ) {
-            locationPermissionState.launchPermissionRequest()
-        }
-    }
-
+    // 심박수 측정 화면 표시
     if (hrUiState == HeartRateMeasureUiState.Supported) {
         when (hrPermissionState.status) {
             is PermissionStatus.Granted -> {
                 when (hrBackgroundPermissionState.status) {
                     is PermissionStatus.Granted -> {
-                        when (speedPermissionState.status) {
-                            is PermissionStatus.Granted -> {
-                                when (locationPermissionState.status) {
-                                    is PermissionStatus.Granted -> {
-                                        Column {
-                                            HeartRateMeasure(
-                                                modifier = Modifier.weight(1f),
-                                                hr = hr,
-                                                availability = hrAvailability,
-                                                permissionState = hrPermissionState,
-                                                onStartMeasuring = { heartRateViewModel.toggleEnabled() }
-                                            )
-
-                                            if (speedUiState == SpeedUiState.Supported) {
-                                                Log.d("MainScreen", "SpeedUiState is Supported")
-                                                Spacer(Modifier.height(16.dp))
-                                                SpeedMeasure(
-                                                    modifier = Modifier.weight(1f),
-                                                    speed = speed,
-                                                    availability = speedAvailability,
-                                                    permissionState = speedPermissionState,
-                                                    onStartMeasuring = { speedViewModel.toggleEnabled() }
-                                                )
-                                            } else if (speedUiState == SpeedUiState.NotSupported) {
-                                                NotSupportedScreen()
-                                            } else if (speedUiState == SpeedUiState.Startup) {
-                                                Spacer(Modifier.height(16.dp))
-                                                Flex {
-                                                    Text(
-                                                        text = "센서 초기화 중...",
-                                                        color = Color.White
-                                                    )
-                                                }
-                                            } else {
-                                                Log.d("MainScreen", "SpeedUiState is ${speedUiState}")
-                                            }
-                                        }
-                                    }
-
-                                    is PermissionStatus.Denied -> {
-                                        Flex {
-                                            Spacer(Modifier.height(20.dp))
-                                            Text(
-                                                text = "위치 권한이 필요합니다",
-                                                color = Color.White
-                                            )
-                                            Spacer(Modifier.height(16.dp))
-                                            PrimaryButton(
-                                                onClick = {
-                                                    locationPermissionState.launchPermissionRequest()
-                                                },
-                                                text = "권한 허용"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            is PermissionStatus.Denied -> {
-                                LaunchedEffect(Unit) {
-                                    speedPermissionState.launchPermissionRequest()
-                                }
-                                Flex {
-                                    Spacer(Modifier.height(20.dp))
-                                    Text(
-                                        text = "속도 측정을 위해",
-                                        color = Color.White
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = "권한을 허용해주세요",
-                                        color = Color.White
-                                    )
-                                    Spacer(Modifier.height(16.dp))
-                                    PrimaryButton(
-                                        onClick = {
-                                            speedPermissionState.launchPermissionRequest()
-                                        },
-                                        text = "권한 허용"
-                                    )
-                                }
-                            }
+                        Column {
+                            HeartRateMeasure(
+                                modifier = Modifier.weight(1f),
+                                hr = hr,
+                                availability = hrAvailability,
+                                permissionState = hrPermissionState,
+                                onStartMeasuring = { heartRateViewModel.toggleEnabled() }
+                            )
                         }
                     }
-
                     is PermissionStatus.Denied -> {
-                        LaunchedEffect(Unit) {
-                            hrBackgroundPermissionState.launchPermissionRequest()
-                        }
                         Flex {
                             Spacer(Modifier.height(20.dp))
                             Text(
@@ -239,9 +109,6 @@ fun MainScreen(
             }
 
             is PermissionStatus.Denied -> {
-                LaunchedEffect(Unit) {
-                    hrPermissionState.launchPermissionRequest()
-                }
                 Flex {
                     Spacer(Modifier.height(20.dp))
                     Text(
