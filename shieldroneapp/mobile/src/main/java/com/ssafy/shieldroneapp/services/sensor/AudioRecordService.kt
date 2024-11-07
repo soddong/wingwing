@@ -15,6 +15,10 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ssafy.shieldroneapp.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 
 @AndroidEntryPoint
@@ -27,6 +31,9 @@ class AudioRecordService : BaseMobileService() {
         private const val CHANNEL_NAME = "음성 감지 서비스"
         const val NOTIFICATION_ID = 1
     }
+
+    private val reconnectionJob = Job()
+    private val reconnectionScope = CoroutineScope(Dispatchers.IO + reconnectionJob)
 
     @Inject
     lateinit var audioRecorder: AudioRecorder
@@ -69,22 +76,37 @@ class AudioRecordService : BaseMobileService() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "서비스 생성")
         createNotificationChannel()
-        webSocketService.initialize()
+        setupWebSocketConnection()
+    }
+
+    private fun setupWebSocketConnection() {
+        reconnectionScope.launch {
+            while (true) {
+                try {
+                    if (!webSocketService.getConnectionState()) { 
+                        Log.d(TAG, "WebSocket 연결 시도")
+                        webSocketService.initialize()
+                    }
+                     // 5초마다 연결 상태 확인
+                    delay(5000)
+                } catch (e: Exception) {
+                    Log.e(TAG, "WebSocket 연결 실패, 재시도 예정", e)
+                    delay(1000)
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: ${intent?.action}")
-
         when (intent?.action) {
             ACTION_START_RECORDING -> {
-                startRecording()
-                // 녹음 시작 시 포그라운드 서비스 시작
                 startForeground(NOTIFICATION_ID, createNotification())
+                startRecording()
             }
-            ACTION_STOP_RECORDING -> stopRecording()
-            null -> Log.w(TAG, "Null intent received")
+            ACTION_STOP_RECORDING -> {
+                stopRecording()
+            }
         }
         return START_STICKY
     }
@@ -92,33 +114,38 @@ class AudioRecordService : BaseMobileService() {
     private fun startRecording() {
         if (!isRecording) {
             isRecording = true
-            Log.d(TAG, "녹음 시작")
             serviceScope.launch {
                 try {
                     audioRecorder.startRecording()
                 } catch (e: Exception) {
-                    Log.e(TAG, "녹음 시작 중 오류 발생", e)
-                    stopRecording()
+                    Log.e(TAG, "녹음 시작 실패", e)
+                    handleRecordingError(e)
                 }
             }
         }
     }
 
-    private fun stopRecording() {
-        if (isRecording) {
-            Log.d(TAG, "녹음 중지")
-            isRecording = false
-            audioRecorder.stopRecording()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+    private fun handleRecordingError(error: Exception) {
+        Log.e(TAG, "녹음 중 오류 발생", error)
+        serviceScope.launch {
+            delay(3000)
+            startRecording()
         }
     }
 
+
+    private fun stopRecording() {
+        Log.d(TAG, "녹음 중지")
+        isRecording = false
+        audioRecorder.stopRecording()
+        webSocketService.shutdown() 
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     override fun onDestroy() {
-        Log.d(TAG, "서비스 종료")
-        stopRecording()
-        serviceScope.cancel()
         super.onDestroy()
+        reconnectionJob.cancel()
+        stopRecording()
     }
 }
-
