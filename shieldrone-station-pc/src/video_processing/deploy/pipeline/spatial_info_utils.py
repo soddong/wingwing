@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 
-class DroneTracker:
+class SpatialInfoTracker:
     def __init__(self, video_path, detection_data_path, target_id):
         # 비디오 및 검출 데이터 로드
         self.cap = cv2.VideoCapture(video_path)
@@ -269,5 +269,5 @@ if __name__ == "__main__":
     detection_data_path = '/home/soddong/S11P31A307/shieldrone-station-pc/src/api/socket/data_3d_array.npy'
     target_id = 2  # 목표 사람의 ID
 
-    tracker = DroneTracker(video_path, detection_data_path, target_id)
+    tracker = SpatialInfoTracker(video_path, detection_data_path, target_id)
     tracker.run()
