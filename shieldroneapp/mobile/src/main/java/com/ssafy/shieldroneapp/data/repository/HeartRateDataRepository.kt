@@ -45,8 +45,12 @@ class HeartRateDataRepository @Inject constructor(
             Log.d(TAG, "심박수 데이터가 처리되어 서버에 전송되었습니다.")
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리 중 오류 발생", e)
+            // 에러가 발생해도 로컬에 저장만 하고 연결은 유지
+            localDataSource.saveHeartRateData(data)
         }
     }
+
+
 
     // 데이터 전송 중지 메서드
     fun stopSendingData() {
