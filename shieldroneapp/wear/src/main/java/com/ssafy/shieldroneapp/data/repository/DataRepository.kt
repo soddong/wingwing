@@ -57,10 +57,10 @@ class DataRepository(private val context: Context) {
                     if (isCurrentlyHighBpm) {
                         isCurrentlyHighBpm = false
                         highBpmStartTime = null
-                        val success = sendData(false, heartRateData.timestamp)
-                        if (success) {
-                            Log.d(TAG, "정상 심박수 데이터 전송 성공")
-                        }
+                    }
+                    val success = sendData(false, heartRateData.timestamp)
+                    if (success) {
+                        Log.d(TAG, "정상 심박수 데이터 전송 성공")
                     }
                 }
             }
