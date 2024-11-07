@@ -386,11 +386,7 @@ class PipePredictor(object):
         finally:
             cap.release()
 
-    def predict_video(self, thread_idx=0, udp=True):
-        # mot
-        # mot -> attr
-
-        # Get Video info : resolution, fps, frame count
+    def predict_video(self, thread_idx=0):
         width = 1280
         height = 720
         fps = 20
@@ -422,8 +418,6 @@ class PipePredictor(object):
         framequeue = queue.Queue(10)
         thread = threading.Thread(
             target=self.capture_webcam, args=(framequeue,))
-        # thread = threading.Thread(
-        #     target=self.receive_frames, args=(framequeue,))
             
         thread.start()
         time.sleep(1)
@@ -433,9 +427,10 @@ class PipePredictor(object):
         socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
         socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
-        # while (not framequeue.empty()):
         while (1):
             if framequeue.empty():
+                if self.input_type == "file":
+                    break
                 time.sleep(0.01)
                 continue
                 
@@ -449,111 +444,103 @@ class PipePredictor(object):
             if frame_id > self.warmup_frame:
                 self.pipe_timer.total_time.start()
 
-            if self.modebase["idbased"] or self.modebase["skeletonbased"]:
+            if frame_id > self.warmup_frame:
+                self.pipe_timer.module_time['mot'].start()
+
+            mot_skip_frame_num = self.mot_predictor.skip_frame_num
+            reuse_det_result = False
+            if mot_skip_frame_num > 1 and frame_id > 0 and frame_id % mot_skip_frame_num > 0:
+                reuse_det_result = True
+            res = self.mot_predictor.predict_image(
+                [copy.deepcopy(frame_rgb)],
+                visual=False,
+                reuse_det_result=reuse_det_result,
+                frame_count=frame_id)
+
+            # mot output format: id, class, score, xmin, ymin, xmax, ymax
+            mot_res = parse_mot_res(res)
+
+            # data_bytes = mot_res["boxes"].tobytes()
+            # data_shape = mot_res["boxes"].shape
+            # data_dtype = str(mot_res["boxes"].dtype)
+            # print("데이터 변환")
+
+            # # 배열 데이터와 메타 정보를 함께 전송
+            # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
+            # print("json 전송")
+            # socket.send(data_bytes)
+            # print("데이터를 전송했습니다.")
+
+            if frame_id > self.warmup_frame:
+                self.pipe_timer.module_time['mot'].end()
+                self.pipe_timer.track_num += len(mot_res['boxes'])
+
+            if frame_id % 10 == 0:
+                print("Thread: {}; trackid number: {}".format(
+                    thread_idx, len(mot_res['boxes'])))
+
+            # flow_statistic only support single class MOT
+            boxes, scores, ids = res[0]  # batch size = 1 in MOT
+            mot_result = (frame_id + 1, boxes[0], scores[0],
+                            ids[0])  # single class
+            statistic = flow_statistic(
+                mot_result,
+                self.secs_interval,
+                video_fps,
+                id_set,
+                interval_id_set,
+                in_id_list,
+                out_id_list,
+                prev_center,
+                records,
+                ids2names=self.mot_predictor.pred_config.labels)
+            records = statistic['records']
+            
+            # nothing detected
+            if len(mot_res['boxes']) == 0:
+                frame_id += 1
                 if frame_id > self.warmup_frame:
-                    self.pipe_timer.module_time['mot'].start()
+                    self.pipe_timer.img_num += 1
+                    self.pipe_timer.total_time.end()
+                if self.cfg['visual']:
+                    _, _, fps = self.pipe_timer.get_total_time()
+                    im = self.visualize_video(
+                        frame_rgb, mot_res, frame_id, fps, records, center_traj,  latency = frame_time)  # visualize
+                    if self.input_type=="file":
+                        writer.write(im)
+                    cv2.imshow('Paddle-Pipeline', im)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
 
-                mot_skip_frame_num = self.mot_predictor.skip_frame_num
-                reuse_det_result = False
-                if mot_skip_frame_num > 1 and frame_id > 0 and frame_id % mot_skip_frame_num > 0:
-                    reuse_det_result = True
-                res = self.mot_predictor.predict_image(
-                    [copy.deepcopy(frame_rgb)],
-                    visual=False,
-                    reuse_det_result=reuse_det_result,
-                    frame_count=frame_id)
+                continue
 
-                # mot output format: id, class, score, xmin, ymin, xmax, ymax
-                mot_res = parse_mot_res(res)
-                # print("MOT 결과")
-                # print(mot_res)
+            self.pipeline_res.update(mot_res, 'mot')
 
-                # data_bytes = mot_res["boxes"].tobytes()
-                # data_shape = mot_res["boxes"].shape
-                # data_dtype = str(mot_res["boxes"].dtype)
-                # print("데이터 변환")
-
-                # # 배열 데이터와 메타 정보를 함께 전송
-                # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
-                # print("json 전송")
-                # socket.send(data_bytes)
-                # print("데이터를 전송했습니다.")
-
+            if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
+                self.target_id=None
+            if self.target_id is None:
+                crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
+                    frame_rgb, mot_res)
                 if frame_id > self.warmup_frame:
-                    self.pipe_timer.module_time['mot'].end()
-                    self.pipe_timer.track_num += len(mot_res['boxes'])
-
-                if frame_id % 10 == 0:
-                    print("Thread: {}; trackid number: {}".format(
-                        thread_idx, len(mot_res['boxes'])))
-
-                # flow_statistic only support single class MOT
-                boxes, scores, ids = res[0]  # batch size = 1 in MOT
-                mot_result = (frame_id + 1, boxes[0], scores[0],
-                              ids[0])  # single class
-                statistic = flow_statistic(
-                    mot_result,
-                    self.secs_interval,
-                    video_fps,
-                    id_set,
-                    interval_id_set,
-                    in_id_list,
-                    out_id_list,
-                    prev_center,
-                    records,
-                    ids2names=self.mot_predictor.pred_config.labels)
-                records = statistic['records']
+                    self.pipe_timer.module_time['kpt'].start()
+                kpt_pred = self.kpt_predictor.predict_image(
+                crop_input, visual=False)
+                self.target_id = self.handAboveHeadTracker.update(kpt_pred, mot_res)
+                if frame_id > self.warmup_frame:
+                    self.pipe_timer.module_time['kpt'].end()
                 
-
-                # nothing detected
-                if len(mot_res['boxes']) == 0:
-                    frame_id += 1
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.img_num += 1
-                        self.pipe_timer.total_time.end()
-                    if self.cfg['visual']:
-                        _, _, fps = self.pipe_timer.get_total_time()
-                        im = self.visualize_video(
-                            frame_rgb, mot_res, frame_id, fps, records, center_traj,  latency = frame_time)  # visualize
-                        if udp:
-                            cv2.imshow('Paddle-Pipeline', im)
-                            if cv2.waitKey(1) & 0xFF == ord('q'):
-                                break
-                        else:
-                            writer.write(im)
-                            if self.file_name is None:  # use camera_id
-                                cv2.imshow('Paddle-Pipeline', im)
-                                if cv2.waitKey(1) & 0xFF == ord('q'):
-                                    break
-                    continue
-
-                self.pipeline_res.update(mot_res, 'mot')
-
-                if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
-                    self.target_id=None
-                if self.target_id is None:
-                    crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
-                        frame_rgb, mot_res)
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['kpt'].start()
-                    kpt_pred = self.kpt_predictor.predict_image(
-                    crop_input, visual=False)
-                    self.target_id = self.handAboveHeadTracker.update(kpt_pred, mot_res)
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['kpt'].end()
-                    
-                    if self.cfg['visual']:
-                        keypoint_vector, score_vector = translate_to_ori_images(
-                            kpt_pred, np.array(new_bboxes))
-                        kpt_res = {}
-                        kpt_res['keypoint'] = [
-                            keypoint_vector.tolist(), score_vector.tolist()
-                        ] if len(keypoint_vector) > 0 else [[], []]
-                        kpt_res['bbox'] = ori_bboxes
-                        if self.target_id is None: 
-                            self.pipeline_res.update(kpt_res, 'kpt')
-                        else:
-                            self.pipeline_res.clear('kpt')
+                if self.cfg['visual']:
+                    keypoint_vector, score_vector = translate_to_ori_images(
+                        kpt_pred, np.array(new_bboxes))
+                    kpt_res = {}
+                    kpt_res['keypoint'] = [
+                        keypoint_vector.tolist(), score_vector.tolist()
+                    ] if len(keypoint_vector) > 0 else [[], []]
+                    kpt_res['bbox'] = ori_bboxes
+                    if self.target_id is None: 
+                        self.pipeline_res.update(kpt_res, 'kpt')
+                    else:
+                        self.pipeline_res.clear('kpt')
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
@@ -566,16 +553,13 @@ class PipePredictor(object):
                 im = self.visualize_video(frame_rgb, self.pipeline_res,
                                           frame_id, fps, records, center_traj, latency = frame_time)  # visualize
 
-                if udp:
-                    cv2.imshow('Paddle-Pipeline', im)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-                else:
+                if self.input_type=="file":
                     writer.write(im)
-                    if self.file_name is None:  # use camera_id
-                        cv2.imshow('Paddle-Pipeline', im)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            break
+
+                cv2.imshow('Paddle-Pipeline', im)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
         socket.close()
         context.term()
 
