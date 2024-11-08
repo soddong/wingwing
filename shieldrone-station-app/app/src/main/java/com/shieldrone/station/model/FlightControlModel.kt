@@ -186,7 +186,7 @@ class FlightControlModel {
         virtualStickManager.enableVirtualStick(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 isVirtualStickEnabled = true
-                virtualStickManager.setVirtualStickAdvancedModeEnabled(true)
+                virtualStickManager.setVirtualStickAdvancedModeEnabled(false)
                 callback.onSuccess()
             }
 
@@ -395,9 +395,9 @@ class FlightControlModel {
     }
 
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
-        Log.d(flightControlTag,"current keyGpsSIGNAL : ${keyGPSSignalLevel.isKeySupported()}")
+        Log.d(flightControlTag, "current keyGpsSIGNAL : ${keyGPSSignalLevel.isKeySupported()}")
         var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: -1
-        Log.d(flightControlTag,"current GPS Level: $currentGPSLevel")
+        Log.d(flightControlTag, "current GPS Level: $currentGPSLevel")
         handler.post(object : Runnable {
             override fun run() {
                 // 새로운 GPS 신호 레벨 가져오기
