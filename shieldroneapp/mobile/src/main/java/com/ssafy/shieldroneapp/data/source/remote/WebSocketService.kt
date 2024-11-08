@@ -23,6 +23,7 @@ import android.content.Context
 import android.util.Log
 import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
+import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +38,8 @@ sealed class WebSocketState {
 
 class WebSocketService @Inject constructor(
     private val context: Context,
-    private val webSocketMessageSender: WebSocketMessageSender
+    private val webSocketMessageSender: WebSocketMessageSender,
+    private val audioDataLocalSource: AudioDataLocalSource
 ) {
     private var webSocketConnectionManager: WebSocketConnectionManager? = null
     private var isConnected = false
@@ -151,31 +153,74 @@ class WebSocketService @Inject constructor(
     }
 
     fun sendAudioData(audioData: AudioData) {
+        // 수신한 데이터를 먼저 로컬에 저장
+        recordingScope.launch {
+            try {
+                audioDataLocalSource.saveAudioData(audioData)
+            } catch (e: Exception) {
+                Log.e(TAG, "로컬 저장 실패", e)
+            }
+        }
+
         if (!getConnectionState()) {
-            Log.d(TAG, "WebSocket 연결되지 않음 - 재연결 시도")
-            handleReconnect()
+            Log.d(TAG, "WebSocket 연결되지 않음 - 재연결 시도 및 로컬 데이터 전송 예약")
+            handleReconnectWithDataRecovery()
             return
         }
 
         try {
-            Log.d(TAG, "오디오 데이터 전송 시도 - 크기: ${audioData.audioData.size} bytes")
+            Log.d(TAG, "음성 분석 데이터 전송 시도 - dbFlag: ${audioData.dbFlag}")
             webSocketMessageSender.sendAudioData(audioData)
-            Log.d(TAG, "오디오 데이터 전송 성공")
+            Log.d(TAG, "음성 분석 데이터 전송 성공")
         } catch (e: Exception) {
-            Log.e(TAG, "오디오 데이터 전송 실패", e)
+            Log.e(TAG, "음성 분석 데이터 전송 실패", e)
             errorHandler.handleMessageError(e)
-            handleReconnect()
+            handleReconnectWithDataRecovery()
         }
     }
 
+    // 기본 재연결 함수
     fun handleReconnect() {
         Log.d(TAG, "WebSocket 재연결 시도 중...")
         try {
             shutdown()
-            // 약간의 지연을 주어 이전 연결이 완전히 종료되도록 함
             recordingScope.launch {
-                kotlinx.coroutines.delay(1000)
+                delay(1000)
                 initialize()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "재연결 중 에러 발생", e)
+            errorHandler.handleConnectionError(e)
+            updateConnectionState(WebSocketState.Error(e))
+        }
+    }
+
+    private fun handleReconnectWithDataRecovery() {
+        Log.d(TAG, "WebSocket 재연결 및 데이터 복구 시도 중...")
+        try {
+            shutdown()
+            recordingScope.launch {
+                delay(1000)
+                initialize()
+
+                // 재연결 후 로컬에 저장된 최근 데이터 전송
+                if (getConnectionState()) {
+                    try {
+                        val storedData = audioDataLocalSource.getStoredAudioData()
+                        Log.d(TAG, "저장된 데이터 복구 시도: ${storedData.size}개")
+
+                        storedData.forEach { data ->
+                            try {
+                                webSocketMessageSender.sendAudioData(data)
+                                Log.d(TAG, "복구된 데이터 전송 성공 - time: ${data.time}")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "복구된 데이터 전송 실패 - time: ${data.time}", e)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "데이터 복구 중 오류 발생", e)
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "재연결 중 에러 발생", e)

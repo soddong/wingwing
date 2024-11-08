@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.di
 
 import android.content.Context
+import com.ssafy.shieldroneapp.data.audio.AudioAnalyzer
 import com.ssafy.shieldroneapp.data.audio.AudioRecorder
 import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
 import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
@@ -17,6 +18,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -68,21 +70,33 @@ object AppModule {
     @Singleton
     fun provideWebSocketService(
         context: Context,
-        webSocketMessageSender: WebSocketMessageSender
+        webSocketMessageSender: WebSocketMessageSender,
+        audioDataLocalSource: AudioDataLocalSource
     ): WebSocketService {
-        val service = WebSocketService(context, webSocketMessageSender)
-        val connectionManager = provideWebSocketConnectionManager(service, webSocketMessageSender, provideWebSocketErrorHandler(context))
+        val service = WebSocketService(context, webSocketMessageSender, audioDataLocalSource)
+        val connectionManager = provideWebSocketConnectionManager(
+            service,
+            webSocketMessageSender,
+            provideWebSocketErrorHandler(context)
+        )
         service.setConnectionManager(connectionManager)
         return service
     }
 
     @Provides
     @Singleton
+    fun provideAudioAnalyzer(): AudioAnalyzer {
+        return AudioAnalyzer()
+    }
+
+    @Provides
+    @Singleton
     fun provideAudioRecorder(
         @ApplicationContext context: Context,
-        webSocketService: WebSocketService
+        webSocketService: WebSocketService,
+        audioAnalyzer: AudioAnalyzer
     ): AudioRecorder {
-        return AudioRecorder(context, webSocketService)
+        return AudioRecorder(context, webSocketService, audioAnalyzer)
     }
 
     @Provides
@@ -101,7 +115,11 @@ object AppModule {
         heartRateLocalDataSource: HeartRateLocalDataSource,
 
         ): HeartRateDataRepository {
-        return HeartRateDataRepository(webSocketService, heartRateViewModel, heartRateLocalDataSource)
+        return HeartRateDataRepository(
+            webSocketService,
+            heartRateViewModel,
+            heartRateLocalDataSource
+        )
     }
 
     @Provides

@@ -18,13 +18,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 @Singleton
 class AudioRecorder @Inject constructor(
     private val context: Context,
-    private val webSocketService: WebSocketService
+    private val webSocketService: WebSocketService,
+    private val audioAnalyzer: AudioAnalyzer
 ) {
     private var audioRecord: AudioRecord? = null
     private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
@@ -48,7 +51,6 @@ class AudioRecorder @Inject constructor(
             AUDIO_FORMAT
         )
 
-        // 프레임 크기의 배수로 버퍼 크기 조정
         val frameSize = FRAMES_PER_BUFFER * BYTES_PER_FRAME
         return max(minBufferSize, frameSize)
     }
@@ -135,11 +137,12 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
+                        val dbFlag = audioAnalyzer.analyzeAudioData(buffer, readResult)
                         val audioData = AudioData(
                             time = System.currentTimeMillis(),
-                            audioData = buffer.copyOf(readResult)
+                            dbFlag = dbFlag
                         )
-                        Log.d(TAG, "오디오 데이터 수집됨 - 크기: $readResult bytes")
+                        Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $dbFlag")
                         webSocketService.sendAudioData(audioData)
                     }
                     readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
@@ -158,7 +161,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-
     private fun checkAudioPermission(): Boolean {
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -168,7 +170,6 @@ class AudioRecorder @Inject constructor(
         return hasPermission
     }
 
-    // AudioRecord 초기화
     private fun initializeAudioRecord() {
         try {
             if (checkAudioPermission()) {
