@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
@@ -54,6 +55,12 @@ fun MainScreen(
         }
     )
 
+    LaunchedEffect(Unit) {
+        if (hrPermissionState.status is PermissionStatus.Denied) {
+            hrPermissionState.launchPermissionRequest()
+        }
+    }
+
     LaunchedEffect(hrPermissionState.status) {
         if (hrPermissionState.status is PermissionStatus.Granted &&
             hrBackgroundPermissionState.status is PermissionStatus.Denied
@@ -62,9 +69,17 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(hrBackgroundPermissionState.status) {
-        if (hrBackgroundPermissionState.status is PermissionStatus.Granted) {
-            Log.d(TAG, "모든 권한 승인 완료")
+    LaunchedEffect(Unit) {
+        if (hrPermissionState.status is PermissionStatus.Denied) {
+            hrPermissionState.launchPermissionRequest()
+        }
+    }
+
+    LaunchedEffect(hrPermissionState.status) {
+        if (hrPermissionState.status is PermissionStatus.Granted &&
+            hrBackgroundPermissionState.status is PermissionStatus.Denied
+        ) {
+            hrBackgroundPermissionState.launchPermissionRequest()
         }
     }
 
@@ -85,16 +100,26 @@ fun MainScreen(
                         }
                     }
                     is PermissionStatus.Denied -> {
+                        // 백그라운드 권한이 거부된 경우에만 요청 UI 표시
                         Flex {
                             Spacer(Modifier.height(20.dp))
                             Text(
-                                text = "백그라운드에서 심박수 측정을 위해",
-                                color = Color.White
+                                text = "백그라운드에서",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "심박수 측정을 위해",
+                                color = Color.White,
+                                fontSize = 14.sp
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "권한을 허용해주세요",
-                                color = Color.White
+                                color = Color.White,
+                                fontSize = 14.sp
+
                             )
                             Spacer(Modifier.height(16.dp))
                             PrimaryButton(
@@ -109,6 +134,7 @@ fun MainScreen(
             }
 
             is PermissionStatus.Denied -> {
+                // BODY_SENSORS 권한이 거부된 경우에만 요청 UI 표시
                 Flex {
                     Spacer(Modifier.height(20.dp))
                     Text(
