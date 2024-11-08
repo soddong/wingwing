@@ -63,28 +63,23 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
         try {
             requireNotNull(webSocket) { "WebSocket이 null입니다" }
 
-            // 메타데이터 전송
-            val metadata = Gson().toJson(mapOf(
+            val jsonData = Gson().toJson(mapOf(
                 "type" to "sendDbFlag",
                 "time" to data.time,
-                "audio_length" to data.audioData.size
+                "dbFlag" to data.dbFlag
             ))
-            Log.d(TAG, "메타데이터 전송: $metadata")
-            webSocket?.send(metadata)
 
-            // 바이너리 데이터 전송
-            val byteString = ByteString.of(*data.audioData)
-            Log.d(TAG, "바이너리 데이터 전송 - 처음 10바이트: ${byteString.hex().take(20)}")
-            val isAudioSent = webSocket?.send(byteString) ?: false
+            Log.d(TAG, "음성 분석 데이터 전송: $jsonData")
+            val isSent = webSocket?.send(jsonData) ?: false
 
-            if (isAudioSent) {
-                Log.d(TAG, "오디오 데이터 전송 성공 - 전체 크기: ${data.audioData.size} bytes")
+            if (isSent) {
+                Log.d(TAG, "음성 분석 데이터 전송 성공 - dbFlag: ${data.dbFlag}")
             } else {
-                Log.e(TAG, "오디오 데이터 전송 실패")
-                throw Exception("오디오 데이터 전송 실패")
+                Log.e(TAG, "데이터 전송 실패")
+                throw Exception("음성 분석 데이터 전송 실패")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "오디오 데이터 전송 실패", e)
+            Log.e(TAG, "음성 분석 데이터 전송 중 에러 발생", e)
             throw e
         }
     }
