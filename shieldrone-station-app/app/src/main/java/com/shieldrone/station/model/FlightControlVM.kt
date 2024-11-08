@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import com.shieldrone.station.model.FlightControlModel.Controls
 import com.shieldrone.station.model.FlightControlModel.Position
 import com.shieldrone.station.model.FlightControlModel.State
-import com.shieldrone.station.model.FlightControlModel.StickPosition
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 
@@ -30,6 +29,15 @@ class FlightControlVM : ViewModel() {
     private val _dronePosition = MutableLiveData<Position>()
     val dronePosition: LiveData<Position> get() = _dronePosition
 
+    private val _gpsSignalLevel = MutableLiveData<Int>()
+    val gpsSignalLevel: LiveData<Int> get() = _gpsSignalLevel
+
+    init {
+        flightControlModel.initVirtualStickMode()
+        flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
+            _gpsSignalLevel.postValue(gpsLevel)
+        }
+    }
 
     // 이륙 시작
     fun startTakeOff() {
@@ -62,6 +70,13 @@ class FlightControlVM : ViewModel() {
     fun enableVirtualStickMode() {
         flightControlModel.enableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
+                flightControlModel.subscribeAndSendControlValues { controls ->
+                    controls.leftStick.verticalPosition = 0
+                    controls.leftStick.horizontalPosition = 0
+                    controls.rightStick.verticalPosition = 0
+                    controls.rightStick.horizontalPosition = 0
+                    _droneControls.value = controls
+                }
                 _message.postValue("Virtual Stick 모드가 활성화되었습니다.")
             }
 
@@ -91,59 +106,62 @@ class FlightControlVM : ViewModel() {
         }
     }
 
-    // 드론을 앞으로 이동
     fun moveForward() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0), // leftStick: 유지
-            rightStick = StickPosition(100, 0) // rightStick: 앞쪽으로 이동
-        )
-        setDroneControlValues(controls)
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.rightStick.verticalPosition = 100  // 전진
+            _droneControls.value = controls  // UI 업데이트
+        }
     }
 
-    // 드론을 뒤로 이동
     fun moveBackward() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(-100, 0) // 뒤로 이동
-        )
-        setDroneControlValues(controls)
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.rightStick.verticalPosition = -100  // 후진
+            _droneControls.value = controls
+        }
     }
 
-    // 드론을 위로 상승
-    fun moveUp() {
-        val controls = Controls(
-            leftStick = StickPosition(100, 0), // 상승
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-    }
-
-    // 드론을 아래로 하강
-    fun moveDown() {
-        val controls = Controls(
-            leftStick = StickPosition(-100, 0), // 하강
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-    }
-
-    // 드론을 왼쪽으로 이동
     fun moveLeft() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(0, -100) // 왼쪽으로 이동
-        )
-        setDroneControlValues(controls)
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.rightStick.horizontalPosition = 100  // 좌측 이동
+            _droneControls.value = controls
+        }
     }
 
-    // 드론을 오른쪽으로 이동
     fun moveRight() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(0, 100) // 오른쪽으로 이동
-        )
-        setDroneControlValues(controls)
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.rightStick.horizontalPosition = -100  // 우측 이동
+            _droneControls.value = controls
+        }
     }
+
+    fun moveUp() {
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.leftStick.verticalPosition = 100  // 상승
+            _droneControls.value = controls
+        }
+    }
+
+    fun moveDown() {
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.leftStick.verticalPosition = -100  // 하강
+            _droneControls.value = controls
+        }
+    }
+
+    fun rotateLeft() {
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.leftStick.horizontalPosition = -100  // 좌회전
+            _droneControls.value = controls
+        }
+    }
+
+    fun rotateRight() {
+        flightControlModel.subscribeAndSendControlValues { controls ->
+            controls.leftStick.horizontalPosition = 100  // 우회전
+            _droneControls.value = controls
+        }
+    }
+
 
     // 드론 제어 정보 구독 시작
     private fun setDroneControlValues(controls: Controls) {
@@ -173,5 +191,13 @@ class FlightControlVM : ViewModel() {
         }
     }
 
+    fun subscribeControlValues(onUpdate: (Controls) -> Unit) {
+        flightControlModel.subscribeAndSendControlValues(onUpdate)
+    }
 
+    fun subscribeDroneGpsLevel() {
+        flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
+            _gpsSignalLevel.postValue(gpsLevel)
+        }
+    }
 }

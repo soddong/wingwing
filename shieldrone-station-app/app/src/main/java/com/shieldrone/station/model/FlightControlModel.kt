@@ -5,11 +5,17 @@ import android.os.Looper
 import android.util.Log
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
+import dji.sdk.keyvalue.value.flightcontroller.FlightCoordinateSystem
+import dji.sdk.keyvalue.value.flightcontroller.RollPitchControlMode
+import dji.sdk.keyvalue.value.flightcontroller.VerticalControlMode
+import dji.sdk.keyvalue.value.flightcontroller.VirtualStickFlightControlParam
+import dji.sdk.keyvalue.value.flightcontroller.YawControlMode
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
 import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
+import dji.v5.et.isKeySupported
 import dji.v5.manager.KeyManager
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 
@@ -38,8 +44,8 @@ class FlightControlModel {
     )
 
     data class StickPosition(
-        val verticalPosition: Int,
-        val horizontalPosition: Int
+        var verticalPosition: Int,
+        var horizontalPosition: Int
     )
 
     var isVirtualStickEnabled = false
@@ -56,10 +62,41 @@ class FlightControlModel {
         val location3D by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D) }
         val velocity3D by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftVelocity) }
         val compassHeading by lazy { KeyTools.createKey(FlightControllerKey.KeyCompassHeading) }
-
+        val keyGPSSignalLevel by lazy { KeyTools.createKey(FlightControllerKey.KeyGPSSignalLevel) }
         const val flightControlTag = "DJI"
         const val virtualStickTag = "VIRTUAL_STICK"
         const val simulatorTag = "SIMULATOR"
+    }
+
+    fun initVirtualStickMode() {
+        // Virtual Stick 제어 파라미터 설정
+        val controlParam = VirtualStickFlightControlParam().apply {
+            // Roll/Pitch 제어 모드를 속도 모드로 설정
+            rollPitchControlMode = RollPitchControlMode.VELOCITY
+            // Yaw 제어 모드를 각속도 모드로 설정
+            yawControlMode = YawControlMode.ANGULAR_VELOCITY
+            // 수직 제어 모드를 속도 모드로 설정
+            verticalControlMode = VerticalControlMode.VELOCITY
+            // Roll/Pitch 좌표계 설정
+            rollPitchCoordinateSystem = FlightCoordinateSystem.BODY
+        }
+
+        // Virtual Stick 파라미터 설정 키
+        virtualStickManager.sendVirtualStickAdvancedParam(controlParam)
+    }
+
+    fun sendControlCommand(controls: Controls) {
+        val controlParam = VirtualStickFlightControlParam().apply {
+            // 전/후 이동 (pitch)
+            pitch = controls.rightStick.verticalPosition.toDouble()
+            // 좌/우 이동 (roll)
+            roll = controls.rightStick.horizontalPosition.toDouble()
+            // 회전 (yaw)
+            yaw = controls.leftStick.horizontalPosition.toDouble()
+            // 상/하 이동 (throttle)
+            verticalThrottle = controls.leftStick.verticalPosition.toDouble()
+        }
+        virtualStickManager.sendVirtualStickAdvancedParam(controlParam)
     }
 
     /**
@@ -244,8 +281,11 @@ class FlightControlModel {
             callback.onSuccess()
         }
 
-        Log.d(virtualStickTag, "leftStick (vertical-고도: ${controls.leftStick.verticalPosition}, horizontal-좌우회전: ${controls.leftStick.horizontalPosition}), " +
-                "rightStick (vertical-앞뒤: ${controls.rightStick.verticalPosition}, horizontal-좌우이동: ${controls.rightStick.horizontalPosition})")
+        Log.d(
+            virtualStickTag,
+            "leftStick (vertical-고도: ${controls.leftStick.verticalPosition}, horizontal-좌우회전: ${controls.leftStick.horizontalPosition}), " +
+                    "rightStick (vertical-앞뒤: ${controls.rightStick.verticalPosition}, horizontal-좌우이동: ${controls.rightStick.horizontalPosition})"
+        )
     }
 
     /**
@@ -261,8 +301,14 @@ class FlightControlModel {
 
         // 초기 control 값을 설정
         var currentControls = Controls(
-            StickPosition(stickManager.leftStick.verticalPosition, stickManager.leftStick.horizontalPosition),
-            StickPosition(stickManager.rightStick.verticalPosition, stickManager.rightStick.horizontalPosition)
+            StickPosition(
+                stickManager.leftStick.verticalPosition,
+                stickManager.leftStick.horizontalPosition
+            ),
+            StickPosition(
+                stickManager.rightStick.verticalPosition,
+                stickManager.rightStick.horizontalPosition
+            )
         )
 
         // 일정 간격으로 control 값을 갱신하고 콜백 호출
@@ -270,8 +316,14 @@ class FlightControlModel {
             override fun run() {
                 // 새로운 Controls 상태를 구독
                 val newControls = Controls(
-                    StickPosition(stickManager.leftStick.verticalPosition, stickManager.leftStick.horizontalPosition),
-                    StickPosition(stickManager.rightStick.verticalPosition, stickManager.rightStick.horizontalPosition)
+                    StickPosition(
+                        stickManager.leftStick.verticalPosition,
+                        stickManager.leftStick.horizontalPosition
+                    ),
+                    StickPosition(
+                        stickManager.rightStick.verticalPosition,
+                        stickManager.rightStick.horizontalPosition
+                    )
                 )
 
                 // 새로운 control 값을 onUpdate 콜백으로 전달
@@ -280,11 +332,17 @@ class FlightControlModel {
                 // 이전 상태와 새로운 상태 비교 후 변경이 있을 때만 적용
                 if (currentControls != newControls) {
                     stickManager.leftStick.verticalPosition = newControls.leftStick.verticalPosition
-                    stickManager.leftStick.horizontalPosition = newControls.leftStick.horizontalPosition
-                    stickManager.rightStick.verticalPosition = newControls.rightStick.verticalPosition
-                    stickManager.rightStick.horizontalPosition = newControls.rightStick.horizontalPosition
-                    Log.d(virtualStickTag, "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
-                            "rightStick(vertical: ${newControls.rightStick.verticalPosition}, horizontal: ${newControls.rightStick.horizontalPosition})")
+                    stickManager.leftStick.horizontalPosition =
+                        newControls.leftStick.horizontalPosition
+                    stickManager.rightStick.verticalPosition =
+                        newControls.rightStick.verticalPosition
+                    stickManager.rightStick.horizontalPosition =
+                        newControls.rightStick.horizontalPosition
+                    Log.d(
+                        virtualStickTag,
+                        "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
+                                "rightStick(vertical: ${newControls.rightStick.verticalPosition}, horizontal: ${newControls.rightStick.horizontalPosition})"
+                    )
 
                     // 현재 상태를 업데이트
                     currentControls = newControls
@@ -300,7 +358,7 @@ class FlightControlModel {
      * 드론의 위치 정보 (altitude, latitude, longitude)를 구독하여 지속적으로 업데이트하는 함수
      */
     fun subscribePosition(onUpdate: (Position) -> Unit) {
-        val handler = Handler(Looper.getMainLooper())
+
 
         // 초기 위치 설정
         var currentPosition = Position(
@@ -331,6 +389,81 @@ class FlightControlModel {
                 }
 
                 // 100ms 주기로 위치 정보를 업데이트
+                handler.postDelayed(this, 100)
+            }
+        })
+    }
+
+    fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
+        Log.d(flightControlTag,"current keyGpsSIGNAL : ${keyGPSSignalLevel.isKeySupported()}")
+        var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: -1
+        Log.d(flightControlTag,"current GPS Level: $currentGPSLevel")
+        handler.post(object : Runnable {
+            override fun run() {
+                // 새로운 GPS 신호 레벨 가져오기
+                val newGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
+
+                // GPS 신호 레벨이 변경되었을 때만 업데이트
+                if (currentGPSLevel != newGPSLevel) {
+                    currentGPSLevel = newGPSLevel
+                    onUpdate(newGPSLevel)
+                    Log.d(flightControlTag, "GPS Signal Level updated: $newGPSLevel")
+                }
+
+                // 100ms 마다 반복
+                handler.postDelayed(this, 100)
+            }
+        })
+    }
+
+    fun subscribeAndSendControlValues(onUpdate: (Controls) -> Unit) {
+        if (!isVirtualStickEnabled) {
+            Log.e(virtualStickTag, "Virtual Stick 모드가 활성화되지 않았습니다.")
+            return
+        }
+
+        val stickManager = virtualStickManager
+
+        // 초기 control 값을 설정
+        var currentControls = Controls(
+            StickPosition(
+                stickManager.leftStick.verticalPosition,
+                stickManager.leftStick.horizontalPosition
+            ),
+            StickPosition(
+                stickManager.rightStick.verticalPosition,
+                stickManager.rightStick.horizontalPosition
+            )
+        )
+
+        handler.post(object : Runnable {
+            override fun run() {
+                val newControls = Controls(
+                    StickPosition(
+                        stickManager.leftStick.verticalPosition,
+                        stickManager.leftStick.horizontalPosition
+                    ),
+                    StickPosition(
+                        stickManager.rightStick.verticalPosition,
+                        stickManager.rightStick.horizontalPosition
+                    )
+                )
+
+                onUpdate(newControls)
+
+                if (currentControls != newControls) {
+                    // Virtual Stick 명령 전송
+                    sendControlCommand(newControls)
+
+                    Log.d(
+                        virtualStickTag,
+                        "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
+                                "rightStick(vertical: ${newControls.rightStick.verticalPosition}, horizontal: ${newControls.rightStick.horizontalPosition})"
+                    )
+
+                    currentControls = newControls
+                }
+
                 handler.postDelayed(this, 100)
             }
         })
