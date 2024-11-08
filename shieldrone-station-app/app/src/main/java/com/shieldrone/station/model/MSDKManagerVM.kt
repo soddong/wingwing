@@ -31,7 +31,7 @@ class MSDKManagerVM : ViewModel() {
             }
 
             override fun onProductConnect(productId: Int) {
-                Log.i("MSDKManagerVM", "연결됨 + ${productId}")
+                Log.i("MSDKManagerVM", "연결됨 : $productId")
 
             }
 
