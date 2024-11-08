@@ -6,6 +6,7 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
@@ -16,16 +17,28 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class WearableDataListenerService : BaseMobileService() {
+    companion object {
+        private const val TAG = "모바일: 웨어러블 기기 리스너"
+        private const val PATH_HEART_RATE = "/sendPulseFlag"
+        private const val PATH_WATCH_LAUNCHED = "/watch_app_launched"
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        super.onMessageReceived(messageEvent)
+        Log.d(TAG, "메시지 수신됨: ${messageEvent.path}")
+
+        when (messageEvent.path) {
+            PATH_WATCH_LAUNCHED -> {
+                Log.d(TAG, "워치 앱 실행 확인됨")
+                sendBroadcast(Intent("WATCH_APP_LAUNCHED"))
+            }
+        }
+    }
 
     @Inject
     lateinit var heartRateDataRepository: HeartRateDataRepository
 
     private lateinit var dataClient: DataClient
-
-    companion object {
-        private const val TAG = "모바일: 웨어러블 기기 리스너"
-        private const val PATH_HEART_RATE = "/sendPulseFlag"
-    }
 
     override fun onCreate() {
         super.onCreate()
