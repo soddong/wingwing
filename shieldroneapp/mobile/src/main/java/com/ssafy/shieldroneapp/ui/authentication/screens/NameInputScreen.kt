@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,11 +52,22 @@ fun NameInputScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = "뒤로 가기",
+            modifier = Modifier
+                .align(Alignment.Start)
+                .clickable { onBackClick() }
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "이름을 입력해주세요",
-            style = MaterialTheme.typography.h6
+            text = "이름을 입력해주세요.",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
         )
 
         TextField(
@@ -62,27 +75,31 @@ fun NameInputScreen(
             onValueChange = { newValue ->
                 if (!newValue.contains("\n")) {
                     setName(newValue)
-                    validationError = if (newValue.isNotBlank()) ValidationUtils.validateName(newValue) else null
+                    validationError =
+                        if (newValue.isNotBlank()) ValidationUtils.validateName(newValue) else null
                 } else {
-                    onNameSubmit(name)
+                    // 유효성 검사를 통과한 경우에만 submit
+                    if (validationError == null && name.isNotBlank()) {
+                        onNameSubmit(name)
+                    }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), // autofocus
             label = { Text("이름") },
-            isError = validationError != null, // 에러 발생 시 TextField에 에러 표시
             singleLine = true,
+            isError = validationError != null, // 에러 발생 시 TextField에 에러 표시
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Done // Enter 키를 Done으로 표시
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    if (name.isNotBlank() && validationError == null) {
-                        keyboardController?.hide()
+                    if (validationError == null && name.isNotBlank()) {
                         onNameSubmit(name)
                     }
+                    keyboardController?.hide()
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
@@ -104,27 +121,23 @@ fun NameInputScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("뒤로 가기")
-            }
-
-            Button(
-                onClick = {
-                    keyboardController?.hide()
+        Button(
+            onClick = {
+                if (validationError == null && name.isNotBlank()) {
                     onNameSubmit(name)
-                },
-                modifier = Modifier.weight(1f),
-                enabled = name.isNotBlank() && validationError == null
-            ) {
-                Text("다음")
-            }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = validationError == null && name.isNotBlank()
+        ) {
+            Text(
+                text = "다음",
+                style = MaterialTheme.typography.h5
+            )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

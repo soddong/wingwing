@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,11 +61,22 @@ fun BirthInputScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = "뒤로 가기",
+            modifier = Modifier
+                .align(Alignment.Start)
+                .clickable { onBackClick() }
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "생년월일을 입력해 주세요. (숫자만 입력)",
-            style = MaterialTheme.typography.h6
+            text = "생년월일을 입력해 주세요.",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
         )
 
         TextField(
@@ -94,8 +108,9 @@ fun BirthInputScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester),
-            label = { Text("생년월일 (YYYY-MM-DD)") },
+                .focusRequester(focusRequester), // autofocus
+            label = { Text("생년월일 (숫자만 입력 / YYYY-MM-DD)") },
+            singleLine = true,
             isError = validationError != null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
@@ -109,12 +124,12 @@ fun BirthInputScreen(
                     keyboardController?.hide()
                 }
             ),
-            singleLine = true,
             colors = TextFieldDefaults.textFieldColors(
                 backgroundColor = MaterialTheme.colors.surface
             )
         )
 
+        // 유효성 에러 메시지 표시
         validationError?.let {
             Text(
                 text = it,
@@ -128,29 +143,23 @@ fun BirthInputScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Button(
+            onClick = {
+                if (validationError == null && birth.text.length == 10) {
+                    onBirthSubmit(birth.text)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = validationError == null && birth.text.length == 10
         ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("뒤로 가기")
-            }
-
-            Button(
-                onClick = {
-                    if (validationError == null && birth.text.length == 10) {
-                        onBirthSubmit(birth.text)
-                        keyboardController?.hide()
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = birth.text.length == 10 && validationError == null
-            ) {
-                Text("다음")
-            }
+            Text(
+                text = "다음",
+                style = MaterialTheme.typography.h5
+            )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

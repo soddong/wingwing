@@ -3,7 +3,6 @@ package com.ssafy.shieldroneapp.ui.authentication.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,10 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,23 +63,35 @@ fun PhoneInputScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = "뒤로 가기",
+            modifier = Modifier
+                .align(Alignment.Start)
+                .clickable { onBackClick() }
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "휴대폰 번호를 입력해주세요",
-            style = MaterialTheme.typography.h6
+            text = "휴대폰 번호를 입력해주세요.",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
         )
 
         TextField(
             value = phoneNumber,
             onValueChange = { newValue ->
                 setPhoneNumber(newValue)
-                validationError = if (newValue.isNotBlank()) ValidationUtils.validatePhone(newValue) else null
+                validationError =
+                    if (newValue.isNotBlank()) ValidationUtils.validatePhone(newValue) else null
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester), // 자동 포커스
-            label = { Text("휴대폰 번호") },
+                .focusRequester(focusRequester), // autofocus
+            label = { Text("휴대폰 번호 (숫자만 입력)") },
             singleLine = true,
             isError = validationError != null,
             keyboardOptions = KeyboardOptions(
@@ -88,13 +102,13 @@ fun PhoneInputScreen(
                 onDone = {
                     if (validationError == null && phoneNumber.isNotBlank()) {
                         onPhoneSubmit(phoneNumber)
-
                     }
+                    keyboardController?.hide() // 키보드 숨기기
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
                 backgroundColor = MaterialTheme.colors.surface
-            )
+            ),
         )
 
         // 유효성 에러 메시지 표시
@@ -111,29 +125,23 @@ fun PhoneInputScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Button(
+            onClick = {
+                if (validationError == null && phoneNumber.isNotBlank()) {
+                    onPhoneSubmit(phoneNumber) // 인증 번호 요청 이벤트 전달
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = validationError == null && phoneNumber.isNotBlank()
         ) {
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("뒤로 가기")
-            }
-
-            Button(
-                onClick = {
-                    if (validationError == null && phoneNumber.isNotBlank()) {
-                        keyboardController?.hide()
-                        onPhoneSubmit(phoneNumber) // 인증 번호 요청 이벤트 전달
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = phoneNumber.isNotBlank() && validationError == null
-            ) {
-                Text("인증 문자 보내기")
-            }
+            Text(
+                text = "인증 문자 보내기",
+                style = MaterialTheme.typography.h5
+            )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
