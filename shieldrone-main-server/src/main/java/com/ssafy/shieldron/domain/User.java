@@ -30,7 +30,7 @@ public class User extends BaseEntity {
     private String phoneNumber;
 
     @Column(name = "birthday", nullable = false)
-    private LocalDate birthday;
+    private String birthday;
 
     @OneToOne
     @JoinColumn(name = "start_hive_id")
@@ -48,11 +48,19 @@ public class User extends BaseEntity {
     @Column(name = "username")
     private String username;
 
+    @Column(name = "detail_address")
+    private String detailAddress;
+
     @Builder
-    public User(String phoneNumber, LocalDate birthday, String username) {
+    public User(String phoneNumber, String birthday, String username) {
         this.phoneNumber = phoneNumber;
         this.birthday = birthday;
         this.username = username;
     }
 
+    public void updateEndPos(String detail, BigDecimal lat, BigDecimal lng) {
+        this.detailAddress = detail;
+        this.endLat = lat;
+        this.endLng = lng;
+    }
 }

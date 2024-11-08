@@ -17,13 +17,14 @@ import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
 
+import com.ssafy.shieldroneapp.ui.MainScreen
 
-@AndroidEntryPoint // Hilt 사용 위해 추가
+@AndroidEntryPoint
 class MobileMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val navController = rememberNavController() // NavController 생성
+            val navController = rememberNavController()
 
             ShieldroneappTheme {
                 // 상태바 스타일링
@@ -59,12 +60,16 @@ class MobileMainActivity : ComponentActivity() {
                                     // }
 
                                     // 임시로 landing screen
-                                    navController.navigate(ROUTE_LANDING) {
+                                    navController.navigate("main_screen") {
                                         // 인증 화면들도 백스택에서 제거
                                          popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                     }
                                 }
                             )
+                    }
+
+                    composable("main_screen") {
+                        MainScreen()
                     }
                 }
             }

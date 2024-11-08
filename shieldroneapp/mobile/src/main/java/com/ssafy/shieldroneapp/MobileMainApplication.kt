@@ -8,14 +8,20 @@ package com.ssafy.shieldroneapp
  * */
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
+import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
 class MobileMainApplication : Application() {
     companion object {
         private const val TAG = "모바일: 메인 앱"
     }
+    @Inject
+    lateinit var webSocketService: WebSocketService
 
     override fun onCreate() {
         super.onCreate()
@@ -25,10 +31,16 @@ class MobileMainApplication : Application() {
         // - 네트워크 설정
         // - 푸시 알림 설정 등
         setupLogging()
+        initializeWebSocket()
+        // 서비스 자동 시작
+        startService(Intent(this, WearableDataListenerService::class.java))
     }
     private fun setupLogging() {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "디버그 빌드에서만 상세 로깅 활성화")
         }
+    }
+    private fun initializeWebSocket() {
+        webSocketService.initialize()
     }
 }

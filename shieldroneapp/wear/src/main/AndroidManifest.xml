@@ -15,15 +15,13 @@
   <!-- 위치 권한 -->
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-  <!-- speed 데이터 권한 -->
-  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
   <!-- 워치와 페어링된 모바일 기기와 통신하기 위한 권한 -->
   <uses-permission android:name="android.permission.BLUETOOTH"/>
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
   <!-- 포그라운드 권한 -->
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
   <!-- 알림 보내기 권한 -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
@@ -33,46 +31,36 @@
     <package android:name="com.google.android.wearable.shieldrone"/>
   </queries>
 
-  <application android:name=".MainApplication" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
-    <service android:name=".services.ComplicationService" android:exported="true" android:label="@string/complication_label" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
-      <intent-filter>
-        <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/>
-      </intent-filter>
+  <application android:name=".MainApplication" android:icon="@mipmap/android_icon" android:label="@string/app_name" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault">
 
-      <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT"/>
-      <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="0"/>
+    <!-- <service android:name=".services.WearableService" android:exported="true">-->
+    <!-- <intent-filter>-->
+    <!-- <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED"/>-->
+    <!-- <data android:host="*" android:pathPrefix="/emergency_alert" android:scheme="wear"/>-->
+    <!-- </intent-filter>-->
+    <!-- </service>-->
+
+    <service android:name=".services.HeartRateService" android:foregroundServiceType="mediaPlayback" android:exported="false"></service>
+
+    <service android:name=".services.DataReceiverService" android:exported="true">
+      <intent-filter>
+        <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag"/>
+      </intent-filter>
     </service>
-    <!-- <service android:name=".services.TileService" android:exported="true" android:label="@string/tile_label" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"> <intent-filter> <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /> </intent-filter> <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/tile_preview" /> </service> -->
 
     <service android:name=".services.WearableService" android:exported="true">
       <intent-filter>
         <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED"/>
         <data android:host="*" android:pathPrefix="/emergency_alert" android:scheme="wear"/>
+        <data android:host="*" android:pathPrefix="/start" android:scheme="wear"/>
       </intent-filter>
     </service>
 
-    <service
-        android:name=".services.HeartRateService"
-        android:foregroundServiceType="mediaPlayback"
-        android:exported="false">
-    </service>
-
-    <service
-        android:name=".services.DataReceiverService"
-        android:exported="true">
+    <receiver android:name=".receivers.ScreenReceiver" android:enabled="true" android:exported="false">
       <intent-filter>
-        <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-        <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag" />
-      </intent-filter>
-    </service>
-
-    <receiver
-        android:name=".receivers.ScreenReceiver"
-        android:enabled="true"
-        android:exported="false">
-      <intent-filter>
-        <action android:name="android.intent.action.SCREEN_OFF" />
-        <action android:name="android.intent.action.SCREEN_ON" />
+        <action android:name="android.intent.action.SCREEN_OFF"/>
+        <action android:name="android.intent.action.SCREEN_ON"/>
       </intent-filter>
     </receiver>
 

@@ -1,13 +1,14 @@
 package com.ssafy.shieldroneapp.di
 
 import android.content.Context
-import com.ssafy.shieldroneapp.data.audio.AudioRecorder
-import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
+import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
+import com.ssafy.shieldroneapp.data.source.local.HeartRateLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketErrorHandler
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.permissions.PermissionManager
+import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,31 +50,44 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideWebSocketService(
-        @ApplicationContext context: Context,
-        messageSender: WebSocketMessageSender,
+    fun provideWebSocketConnectionManager(
+        webSocketService: WebSocketService,
+        webSocketMessageSender: WebSocketMessageSender,
         errorHandler: WebSocketErrorHandler
+    ): WebSocketConnectionManager {
+        return WebSocketConnectionManager(
+            webSocketService = webSocketService,
+            webSocketMessageSender = webSocketMessageSender,
+            errorHandler = errorHandler
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideWebSocketService(
+        context: Context,
+        webSocketMessageSender: WebSocketMessageSender
     ): WebSocketService {
-        val service = WebSocketService(context, messageSender)
-        val connectionManager = WebSocketConnectionManager(service, errorHandler)
+        val service = WebSocketService(context, webSocketMessageSender)
+        val connectionManager = provideWebSocketConnectionManager(service, webSocketMessageSender, provideWebSocketErrorHandler(context))
         service.setConnectionManager(connectionManager)
         return service
     }
 
     @Provides
     @Singleton
-    fun provideAudioRecorder(
-        @ApplicationContext context: Context,
-        webSocketService: WebSocketService
-    ): AudioRecorder {
-        return AudioRecorder(context, webSocketService)
+    fun provideSensorDataRepository(
+        webSocketService: WebSocketService,
+        heartRateViewModel: HeartRateViewModel,
+        heartRateLocalDataSource: HeartRateLocalDataSource,
+
+        ): HeartRateDataRepository {
+        return HeartRateDataRepository(webSocketService, heartRateViewModel, heartRateLocalDataSource)
     }
 
     @Provides
     @Singleton
-    fun provideAudioDataLocalSource(
-        @ApplicationContext context: Context
-    ): AudioDataLocalSource {
-        return AudioDataLocalSource(context)
+    fun provideHeartRateViewModel(): HeartRateViewModel {
+        return HeartRateViewModel()
     }
 }
