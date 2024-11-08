@@ -87,7 +87,7 @@ class ApiInterceptor @Inject constructor(
                 // => TODO: 추후 개선 필요
                 val newTokens = runBlocking {
                     tokenRefresher.refreshToken(refreshToken)
-                }
+                }.body() ?: throw IOException("토큰 갱신 실패")
                 userLocalDataSource.saveTokensSync(newTokens) // **동기적으로(OKHttp 특성 때문)** 저장
 
                 // 새로운 액세스 토큰을 사용하여 원래 요청 재시도

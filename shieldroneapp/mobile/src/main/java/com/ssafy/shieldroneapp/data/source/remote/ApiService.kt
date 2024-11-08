@@ -13,8 +13,11 @@ package com.ssafy.shieldroneapp.data.source.remote
  */
 
 import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.User
-import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.request.CodeVerificationRequest
+import com.ssafy.shieldroneapp.data.model.request.PhoneNumberRequest
+import com.ssafy.shieldroneapp.data.model.request.TokenRequest
+import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
+import com.ssafy.shieldroneapp.data.model.request.VerificationCodeRequest
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
 import retrofit2.Response
@@ -23,23 +26,22 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface ApiService {
-
     @POST("users/send")
-    suspend fun sendVerificationCode(@Body requestBody: Map<String, String>)
+    suspend fun sendVerificationCode(@Body requestBody: VerificationCodeRequest): Response<Unit>
 
     @POST("users/verify")
     suspend fun verifyCode(
-        @Body requestBody: Map<String, String>
+        @Body requestBody: CodeVerificationRequest
     ): Response<VerificationResponse>
 
     @POST("users/sign-up")
-    suspend fun signUp(@Body userData: UserAuthData): User
+    suspend fun signUp(@Body requestBody: UserAuthRequest): Response<Unit>
 
     @POST("users/sign-in")
-    suspend fun signIn(@Query("phoneNumber") phoneNumber: String): TokenResponse
+    suspend fun signIn(@Body requestBody: PhoneNumberRequest): Response<TokenResponse>
 
-    @POST("tokens/refresh")
-    suspend fun refreshToken(@Body refreshToken: String): TokenResponse
+    @POST("users/refresh")
+    suspend fun refreshToken(@Body requestBody: TokenRequest): Response<TokenResponse>
 
     @POST("settings/end-pos")
     suspend fun setEndPos(

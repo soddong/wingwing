@@ -2,7 +2,7 @@ package com.ssafy.shieldroneapp.data.repository
 
 import com.ssafy.shieldroneapp.data.model.Guardian
 import com.ssafy.shieldroneapp.data.model.User
-import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
 
@@ -26,7 +26,7 @@ interface UserRepository {
     suspend fun requestVerification(phoneNumber: String): Result<Unit>
     suspend fun verifyCode(phoneNumber: String, code: String): Result<VerificationResponse>
 
-    suspend fun registerUser(userData: UserAuthData): Result<User>
+    suspend fun registerUser(userData: UserAuthRequest): Result<Unit>
     suspend fun loginUser(phoneNumber: String): Result<TokenResponse>
 
     suspend fun saveTokens(tokens: TokenResponse)

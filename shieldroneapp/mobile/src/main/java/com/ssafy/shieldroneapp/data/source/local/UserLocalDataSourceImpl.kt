@@ -10,7 +10,9 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class UserLocalDataSourceImpl @Inject constructor(
     context: Context,
     private val gson: Gson

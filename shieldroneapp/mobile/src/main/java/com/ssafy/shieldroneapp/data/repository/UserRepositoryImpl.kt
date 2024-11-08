@@ -3,8 +3,11 @@ package com.ssafy.shieldroneapp.data.repository
 import android.content.Context
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.User
-import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.request.CodeVerificationRequest
+import com.ssafy.shieldroneapp.data.model.request.PhoneNumberRequest
+import com.ssafy.shieldroneapp.data.model.request.TokenRequest
+import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
+import com.ssafy.shieldroneapp.data.model.request.VerificationCodeRequest
 import com.ssafy.shieldroneapp.data.model.response.AuthenticationErrorResponse
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
@@ -12,7 +15,9 @@ import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
 import com.ssafy.shieldroneapp.utils.NetworkUtils
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class UserRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
     private val userLocalDataSource: UserLocalDataSource,
@@ -21,10 +26,13 @@ class UserRepositoryImpl @Inject constructor(
 ) : UserRepository {
 
     /**
-     * 공통 메서드: 네트워크 상태 확인 후 API 호출
+     * 공통 메서드: 네트워크 상태 확인 후 API 호출 결과를 Result로 감싸 반환하는 공통 메서드
+     *
+     * [Result.success]와 [Result.failure]를 사용하여 API 호출 결과를
+     * Result로 감싸기 때문에 호출하는 측에서는 별도로 Result로 감쌀 필요가 없습니다.
      *
      * @param block 네트워크가 연결된 경우 실행할 API 요청 블록
-     * @return API 요청 결과 또는 네트워크 오류
+     * @return API 요청 결과를 Result로 감싼 값. 네트워크 오류나 예외 발생 시 Result.failure 반환
      */
     private suspend fun <T> apiCallAfterNetworkCheck(block: suspend () -> T): Result<T> {
         return if (NetworkUtils.isNetworkAvailable(context)) {
@@ -45,8 +53,10 @@ class UserRepositoryImpl @Inject constructor(
      * @return 성공 시 Unit, 실패 시 에러와 함께 실패 결과 반환
      */
     override suspend fun requestVerification(phoneNumber: String): Result<Unit> {
-        val requestBody = mapOf("phoneNumber" to phoneNumber)
-        return apiCallAfterNetworkCheck { apiService.sendVerificationCode(requestBody) }
+        val requestBody = VerificationCodeRequest(phoneNumber)
+        return apiCallAfterNetworkCheck {
+            apiService.sendVerificationCode(requestBody)
+        }
     }
 
     /**
@@ -58,33 +68,24 @@ class UserRepositoryImpl @Inject constructor(
      *         이미 등록된 회원 여부 정보를 포함하며, 실패 시 에러 메시지와 함께 실패 결과 반환.
      */
     override suspend fun verifyCode(phoneNumber: String, code: String): Result<VerificationResponse> {
+        val requestBody = CodeVerificationRequest(phoneNumber, code)
+
         return apiCallAfterNetworkCheck {
-            val response = apiService.verifyCode(
-                mapOf(
-                    "phoneNumber" to phoneNumber,
-                    "authCode" to code
-                )
-            )
+            val response = apiService.verifyCode(requestBody)
 
             // 응답이 성공적인 경우 VerificationResponse를 Result.success로 반환
             // isSuccessful: HTTP 응답 코드가 200번대일 때 true 반환, 그 외에는 false
             if (response.isSuccessful) {
-                val verificationResponse = response.body()
-                if (verificationResponse != null) {
-                    Result.success(verificationResponse)
-                } else {
-                    Result.failure(Exception("서버 응답이 비어 있습니다. 다시 시도해주세요."))
-                }
+                response.body() ?: throw Exception("서버 응답이 비어 있습니다. 다시 시도해주세요.")
             } else {
                 // 실패한 경우, errorBody를 VerificationErrorResponse로 변환(Gson 이용)하여 실패 처리
                 val errorResponse = response.errorBody()?.string()?.let {
                     gson.fromJson(it, AuthenticationErrorResponse::class.java)
                 }
-                Result.failure(Exception(errorResponse?.message ?: "인증 실패"))
+                throw Exception(errorResponse?.message ?: "인증 실패")
             }
-        }.getOrElse { e -> Result.failure(e) }
+        }
     }
-
 
     /**
      * 3. 신규 사용자 등록
@@ -93,11 +94,16 @@ class UserRepositoryImpl @Inject constructor(
      * @param userData 사용자 인증 과정에서 수집된 데이터
      * @return 생성된 User 객체, 실패 시 에러와 함께 실패 결과 반환
      */
-    override suspend fun registerUser(userData: UserAuthData): Result<User> {
+    override suspend fun registerUser(userData: UserAuthRequest): Result<Unit> {
         return apiCallAfterNetworkCheck {
-            val user = apiService.signUp(userData)
-            userLocalDataSource.saveUser(user)
-            user
+            val response = apiService.signUp(userData)
+
+            if (response.isSuccessful) {
+                Unit
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "회원가입에 실패했습니다."
+                throw Exception(errorMessage)
+            }
         }
     }
 
@@ -110,9 +116,16 @@ class UserRepositoryImpl @Inject constructor(
      */
     override suspend fun loginUser(phoneNumber: String): Result<TokenResponse> {
         return apiCallAfterNetworkCheck {
-            val tokens = apiService.signIn(phoneNumber)
-            userLocalDataSource.saveTokens(tokens)
-            tokens
+            val response = apiService.signIn(PhoneNumberRequest(phoneNumber))
+
+            if (response.isSuccessful) {
+                val tokens = response.body() ?: throw Exception("토큰 응답이 비어 있습니다.")
+                userLocalDataSource.saveTokens(tokens)
+                tokens
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "로그인에 실패했습니다."
+                throw Exception(errorMessage)
+            }
         }
     }
 
@@ -136,9 +149,16 @@ class UserRepositoryImpl @Inject constructor(
      */
     override suspend fun refreshAccessToken(refreshToken: String): Result<TokenResponse> {
         return apiCallAfterNetworkCheck {
-            val newTokens = apiService.refreshToken(refreshToken)
-            userLocalDataSource.saveTokens(newTokens)
-            newTokens
+            val response = apiService.refreshToken(TokenRequest(refreshToken))
+
+            if (response.isSuccessful) {
+                val newTokens = response.body() ?: throw Exception("토큰 재발급 응답이 비어 있습니다.")
+                userLocalDataSource.saveTokens(newTokens)
+                newTokens
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "토큰 재발급에 실패했습니다."
+                throw Exception(errorMessage)
+            }
         }
     }
 
