@@ -26,7 +26,8 @@ import kotlin.math.sqrt
 @Singleton
 class AudioRecorder @Inject constructor(
     private val context: Context,
-    private val webSocketService: WebSocketService
+    private val webSocketService: WebSocketService,
+    private val audioAnalyzer: AudioAnalyzer
 ) {
     private var audioRecord: AudioRecord? = null
     private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
@@ -136,9 +137,7 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
-                        // TODO: 여기서 음성 데이터 분석하여 dbFlag 결정
-                        val dbFlag = analyzeAudioData(buffer, readResult)
-
+                        val dbFlag = audioAnalyzer.analyzeAudioData(buffer, readResult)
                         val audioData = AudioData(
                             time = System.currentTimeMillis(),
                             dbFlag = dbFlag
@@ -162,90 +161,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-    private fun analyzeAudioData(buffer: ByteArray, size: Int): Boolean {
-        // TODO: 여기서 실제 음성 분석
-        // ByteArray로 데시벨 및 주파수 계산
-        val decibel = calculateDecibel(buffer)
-        val frequency = calculateFrequency(buffer)
-
-        Log.d(TAG, "데시벨: $decibel, 주파수: $frequency")
-
-        // 비명 소리 감지: 특정 주파수 및 데시벨 임계값 확인
-        if ((decibel > 60) && (frequency in 100.0..199.0)) {
-            Log.e(TAG, "분석 결과, 남자 일반 목소리")
-        } else if ((decibel > 60) && (frequency in 200.0..299.0)) {
-            Log.e(TAG, "분석 결과, 여자 일반 목소리")
-        } else if ((decibel > 60) && (frequency in 300.0..500.0)) {
-            Log.e(TAG, "분석 결과, 남자 비명 목소리")
-        } else if ((decibel > 60) && (frequency in 500.0..3000.0)) {
-            Log.e(TAG, "분석 결과, 여자 비명 목소리")
-        } else {
-            Log.e(TAG, "분석 결과, 여자 일반 목소리")
-        }
-            return (decibel > 60) && (frequency in 200.0..3000.0)
-    }
-
-    private fun calculateDecibel(buffer: ByteArray): Double {
-        var sum = 0.0
-        for (i in buffer.indices step 2) {
-            // 16-bit PCM 값으로 변환 (2 bytes per sample)
-            val sample = ((buffer[i].toInt() and 0xFF) or (buffer[i + 1].toInt() shl 8)).toShort()
-            sum += sample * sample
-        }
-        val rms = sqrt(sum / (buffer.size / 2))
-        return 20 * log10(rms)
-    }
-
-    private fun calculateFrequency(buffer: ByteArray): Double {
-        val fftBuffer = DoubleArray(buffer.size / 2)
-        for (i in fftBuffer.indices) {
-            // 16-bit PCM 값으로 변환
-            fftBuffer[i] = ((buffer[2 * i].toInt() and 0xFF) or (buffer[2 * i + 1].toInt() shl 8)).toDouble()
-        }
-
-        val fftResult = fft(fftBuffer)
-
-        var maxMagnitude = 0.0
-        var maxIndex = 0
-        for (i in fftResult.indices) {
-            val magnitude = sqrt(fftResult[i].first * fftResult[i].first + fftResult[i].second * fftResult[i].second)
-            if (magnitude > maxMagnitude) {
-                maxMagnitude = magnitude
-                maxIndex = i
-            }
-        }
-
-        return maxIndex * SAMPLE_RATE / fftBuffer.size.toDouble()
-    }
-
-    private fun fft(buffer: DoubleArray): Array<Pair<Double, Double>> {
-        val n = buffer.size
-        if (n == 1) return arrayOf(Pair(buffer[0], 0.0))
-
-        val even = DoubleArray(n / 2)
-        val odd = DoubleArray(n / 2)
-        for (i in 0 until n / 2) {
-            even[i] = buffer[2 * i]
-            odd[i] = buffer[2 * i + 1]
-        }
-
-        val evenFFT = fft(even)
-        val oddFFT = fft(odd)
-
-        val result = Array(n) { Pair(0.0, 0.0) }
-        for (k in 0 until n / 2) {
-            val angle = -2.0 * Math.PI * k / n
-            val exp = Pair(Math.cos(angle), Math.sin(angle))
-            val t = Pair(
-                exp.first * oddFFT[k].first - exp.second * oddFFT[k].second,
-                exp.first * oddFFT[k].second + exp.second * oddFFT[k].first
-            )
-            result[k] = Pair(evenFFT[k].first + t.first, evenFFT[k].second + t.second)
-            result[k + n / 2] = Pair(evenFFT[k].first - t.first, evenFFT[k].second - t.second)
-        }
-        return result
-    }
-
     private fun checkAudioPermission(): Boolean {
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -255,7 +170,6 @@ class AudioRecorder @Inject constructor(
         return hasPermission
     }
 
-    // AudioRecord 초기화
     private fun initializeAudioRecord() {
         try {
             if (checkAudioPermission()) {
