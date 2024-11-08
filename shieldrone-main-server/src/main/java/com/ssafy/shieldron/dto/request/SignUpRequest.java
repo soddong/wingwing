@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 
 public record SignUpRequest (
@@ -13,7 +13,7 @@ public record SignUpRequest (
         @Pattern(regexp = "^[a-zA-Z가-힣]+$")
         String username,
         @NotNull
-        LocalDateTime birthday,
+        LocalDate birthday,
         @NotNull
         @Pattern(regexp = "^010\\d{8}$")
         String phoneNumber
