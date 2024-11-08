@@ -16,13 +16,12 @@ class AudioDataRepository @Inject constructor(
 
     suspend fun processAudioData(audioData: AudioData) {
         try {
-            Log.d(TAG, "오디오 데이터 처리중 - 시간: ${audioData.time}, 크기: ${audioData.audioData.size} bytes")
+            Log.d(TAG, "음성 분석 데이터 처리중 - 시간: ${audioData.time}, dbFlag: ${audioData.dbFlag}")
             webSocketService.sendAudioData(audioData)
             Log.d(TAG, "웹소켓 전송 성공")
         } catch (e: Exception) {
-            Log.e(TAG, "오디오 데이터 전송 실패, 로컬에 저장", e)
-            localDataSource.saveAudioData(audioData)
-            Log.d(TAG, "오디오 데이터가 로컬 저장")
+            Log.e(TAG, "음성 분석 데이터 전송 실패", e)
+            throw e
         }
     }
 }

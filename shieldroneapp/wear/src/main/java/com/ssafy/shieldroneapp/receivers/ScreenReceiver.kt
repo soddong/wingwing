@@ -7,15 +7,21 @@ import android.util.Log
 import com.ssafy.shieldroneapp.services.HeartRateService
 
 class ScreenReceiver : BroadcastReceiver() {
+    companion object {
+        private const val TAG = "워치: 스크린 리시버"
+    }
+
     override fun onReceive(context: Context?, intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_SCREEN_OFF -> {
-                Log.d("ScreenReceiver", "화면 꺼짐")
-                val serviceIntent = Intent(context, HeartRateService::class.java)
-                context?.startForegroundService(serviceIntent)
+                Log.d(TAG, "화면 꺼짐")
+                context?.let {
+                    val serviceIntent = Intent(it, HeartRateService::class.java)
+                    it.startForegroundService(serviceIntent)
+                }
             }
             Intent.ACTION_SCREEN_ON -> {
-                Log.d("ScreenReceiver", "화면 켜짐")
+                Log.d(TAG, "화면 켜짐")
             }
         }
     }

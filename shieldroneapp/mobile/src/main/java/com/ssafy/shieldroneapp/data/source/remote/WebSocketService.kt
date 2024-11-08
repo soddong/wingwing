@@ -158,11 +158,11 @@ class WebSocketService @Inject constructor(
         }
 
         try {
-            Log.d(TAG, "오디오 데이터 전송 시도 - 크기: ${audioData.audioData.size} bytes")
+            Log.d(TAG, "음성 분석 데이터 전송 시도 - dbFlag: ${audioData.dbFlag}")
             webSocketMessageSender.sendAudioData(audioData)
-            Log.d(TAG, "오디오 데이터 전송 성공")
+            Log.d(TAG, "음성 분석 데이터 전송 성공")
         } catch (e: Exception) {
-            Log.e(TAG, "오디오 데이터 전송 실패", e)
+            Log.e(TAG, "음성 분석 데이터 전송 실패", e)
             errorHandler.handleMessageError(e)
             handleReconnect()
         }
@@ -172,7 +172,7 @@ class WebSocketService @Inject constructor(
         Log.d(TAG, "WebSocket 재연결 시도 중...")
         try {
             shutdown()
-            // 약간의 지연을 주어 이전 연결이 완전히 종료되도록 함
+            // 약간의 지연을 주어 이전 연결이 완전히 종료되도록
             recordingScope.launch {
                 kotlinx.coroutines.delay(1000)
                 initialize()
