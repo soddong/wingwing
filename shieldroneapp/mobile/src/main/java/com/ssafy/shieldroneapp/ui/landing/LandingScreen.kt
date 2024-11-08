@@ -63,7 +63,7 @@ fun LandingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(48.dp)
-                .padding(top = 78.dp, bottom = 64.dp),
+                .padding(top = 78.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(

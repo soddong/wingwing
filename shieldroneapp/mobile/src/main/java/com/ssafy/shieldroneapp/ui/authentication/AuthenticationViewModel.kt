@@ -1,166 +1,279 @@
 package com.ssafy.shieldroneapp.ui.authentication
 
-/**
- * 인증 과정의 상태와 데이터를 관리하는 ViewModel.
- *
- * 각 인증 단계의 상태와 사용자 입력 데이터를 일시적으로 관리하고,
- * 단계 이동 함수 `goToNextStep`으로 인증 흐름을 제어한다.
- *
- * 단계별 입력 데이터는 `mutableStateOf`를 사용해 ViewModel 내에서 임시로 저장되며,
- * 모든 인증 과정이 완료된 후에는 `UserRepository`를 통해 최종적으로
- * 로컬 저장소 또는 서버로 데이터를 전송하여 저장할 수 있다.
- *
- * @property userRepository 사용자 데이터를 저장하고 전송하는 리포지토리 객체
- */
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
+import com.ssafy.shieldroneapp.data.repository.UserRepository
+import com.ssafy.shieldroneapp.utils.ValidationUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * 사용자 인증 및 회원가입 과정을 관리하는 ViewModel
+ *
+ * [주요 역할]
+ * - Repository로부터 데이터를 받아 UI 상태를 관리하고 업데이트
+ * - onSuccess와 onFailure를 통해 Repository의 요청 결과를 받아
+ *   성공/실패에 따라 UI 상태를 업데이트하거나 후속 작업을 수행
+ * - 사용자 입력 데이터에 대한 내부 로직을 처리하여 화면 단계를 관리
+ *
+ * [UI와의 데이터 흐름]
+ * - 화면(Activity/Fragment)에서 ViewModel의 상태를 구독하여 필요한 데이터를 제공받음
+ * - UI 로직과 분리하여 화면 상태와 이벤트를 관리하며,
+ *   입력값에 따른 내부 상태 업데이트 및 화면 전환을 수행
+ */
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
-//    private val userRepository: UserRepository
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
-    // 현재 인증 단계를 관리하는 상태
-    private val _currentStep = MutableStateFlow<AuthStep>(AuthStep.Intro)
-    val currentStep: StateFlow<AuthStep> = _currentStep.asStateFlow()
+    private val _state = MutableStateFlow(AuthenticationState())
+    val state: StateFlow<AuthenticationState> = _state.asStateFlow()
 
-    // UI 상태 관리 (로딩, 에러 등)
-    private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
-
-    // 다음 단계로 이동
-    fun moveToNextStep() {
-        _currentStep.value = AuthStep.Complete  // 지금은 바로 Complete로 이동
+    /**
+     * 인증 관련 이벤트를 처리하는 함수
+     * @param event AuthenticationEvent: 사용자 입력 또는 동작 이벤트
+     */
+    fun handleEvent(event: AuthenticationEvent) {
+        when (event) {
+            is AuthenticationEvent.StartAuthentication -> moveToNextStep()
+            is AuthenticationEvent.NameSubmitted -> handleNameSubmission(event.name)
+            is AuthenticationEvent.BirthSubmitted -> handleBirthSubmission(event.birth)
+            is AuthenticationEvent.PhoneSubmitted -> handlePhoneSubmission(event.phone)
+            is AuthenticationEvent.VerificationSubmitted -> handleVerificationSubmission(event.code)
+            is AuthenticationEvent.TermsAccepted -> handleTermsAcceptance(event.accepted)
+            is AuthenticationEvent.BackPressed -> handleBackPress()
+            is AuthenticationEvent.NextPressed -> moveToNextStep()
+            is AuthenticationEvent.ResendVerification -> resendVerificationCode()
+        }
     }
 
-    // 이전 단계로 이동
-    fun moveToPreviousStep() {
-        _currentStep.value = AuthStep.Intro
+    /**
+     * 사용자 이름 제출을 처리하고 다음 단계로 이동
+     * @param name 사용자 이름
+     */
+    private fun handleNameSubmission(name: String) {
+        _state.update { it.copy(username = name, error = null) }
+        moveToNextStep()
     }
 
+    /**
+     * 생년월일 제출을 처리하고 다음 단계로 이동
+     * @param birth 생년월일
+     */
+    private fun handleBirthSubmission(birth: String) {
+        _state.update { it.copy(birthday = birth, error = null) }
+        moveToNextStep()
+    }
 
-//    private var userData = UserAuthData()
+    /**
+     * 핸드폰 번호 제출을 처리하고 인증번호 요청
+     * @param phone 핸드폰 번호
+     */
+    private fun handlePhoneSubmission(phone: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                userRepository.requestVerification(phone).onSuccess {
+                    _state.update {
+                        it.copy(
+                            phoneNumber = phone,
+//                            isVerificationSent = true,
+                            error = null
+                        )
+                    }
+                    moveToNextStep()
+                }.onFailure { error ->
+                    setError(error.message ?: "인증번호 전송에 실패했습니다")
+                }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
 
-    // 다음 단계로 이동
-//    fun moveToNextStep() {
-//        _currentStep.value = when (_currentStep.value) {
-//            AuthStep.Intro -> AuthStep.Name
-//            AuthStep.Name -> AuthStep.ResidentNumber
-//            AuthStep.ResidentNumber -> AuthStep.PhoneNumber
-//            AuthStep.PhoneNumber -> AuthStep.Verification
-//            AuthStep.Verification -> {
-//                if (userRepository.isUserRegistered(userData.phoneNumber)) {
-//                    AuthStep.Complete // 기존 회원은 약관 동의 없이 완료
-//                } else {
-//                    AuthStep.Terms // 신규 회원은 약관 동의로
-//                }
-//            }
-//            AuthStep.Terms -> AuthStep.Complete
-//            AuthStep.Complete -> AuthStep.Complete
-//        }
-//    }
+    /**
+     * 사용자가 입력한 인증 코드를 검증하고, 성공 여부에 따라 다음 단계로 이동
+     * @param code 사용자가 입력한 인증 코드
+     */
+    private fun handleVerificationSubmission(code: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                val response = userRepository.verifyCode(state.value.phoneNumber, code) // 인증 코드 검증 결과
 
-//    fun moveToPreviousStep() {
-//        _currentStep.value = when (_currentStep.value) {
-//            AuthStep.Intro -> AuthStep.Intro
-//            AuthStep.Name -> AuthStep.Intro
-//            AuthStep.ResidentNumber -> AuthStep.Name
-//            AuthStep.PhoneNumber -> AuthStep.ResidentNumber
-//            AuthStep.Verification -> AuthStep.PhoneNumber
-//            AuthStep.Terms -> AuthStep.Verification
-//            AuthStep.Complete -> AuthStep.Complete
-//        }
-//    }
+                response.onSuccess { verificationResponse ->
+                    _state.update {
+                        it.copy(
+                            isVerified = true,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
 
-//    fun setName(name: String) {
-//        userData = userData.copy(name = name)
-//    }
-//
-//    fun setResidentNumber(number: String) {
-//        userData = userData.copy(residentNumber = number)
-//    }
-//
-//    fun setPhoneNumber(number: String) {
-//        userData = userData.copy(phoneNumber = number)
-//    }
+                    if (verificationResponse.isAlreadyRegistered) {
+                        handleExistingUser() // 로그인 처리
+                    } else {
+                        moveToNextStep() // 약관 동의 단계로 이동
+                    }
 
-//    fun requestVerification() {
-//        viewModelScope.launch {
-//            try {
-//                _uiState.value = _uiState.value.copy(isLoading = true)
-//                userRepository.requestVerification(userData.phoneNumber)
-//                moveToNextStep()
-//            } catch (e: Exception) {
-//                _uiState.value = _uiState.value.copy(error = e.message)
-//            } finally {
-//                _uiState.value = _uiState.value.copy(isLoading = false)
-//            }
-//        }
-//    }
+                }.onFailure { error ->
+                    setError(error.message ?: "인증에 실패했습니다.")
+                }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
 
-//    fun verifyCode(code: String) {
-//        viewModelScope.launch {
-//            try {
-//                _uiState.value = _uiState.value.copy(isLoading = true)
-//                val isVerified = userRepository.verifyCode(userData.phoneNumber, code)
-//                if (isVerified) {
-//                    moveToNextStep()
-//                } else {
-//                    _uiState.value = _uiState.value.copy(error = "인증번호가 일치하지 않습니다")
-//                }
-//            } catch (e: Exception) {
-//                _uiState.value = _uiState.value.copy(error = e.message)
-//            } finally {
-//                _uiState.value = _uiState.value.copy(isLoading = false)
-//            }
-//        }
-//    }
+    /**
+     * 약관 동의 여부를 처리하고, 동의 시 회원가입 완료 진행
+     * @param accepted 약관 동의 여부
+     */
+    private fun handleTermsAcceptance(accepted: Boolean) {
+        _state.update { it.copy(isTermsAccepted = accepted) }
+        if (accepted) {
+            completeRegistration()
+        }
+    }
 
-//    fun registerUser() {
-//        viewModelScope.launch {
-//            try {
-//                _uiState.value = _uiState.value.copy(isLoading = true)
-//                userRepository.register(userData)
-//                // 회원가입 후 자동 로그인
-//                val tokens = userRepository.login(userData.phoneNumber)
-//                saveTokens(tokens)
-//                moveToNextStep()
-//            } catch (e: Exception) {
-//                _uiState.value = _uiState.value.copy(error = e.message)
-//            } finally {
-//                _uiState.value = _uiState.value.copy(isLoading = false)
-//            }
-//        }
-//    }
+    /**
+     * 회원가입 완료 후 로그인 절차 진행
+     */
+    private fun completeRegistration() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                val userData = UserAuthData(
+                    username = state.value.username,
+                    birthday = state.value.birthday, // YYMMDD-G 형식 그대로 전달
+                    phoneNumber = state.value.phoneNumber,
+                    isTermsAccepted = state.value.isTermsAccepted
+                )
+                userRepository.registerUser(userData)
+                    .onSuccess { user ->
+                        // 회원가입 성공 후 자동 로그인
+                        userRepository.loginUser(user.phoneNumber)
+                            .onSuccess { tokens ->
+                                userRepository.saveTokens(tokens)
+                                _state.update {
+                                    it.copy(
+                                        currentStep = AuthStep.Complete,
+                                        isLoading = false,
+                                        error = null
+                                    )
+                                }
+                            }
+                    }.onFailure { error ->
+                        setError(error.message ?: "회원가입에 실패했습니다")
+                    }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
 
-//    private fun saveTokens(tokens: Tokens) {
-//        // DataStore나 SharedPreferences에 토큰 저장
-//        viewModelScope.launch {
-//            userRepository.saveTokens(tokens)
-//        }
-//    }
+    /**
+     * 기존 사용자 로그인 처리
+     */
+    private fun handleExistingUser() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                userRepository.loginUser(state.value.phoneNumber)
+                    .onSuccess { tokens ->
+                        userRepository.saveTokens(tokens)
+                        _state.update {
+                            it.copy(
+                                currentStep = AuthStep.Complete,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                    }.onFailure { error ->
+                        setError(error.message ?: "로그인에 실패했습니다")
+                    }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    /**
+     * 인증번호 재전송 요청
+     */
+    private fun resendVerificationCode() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                userRepository.requestVerification(state.value.phoneNumber)
+                    .onSuccess {
+                        _state.update {
+                            it.copy(
+                                isVerificationSent = true,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                    }.onFailure { error ->
+                        setError(error.message ?: "인증번호 재전송에 실패했습니다")
+                    }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    /**
+     * 현재 단계에서 다음 단계로 이동
+     */
+    private fun moveToNextStep() {
+        val nextStep = when (state.value.currentStep) {
+            AuthStep.Intro -> AuthStep.Name
+            AuthStep.Name -> AuthStep.Birth
+            AuthStep.Birth -> AuthStep.Phone
+            AuthStep.Phone -> AuthStep.Verification
+            AuthStep.Verification -> AuthStep.Terms
+            AuthStep.Terms -> AuthStep.Complete
+            AuthStep.Complete -> return
+        }
+        _state.update { it.copy(currentStep = nextStep, error = null) }
+    }
+
+    /**
+     * 뒤로가기 버튼을 눌렀을 때 이전 단계로 이동
+     */
+    private fun handleBackPress() {
+        val previousStep = when (state.value.currentStep) {
+            AuthStep.Intro -> return
+            AuthStep.Name -> AuthStep.Intro
+            AuthStep.Birth -> AuthStep.Name
+            AuthStep.Phone -> AuthStep.Birth
+            AuthStep.Verification -> AuthStep.Phone
+            AuthStep.Terms -> AuthStep.Verification
+            AuthStep.Complete -> return
+        }
+        _state.update { it.copy(currentStep = previousStep, error = null) }
+    }
+
+    /**
+     * 오류 메시지 설정
+     * @param message 오류 메시지
+     */
+    private fun setError(message: String) {
+        _state.update { it.copy(error = message, isLoading = false) }
+    }
+
+    /**
+     * 오류 메시지 초기화
+     */
+    fun clearError() {
+        _state.update { it.copy(error = null) }
+    }
 }
-
-//data class UserAuthData(
-//    val name: String = "",
-//    val residentNumber: String = "",
-//    val phoneNumber: String = "",
-//    val isTermsAccepted: Boolean = false
-//)
-
-// UI 상태를 나타내는 데이터 클래스
-data class AuthUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
-
-//data class Tokens(
-//    val accessToken: String,
-//    val refreshToken: String
-//)

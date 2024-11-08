@@ -27,7 +27,7 @@ fun IntroScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(48.dp)
-                .padding(top = 78.dp, bottom = 64.dp), // 위아래 추가 패딩
+                .padding(top = 78.dp, bottom = 16.dp), // 위아래 추가 패딩
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
                 Text(
