@@ -48,7 +48,6 @@ class AudioRecorder @Inject constructor(
             AUDIO_FORMAT
         )
 
-        // 프레임 크기의 배수로 버퍼 크기 조정
         val frameSize = FRAMES_PER_BUFFER * BYTES_PER_FRAME
         return max(minBufferSize, frameSize)
     }
@@ -135,11 +134,14 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
+                        // TODO: 여기서 음성 데이터 분석하여 dbFlag 결정
+                        val dbFlag = analyzeAudioData(buffer, readResult)
+
                         val audioData = AudioData(
                             time = System.currentTimeMillis(),
-                            audioData = buffer.copyOf(readResult)
+                            dbFlag = dbFlag
                         )
-                        Log.d(TAG, "오디오 데이터 수집됨 - 크기: $readResult bytes")
+                        Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $dbFlag")
                         webSocketService.sendAudioData(audioData)
                     }
                     readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
@@ -158,6 +160,10 @@ class AudioRecorder @Inject constructor(
         }
     }
 
+    private fun analyzeAudioData(buffer: ByteArray, size: Int): Boolean {
+        // TODO: 여기서 실제 음성 분석
+//        return false
+    }
 
     private fun checkAudioPermission(): Boolean {
         val hasPermission = ContextCompat.checkSelfPermission(
