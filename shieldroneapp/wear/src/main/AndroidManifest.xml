@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ssafy.shieldroneapp">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
   <!-- 이 앱이 웨어러블 디바이스(워치)용으로 설계되었음을 명시 -->
   <uses-feature android:name="android.hardware.type.watch"/>

@@ -88,7 +88,7 @@ class WearableService : WearableListenerService() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val nodes = Wearable.getNodeClient(this@WearableService)
-                    .connectedNodes.await()
+                    .connectedNodes.await(5000)
 
                 nodes.forEach { node ->
                     Wearable.getMessageClient(this@WearableService)
@@ -96,7 +96,7 @@ class WearableService : WearableListenerService() {
                             node.id,
                             "/watch_app_launched",
                             null
-                        ).await()
+                        ).await(5000)
                 }
                 Log.d(TAG, "실행 확인 메시지 전송 성공")
             } catch (e: Exception) {

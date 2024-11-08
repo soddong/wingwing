@@ -83,7 +83,7 @@ class DataRepository(private val context: Context) {
                 setUrgent()
             }
 
-            val result = dataClient.putDataItem(putDataRequest).await()
+            val result = dataClient.putDataItem(putDataRequest).await(5000)
             Log.d(TAG, "데이터 아이템 전송 완료 - URI: ${result.uri}")
             return true
         } catch (e: Exception) {

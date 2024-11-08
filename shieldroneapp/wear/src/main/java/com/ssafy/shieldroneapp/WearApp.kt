@@ -14,13 +14,12 @@ fun WearApp(
 ) {
     ShieldroneappTheme {
         Layout(
-            children = {
-                MainScreen(
-                    sensorRepository = sensorRepository,
-                    dataRepository = dataRepository
-                )
-            },
             hasClock = true
-        )
+        ) {
+            MainScreen(
+                sensorRepository = sensorRepository,
+                dataRepository = dataRepository
+            )
+        }
     }
 }
