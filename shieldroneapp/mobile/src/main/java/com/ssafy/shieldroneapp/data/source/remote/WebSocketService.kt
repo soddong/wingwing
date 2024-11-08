@@ -21,6 +21,7 @@ package com.ssafy.shieldroneapp.data.source.remote
 
 import android.content.Context
 import android.util.Log
+import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,19 @@ class WebSocketService @Inject constructor(
     private val errorHandler = WebSocketErrorHandler(context)
     private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
 
+    // 오디오 레코더 콜백 추가
+    private var audioRecorderCallback: ((WebSocketState) -> Unit)? = null
+
+    // 콜백 설정 메서드 추가
+    fun setAudioRecorderCallback(callback: (WebSocketState) -> Unit) {
+        audioRecorderCallback = callback
+    }
+
+    fun getConnectionState(): Boolean {
+        val isSocketAvailable = webSocketMessageSender.getWebSocket() != null
+        return isConnected && isSocketAvailable
+    }
+
     private val _connectionState = MutableStateFlow<WebSocketState>(WebSocketState.Disconnected)
     val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
 
@@ -58,6 +72,7 @@ class WebSocketService @Inject constructor(
         _connectionState.value = state
         isConnected = (state == WebSocketState.Connected)
         Log.d(TAG, "WebSocket 상태 변경: $state, isConnected: $isConnected, webSocket: ${webSocketMessageSender.getWebSocket() != null}")
+        audioRecorderCallback?.invoke(state)
     }
 
     // WebSocket 초기 설정 및 구독 시작
@@ -66,11 +81,11 @@ class WebSocketService @Inject constructor(
             Log.d(TAG, "WebSocket 초기화 시작")
             webSocketConnectionManager?.connect()
 
-            // 연결이 완료될 때까지 약간의 지연
             recordingScope.launch {
-                delay(1000)  // 1초 대기
+                // 연결이 완료될 때까지 의도적인 지연
+                delay(1000)
                 isConnected = webSocketConnectionManager?.isConnected() ?: false
-                if (isConnected && webSocketMessageSender.getWebSocket() != null) {
+                if (getConnectionState()) {
                     Log.d(TAG, "WebSocket 연결 성공")
                     updateConnectionState(WebSocketState.Connected)
                 } else {
@@ -101,18 +116,54 @@ class WebSocketService @Inject constructor(
     }
 
     fun sendHeartRateData(data: HeartRateData) {
-        if (isConnected) {
-            try {
-                webSocketMessageSender.sendWatchSensorData(data)
-            } catch (e: Exception) {
-                errorHandler.handleMessageError(e)
-                // 연결이 끊어진 경우가 아니면 재연결 시도하지 않음
-                if (!isConnected) {
-                    handleReconnect()
+        if (!getConnectionState()) {
+            Log.d(TAG, "WebSocket 연결되지 않음")
+            errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
+            handleReconnect()
+            // 재연결 후 데이터 재전송 시도
+            recordingScope.launch {
+                delay(1500) // 재연결 대기
+                if (getConnectionState()) {
+                    try {
+                        webSocketMessageSender.sendWatchSensorData(data)
+                        Log.d(TAG, "재연결 후 심박수 데이터 전송 성공")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "재연결 후 심박수 데이터 전송 실패", e)
+                        errorHandler.handleMessageError(e)
+                    }
                 }
             }
-        } else {
-            errorHandler.handleErrorEvent("WebSocket이 연결되어 있지 않음")
+            return
+        }
+
+        try {
+            Log.d(TAG, "심박수 데이터 전송 시도")
+            webSocketMessageSender.sendWatchSensorData(data)
+            Log.d(TAG, "심박수 데이터 전송 성공")
+        } catch (e: Exception) {
+            Log.e(TAG, "심박수 데이터 전송 실패", e)
+            errorHandler.handleMessageError(e)
+            // 연결이 끊어진 경우에만 재연결 시도
+            if (!getConnectionState()) {
+                handleReconnect()
+            }
+        }
+    }
+
+    fun sendAudioData(audioData: AudioData) {
+        if (!getConnectionState()) {
+            Log.d(TAG, "WebSocket 연결되지 않음 - 재연결 시도")
+            handleReconnect()
+            return
+        }
+
+        try {
+            Log.d(TAG, "오디오 데이터 전송 시도 - 크기: ${audioData.audioData.size} bytes")
+            webSocketMessageSender.sendAudioData(audioData)
+            Log.d(TAG, "오디오 데이터 전송 성공")
+        } catch (e: Exception) {
+            Log.e(TAG, "오디오 데이터 전송 실패", e)
+            errorHandler.handleMessageError(e)
             handleReconnect()
         }
     }

@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.ui.landing
 
 import android.Manifest
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ssafy.shieldroneapp.permissions.PermissionViewModel
+import com.ssafy.shieldroneapp.services.manager.AudioServiceManager
+import com.ssafy.shieldroneapp.services.sensor.AudioRecordService
 import com.ssafy.shieldroneapp.ui.components.ButtonType
 import com.ssafy.shieldroneapp.ui.components.CustomButton
 import com.ssafy.shieldroneapp.ui.components.Layout
@@ -28,6 +31,7 @@ fun LandingScreen(
 ) {
     val context = LocalContext.current
     val permissionState by permissionViewModel.audioPermissionGranted.collectAsState()
+    val audioServiceManager: AudioServiceManager = remember { AudioServiceManager(context) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -41,15 +45,16 @@ fun LandingScreen(
                 Toast.LENGTH_LONG
             ).show()
             Log.d(TAG, "권한 거부 메시지 표시")
+        } else {
+            // 권한이 허용되면 즉시 오디오 서비스 시작
+            audioServiceManager.startAudioService()
+            onStartClick()
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (!permissionState) {
-            Log.d(TAG, "RECORD_AUDIO 권한 요청")
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        } else {
-            Log.d(TAG, "RECORD_AUDIO 권한 이미 부여됨")
+    LaunchedEffect(permissionState) {
+        if (permissionState && !audioServiceManager.isRunning()) {
+            audioServiceManager.startAudioService()
         }
     }
 
@@ -85,10 +90,11 @@ fun LandingScreen(
                 text = "시작하기",
                 onClick = {
                     if (permissionState) {
-                        Log.d(TAG, "권한이 부여된 상태에서 시작 버튼이 클릭됨")
+                        if (!audioServiceManager.isRunning()) {
+                            audioServiceManager.startAudioService()
+                        }
                         onStartClick()
                     } else {
-                        Log.d(TAG, "권한이 없는 상태에서 시작 버튼이 클릭되어 권한을 요청함")
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 },

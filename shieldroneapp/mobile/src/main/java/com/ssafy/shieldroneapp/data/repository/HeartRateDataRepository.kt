@@ -29,7 +29,7 @@ class HeartRateDataRepository @Inject constructor(
                     // 데이터를 웹소켓으로 전송
                     processHeartRateData(heartRateData)
                 } else {
-                    Log.d(TAG, "로컬에 심박수 데이터가 없습니다.")
+//                    Log.d(TAG, "로컬에 심박수 데이터가 없습니다.")
                 }
                 delay(intervalMillis)
             }

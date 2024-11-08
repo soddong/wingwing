@@ -16,7 +16,6 @@ import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
-
 import com.ssafy.shieldroneapp.ui.MainScreen
 
 @AndroidEntryPoint
