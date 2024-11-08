@@ -7,14 +7,14 @@ package com.ssafy.shieldroneapp.data.model
  * 인증 완료 시 User 모델로 변환하여 서버에 전송한다.
  * 
  * @property username 사용자 이름
- * @property birthday 주민등록번호
+ *  @property birthday 생년월일 (YYYY-MM-DD 형식)
  * @property phoneNumber 핸드폰 번호
  * @property isTermsAccepted 이용약관 동의 여부
  */
 
 data class UserAuthData(
     val username: String = "",
-    val birthday: String = "",  // 주민번호는 암호화 필요
+    val birthday: String = "",  // 생년월일 (YYYY-MM-DD 형식)
     val phoneNumber: String = "",
     val isTermsAccepted: Boolean = false
 ) {

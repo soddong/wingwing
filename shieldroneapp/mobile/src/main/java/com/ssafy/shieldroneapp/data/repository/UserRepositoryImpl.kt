@@ -1,10 +1,13 @@
 package com.ssafy.shieldroneapp.data.repository
 
 import android.content.Context
+import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.Tokens
 import com.ssafy.shieldroneapp.data.model.User
 import com.ssafy.shieldroneapp.data.model.UserAuthData
+import com.ssafy.shieldroneapp.data.model.response.AuthenticationErrorResponse
+import com.ssafy.shieldroneapp.data.model.response.TokenResponse
+import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
 import com.ssafy.shieldroneapp.utils.NetworkUtils
@@ -13,7 +16,8 @@ import javax.inject.Inject
 class UserRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
     private val userLocalDataSource: UserLocalDataSource,
-    private val context: Context // Context 주입 필요
+    private val context: Context, // Context 주입 필요
+    private val gson: Gson // Gson 주입 추가
 ) : UserRepository {
 
     /**
@@ -41,7 +45,8 @@ class UserRepositoryImpl @Inject constructor(
      * @return 성공 시 Unit, 실패 시 에러와 함께 실패 결과 반환
      */
     override suspend fun requestVerification(phoneNumber: String): Result<Unit> {
-        return apiCallAfterNetworkCheck { apiService.sendVerificationCode(phoneNumber) }
+        val requestBody = mapOf("phoneNumber" to phoneNumber)
+        return apiCallAfterNetworkCheck { apiService.sendVerificationCode(requestBody) }
     }
 
     /**
@@ -49,14 +54,37 @@ class UserRepositoryImpl @Inject constructor(
      *
      * @param phoneNumber 인증을 요청한 전화번호
      * @param code 사용자가 입력한 인증번호
-     * @return 인증 성공 여부 및 이미 회원인지 여부를 반환, 실패 시 에러와 함께 실패 결과 반환
+     * @return 인증 성공 시 `VerificationResponse` 객체를 포함한 성공 결과 반환.
+     *         이미 등록된 회원 여부 정보를 포함하며, 실패 시 에러 메시지와 함께 실패 결과 반환.
      */
-    override suspend fun verifyCode(phoneNumber: String, code: String): Result<Pair<Boolean, Boolean>> {
+    override suspend fun verifyCode(phoneNumber: String, code: String): Result<VerificationResponse> {
         return apiCallAfterNetworkCheck {
-            val response = apiService.verifyCode(phoneNumber, code)
-            Pair(response.isAuthSuccessful, response.isAlreadyRegistered)
-        }
+            val response = apiService.verifyCode(
+                mapOf(
+                    "phoneNumber" to phoneNumber,
+                    "authCode" to code
+                )
+            )
+
+            // 응답이 성공적인 경우 VerificationResponse를 Result.success로 반환
+            // isSuccessful: HTTP 응답 코드가 200번대일 때 true 반환, 그 외에는 false
+            if (response.isSuccessful) {
+                val verificationResponse = response.body()
+                if (verificationResponse != null) {
+                    Result.success(verificationResponse)
+                } else {
+                    Result.failure(Exception("서버 응답이 비어 있습니다. 다시 시도해주세요."))
+                }
+            } else {
+                // 실패한 경우, errorBody를 VerificationErrorResponse로 변환(Gson 이용)하여 실패 처리
+                val errorResponse = response.errorBody()?.string()?.let {
+                    gson.fromJson(it, AuthenticationErrorResponse::class.java)
+                }
+                Result.failure(Exception(errorResponse?.message ?: "인증 실패"))
+            }
+        }.getOrElse { e -> Result.failure(e) }
     }
+
 
     /**
      * 3. 신규 사용자 등록
@@ -80,7 +108,7 @@ class UserRepositoryImpl @Inject constructor(
      * @param phoneNumber 로그인할 전화번호
      * @return 인증 토큰, 실패 시 에러와 함께 실패 결과 반환
      */
-    override suspend fun loginUser(phoneNumber: String): Result<Tokens> {
+    override suspend fun loginUser(phoneNumber: String): Result<TokenResponse> {
         return apiCallAfterNetworkCheck {
             val tokens = apiService.signIn(phoneNumber)
             userLocalDataSource.saveTokens(tokens)
@@ -94,7 +122,7 @@ class UserRepositoryImpl @Inject constructor(
      *
      * @param tokens 저장할 인증 토큰
      */
-    override suspend fun saveTokens(tokens: Tokens) {
+    override suspend fun saveTokens(tokens: TokenResponse) {
         userLocalDataSource.saveTokens(tokens)
     }
 
@@ -106,7 +134,7 @@ class UserRepositoryImpl @Inject constructor(
      * @param refreshToken 리프레시 토큰
      * @return 새로운 액세스 토큰, 실패 시 에러와 함께 실패 결과 반환
      */
-    override suspend fun refreshAccessToken(refreshToken: String): Result<Tokens> {
+    override suspend fun refreshAccessToken(refreshToken: String): Result<TokenResponse> {
         return apiCallAfterNetworkCheck {
             val newTokens = apiService.refreshToken(refreshToken)
             userLocalDataSource.saveTokens(newTokens)

@@ -10,6 +10,7 @@ object ApiErrorHandler {
 
     fun getErrorMessage(statusCode: Int): String {
         return when (statusCode) {
+            ApiConstants.STATUS_BAD_REQUEST -> "잘못된 요청입니다."
             ApiConstants.STATUS_UNAUTHORIZED -> "인증이 필요합니다. 다시 로그인해 주세요."
             ApiConstants.STATUS_FORBIDDEN -> "접근 권한이 없습니다."
             ApiConstants.STATUS_NOT_FOUND -> "요청한 리소스를 찾을 수 없습니다."

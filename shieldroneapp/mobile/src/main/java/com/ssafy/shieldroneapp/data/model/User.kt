@@ -10,7 +10,7 @@ import com.ssafy.shieldroneapp.utils.Constants
  *
  * @property userId 사용자 ID (서버에서 생성)
  * @property username 사용자 이름
- * @property birthday 주민등록번호 (암호화 필요)
+ * @property birthday 생년월일 (YYYY-MM-DD 형식)
  * @property phoneNumber 핸드폰 번호
  * @property homeAddress 등록된 기본 도착지 (집) 정보
  * @property lat 집 주소의 위도
@@ -20,7 +20,7 @@ import com.ssafy.shieldroneapp.utils.Constants
 data class User(
     val userId: String = "",
     val username: String,
-    val birthday: String,
+    val birthday: String, // 생년월일 (YYYY-MM-DD 형식)
     val phoneNumber: String,
     val homeAddress: String = "",
     val lat: Double = 0.0,
