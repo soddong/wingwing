@@ -3,50 +3,21 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.shieldrone.station.data.Controls
+import com.shieldrone.station.data.Position
+import com.shieldrone.station.data.State
+import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
-import dji.sdk.keyvalue.value.flightcontroller.FlightCoordinateSystem
-import dji.sdk.keyvalue.value.flightcontroller.RollPitchControlMode
-import dji.sdk.keyvalue.value.flightcontroller.VerticalControlMode
-import dji.sdk.keyvalue.value.flightcontroller.VirtualStickFlightControlParam
-import dji.sdk.keyvalue.value.flightcontroller.YawControlMode
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
 import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
-import dji.v5.et.isKeySupported
 import dji.v5.manager.KeyManager
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 
 class FlightControlModel {
-
-    data class Position(
-        val altitude: Double,
-        val latitude: Double,
-        val longitude: Double
-    )
-
-    data class State(
-        var longitude: Double? = null,
-        var latitude: Double? = null,
-        var altitude: Double? = null,
-        var xVelocity: Double? = null,
-        var yVelocity: Double? = null,
-        var zVelocity: Double? = null,
-        var compassHeading: Double? = null,
-        var sticks: Controls? = null,
-    )
-
-    data class Controls(
-        val leftStick: StickPosition,
-        val rightStick: StickPosition
-    )
-
-    data class StickPosition(
-        var verticalPosition: Int,
-        var horizontalPosition: Int
-    )
 
     var isVirtualStickEnabled = false
     private val handler = Handler(Looper.getMainLooper())
@@ -68,36 +39,6 @@ class FlightControlModel {
         const val simulatorTag = "SIMULATOR"
     }
 
-    fun initVirtualStickMode() {
-        // Virtual Stick 제어 파라미터 설정
-        val controlParam = VirtualStickFlightControlParam().apply {
-            // Roll/Pitch 제어 모드를 속도 모드로 설정
-            rollPitchControlMode = RollPitchControlMode.VELOCITY
-            // Yaw 제어 모드를 각속도 모드로 설정
-            yawControlMode = YawControlMode.ANGULAR_VELOCITY
-            // 수직 제어 모드를 속도 모드로 설정
-            verticalControlMode = VerticalControlMode.VELOCITY
-            // Roll/Pitch 좌표계 설정
-            rollPitchCoordinateSystem = FlightCoordinateSystem.BODY
-        }
-
-        // Virtual Stick 파라미터 설정 키
-        virtualStickManager.sendVirtualStickAdvancedParam(controlParam)
-    }
-
-    fun sendControlCommand(controls: Controls) {
-        val controlParam = VirtualStickFlightControlParam().apply {
-            // 전/후 이동 (pitch)
-            pitch = controls.rightStick.verticalPosition.toDouble()
-            // 좌/우 이동 (roll)
-            roll = controls.rightStick.horizontalPosition.toDouble()
-            // 회전 (yaw)
-            yaw = controls.leftStick.horizontalPosition.toDouble()
-            // 상/하 이동 (throttle)
-            verticalThrottle = controls.leftStick.verticalPosition.toDouble()
-        }
-        virtualStickManager.sendVirtualStickAdvancedParam(controlParam)
-    }
 
     /**
      * 이륙 시작 함수
@@ -105,29 +46,12 @@ class FlightControlModel {
     fun startTakeOff(callback: CommonCallbacks.CompletionCallback) {
         if (!checkPreconditionsForTakeoff()) {
             callback.onFailure(object : IDJIError {
-                override fun errorType(): ErrorType {
-                    TODO("Not yet implemented")
-                }
-
-                override fun errorCode(): String {
-                    TODO("Not yet implemented")
-                }
-
-                override fun innerCode(): String {
-                    TODO("Not yet implemented")
-                }
-
-                override fun hint(): String {
-                    TODO("Not yet implemented")
-                }
-
-                override fun description(): String {
-                    return "이륙 전 조건이 충족되지 않았습니다."
-                }
-
-                override fun isError(p0: String?): Boolean {
-                    TODO("Not yet implemented")
-                }
+                override fun errorType() = ErrorType.UNKNOWN
+                override fun errorCode() = "TAKE_OFF_FAILED"
+                override fun innerCode() = "TAKE_OFF_FAILED"
+                override fun hint() = "이륙에 실패했습니다."
+                override fun description() = "이륙에 실패했습니다. 이륙 조건을 확인해보세요."
+                override fun isError(p0: String?) = true
 
             })
             return
@@ -162,8 +86,8 @@ class FlightControlModel {
      * 이륙 전 조건 검사
      */
     private fun checkPreconditionsForTakeoff(): Boolean {
-        val isConnected = KeyManager.getInstance().getValue(keyConnection) as? Boolean ?: false
-        val isFlying = KeyManager.getInstance().getValue(keyIsFlying) as? Boolean ?: false
+        val isConnected = KeyManager.getInstance().getValue(keyConnection) ?: false
+        val isFlying = KeyManager.getInstance().getValue(keyIsFlying) ?: false
         return isConnected && !isFlying
     }
 
@@ -395,8 +319,7 @@ class FlightControlModel {
     }
 
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
-        Log.d(flightControlTag, "current keyGpsSIGNAL : ${keyGPSSignalLevel.isKeySupported()}")
-        var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: -1
+        var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
         Log.d(flightControlTag, "current GPS Level: $currentGPSLevel")
         handler.post(object : Runnable {
             override fun run() {
@@ -450,19 +373,6 @@ class FlightControlModel {
                 )
 
                 onUpdate(newControls)
-
-                if (currentControls != newControls) {
-                    // Virtual Stick 명령 전송
-                    sendControlCommand(newControls)
-
-                    Log.d(
-                        virtualStickTag,
-                        "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
-                                "rightStick(vertical: ${newControls.rightStick.verticalPosition}, horizontal: ${newControls.rightStick.horizontalPosition})"
-                    )
-
-                    currentControls = newControls
-                }
 
                 handler.postDelayed(this, 100)
             }

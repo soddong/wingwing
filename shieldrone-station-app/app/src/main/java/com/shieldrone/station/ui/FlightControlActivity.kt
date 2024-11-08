@@ -1,5 +1,6 @@
 package com.shieldrone.station.ui
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
@@ -34,6 +35,7 @@ class FlightControlActivity : AppCompatActivity() {
     private lateinit var txtMessage: TextView
     private lateinit var txtGpsLevel: TextView
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flight_control)
@@ -69,7 +71,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveForward.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveForward()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode() // 초기화
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -77,16 +79,15 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveBackward.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveBackward()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode()
             }
             true
         }
 
-        // 나머지 이동 버튼들도 같은 방식으로 수정
         btnMoveLeft.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveLeft()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode()
             }
             true
         }
@@ -95,7 +96,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveUp.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveUp()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -103,7 +104,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveDown.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveDown()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -111,7 +112,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveLeft.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveLeft()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -119,7 +120,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnMoveRight.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.moveRight()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -127,7 +128,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnRotateLeft.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.rotateLeft()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -135,7 +136,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnRotateRight.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> flightControlVM.rotateRight()
-                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+                MotionEvent.ACTION_UP -> flightControlVM.disableVirtualStickMode() // 초기화
             }
             true
         }
@@ -164,13 +165,13 @@ class FlightControlActivity : AppCompatActivity() {
         })
 
         // 메시지 관찰
-        flightControlVM.message.observe(this, Observer { message ->
+        flightControlVM.message.observe(this) { message ->
             txtMessage.text = message
             Log.d("FlightControlActivity", message)
-        })
+        }
 
         // 드론 제어 정보 관찰
-        flightControlVM.droneControls.observe(this, Observer { control ->
+        flightControlVM.droneControls.observe(this) { control ->
             val statusText = """
                 leftStick (VERT-고도): ${control.leftStick.verticalPosition}
                 leftStick (HORI-좌우회전): ${control.leftStick.horizontalPosition}
@@ -178,27 +179,23 @@ class FlightControlActivity : AppCompatActivity() {
                 rightStick (HORI-좌우이동): ${control.rightStick.horizontalPosition}
             """.trimIndent()
             txtDroneControls.text = statusText
-        })
+        }
 
         // 드론 위치 정보 관찰
-        flightControlVM.dronePosition.observe(this, Observer { position ->
+        flightControlVM.dronePosition.observe(this) { position ->
             val positionText = """
             위도: ${position.latitude}
             경도: ${position.longitude}
             고도: ${position.altitude}
         """.trimIndent()
             txtDronePosition.text = positionText
-        })
+        }
 
         // GPS 신호 레벨 관찰
-        flightControlVM.gpsSignalLevel.observe(this, Observer { gpsLevel ->
+        flightControlVM.gpsSignalLevel.observe(this) { gpsLevel ->
             // GPS 신호 레벨이 업데이트될 때마다 호출됨
 
             txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
-        })
-        // 드론 위치/제어 정보 구독 시작
-//        flightControlVM.subscribeDroneLocation()
-//        flightControlVM.subscribeDroneControlValues()
-//        flightControlVM.subscribeDronePositionValues()
+        }
     }
 }

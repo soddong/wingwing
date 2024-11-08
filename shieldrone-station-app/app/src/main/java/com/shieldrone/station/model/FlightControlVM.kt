@@ -3,9 +3,9 @@ package com.shieldrone.station.model
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.model.FlightControlModel.Controls
-import com.shieldrone.station.model.FlightControlModel.Position
-import com.shieldrone.station.model.FlightControlModel.State
+import com.shieldrone.station.data.Controls
+import com.shieldrone.station.data.Position
+import com.shieldrone.station.data.State
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 
@@ -33,7 +33,6 @@ class FlightControlVM : ViewModel() {
     val gpsSignalLevel: LiveData<Int> get() = _gpsSignalLevel
 
     init {
-        flightControlModel.initVirtualStickMode()
         flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
             _gpsSignalLevel.postValue(gpsLevel)
         }
@@ -159,45 +158,6 @@ class FlightControlVM : ViewModel() {
         flightControlModel.subscribeAndSendControlValues { controls ->
             controls.leftStick.horizontalPosition = 100  // 우회전
             _droneControls.value = controls
-        }
-    }
-
-
-    // 드론 제어 정보 구독 시작
-    private fun setDroneControlValues(controls: Controls) {
-        flightControlModel.setControlValues(controls, object : CommonCallbacks.CompletionCallback {
-            override fun onSuccess() {
-                _message.postValue("드론 제어 값이 성공적으로 설정되었습니다.")
-                _droneControls.postValue(controls)
-            }
-
-            override fun onFailure(error: IDJIError) {
-                _message.postValue("드론 제어 설정 실패: ${error.description()}")
-            }
-        })
-    }
-
-    // 드론 위치 정보 구독 시작
-    fun subscribeDroneControlValues() {
-        flightControlModel.subscribeControlValues { control ->
-            _droneControls.postValue(control)
-        }
-    }
-
-    // 드론 위치 정보 구독 시작
-    fun subscribeDronePositionValues() {
-        flightControlModel.subscribePosition { position ->
-            _dronePosition.postValue(position)
-        }
-    }
-
-    fun subscribeControlValues(onUpdate: (Controls) -> Unit) {
-        flightControlModel.subscribeAndSendControlValues(onUpdate)
-    }
-
-    fun subscribeDroneGpsLevel() {
-        flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
-            _gpsSignalLevel.postValue(gpsLevel)
         }
     }
 }
