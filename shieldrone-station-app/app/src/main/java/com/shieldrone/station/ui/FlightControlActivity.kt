@@ -2,6 +2,7 @@ package com.shieldrone.station.ui
 
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.viewModels
@@ -22,6 +23,8 @@ class FlightControlActivity : AppCompatActivity() {
     private lateinit var btnMoveRight: Button
     private lateinit var btnMoveUp: Button
     private lateinit var btnMoveDown: Button
+    private lateinit var btnRotateLeft: Button
+    private lateinit var btnRotateRight: Button
 
     private lateinit var btnEnableVirtualStick: Button
     private lateinit var btnDisableVirtualStick: Button
@@ -29,6 +32,7 @@ class FlightControlActivity : AppCompatActivity() {
     private lateinit var txtDroneControls: TextView
     private lateinit var txtDronePosition: TextView
     private lateinit var txtMessage: TextView
+    private lateinit var txtGpsLevel: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,12 +47,15 @@ class FlightControlActivity : AppCompatActivity() {
         txtDroneControls = findViewById(R.id.txtDroneControls)
         txtDronePosition = findViewById(R.id.txtDronePosition)
         txtMessage = findViewById(R.id.txtMessage)
+        txtGpsLevel = findViewById(R.id.txtGpsLevel)
         btnMoveForward = findViewById(R.id.btnMoveForward)
         btnMoveBackward = findViewById(R.id.btnMoveBackward)
         btnMoveLeft = findViewById(R.id.btnMoveLeft)
         btnMoveRight = findViewById(R.id.btnMoveRight)
         btnMoveUp = findViewById(R.id.btnMoveUp)
         btnMoveDown = findViewById(R.id.btnMoveDown)
+        btnRotateLeft = findViewById(R.id.btnRotateLeft)
+        btnRotateRight = findViewById(R.id.btnRotateRight)
 
         // 버튼 클릭 리스너 설정
         btnTakeOff.setOnClickListener {
@@ -59,28 +66,78 @@ class FlightControlActivity : AppCompatActivity() {
             flightControlVM.startLanding()
         }
 
-        btnMoveForward.setOnClickListener {
-            flightControlVM.moveForward()
+        btnMoveForward.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveForward()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode() // 초기화
+            }
+            true
         }
 
-        btnMoveBackward.setOnClickListener {
-            flightControlVM.moveBackward()
+        btnMoveBackward.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveBackward()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
         }
 
-        btnMoveUp.setOnClickListener {
-            flightControlVM.moveUp()
+        // 나머지 이동 버튼들도 같은 방식으로 수정
+        btnMoveLeft.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveLeft()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
         }
 
-        btnMoveDown.setOnClickListener {
-            flightControlVM.moveDown()
+        // OnTouchListener를 사용하여 버튼의 press/release 이벤트 처리
+        btnMoveUp.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveUp()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
         }
 
-        btnMoveLeft.setOnClickListener {
-            flightControlVM.moveLeft()
+        btnMoveDown.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveDown()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
         }
 
-        btnMoveRight.setOnClickListener {
-            flightControlVM.moveRight()
+        btnMoveLeft.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveLeft()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
+        }
+
+        btnMoveRight.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.moveRight()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
+        }
+
+        btnRotateLeft.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.rotateLeft()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
+        }
+
+        btnRotateRight.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> flightControlVM.rotateRight()
+                MotionEvent.ACTION_UP -> flightControlVM.enableVirtualStickMode()
+            }
+            true
         }
 
         btnEnableVirtualStick.setOnClickListener {
@@ -90,6 +147,7 @@ class FlightControlActivity : AppCompatActivity() {
         btnDisableVirtualStick.setOnClickListener {
             flightControlVM.disableVirtualStickMode()
         }
+
 
         // 드론 상태 관찰
         flightControlVM.droneState.observe(this, Observer { state ->
@@ -132,9 +190,15 @@ class FlightControlActivity : AppCompatActivity() {
             txtDronePosition.text = positionText
         })
 
+        // GPS 신호 레벨 관찰
+        flightControlVM.gpsSignalLevel.observe(this, Observer { gpsLevel ->
+            // GPS 신호 레벨이 업데이트될 때마다 호출됨
+
+            txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
+        })
         // 드론 위치/제어 정보 구독 시작
-        flightControlVM.subscribeDroneLocation()
-        flightControlVM.subscribeDroneControlValues()
-        flightControlVM.subscribeDronePositionValues()
+//        flightControlVM.subscribeDroneLocation()
+//        flightControlVM.subscribeDroneControlValues()
+//        flightControlVM.subscribeDronePositionValues()
     }
 }
