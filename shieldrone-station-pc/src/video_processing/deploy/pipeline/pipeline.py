@@ -31,7 +31,7 @@ sys.path.insert(0, parent_path)
 
 from datacollector import DataCollector, Result
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer, HandAboveHeadTracker, VideoHandler
+from pipe_utils import PipeTimer, HandAboveHeadTracker, VideoReceiverHandler
 from pipe_utils import crop_image_with_mot, parse_mot_res
 from spatial_info_utils import SpatialInfoTracker
 
@@ -227,7 +227,7 @@ class PipePredictor(object):
         self.handAboveHeadTracker = HandAboveHeadTracker()
         self.target_id = None
         self.drone_controller = DroneController()
-        self.video_handler = VideoHandler(self.input_type,self.input_source)
+        self.video_handler = VideoReceiverHandler(self.input_type,self.input_source)
         self.spatial_info_tracker = SpatialInfoTracker()
 
     def set_file_name(self, path):
@@ -397,9 +397,8 @@ class PipePredictor(object):
                     self.pipe_timer.img_num += 1
                     self.pipe_timer.total_time.end()
                 if self.cfg['visual']:
-                    _, _, fps = self.pipe_timer.get_total_time()
                     im = self.visualize_video(
-                        frame_rgb, mot_res, frame_id, fps, records, center_traj,  latency = frame_time)  # visualize
+                        frame_rgb, mot_res, frame_id, self.video_handler.fps, records, center_traj,  latency = frame_time)  # visualize
                     if self.input_type=="file":
                         writer.write(im)
                     cv2.imshow('Paddle-Pipeline', im)
@@ -437,24 +436,25 @@ class PipePredictor(object):
                     else:
                         self.pipeline_res.clear('kpt')
 
-
-
             if self.target_id is not None:
-                _, _, fps = self.pipe_timer.get_total_time()
                 boxes = mot_res['boxes']
 
                 target_mot_res = boxes[boxes[:, 0].astype(int) == self.target_id]
                 other_mot_res = boxes[boxes[:, 0].astype(int) != self.target_id]
 
-                drone_control =  self.drone_controller.adjust_drone(target_mot_res[0])
-                frame_rgb = self.drone_controller.visualize_control(frame_rgb, drone_control)
+                self.drone_controller.adjust_drone(target_mot_res[0])
+                self.drone_controller.visualize_control(frame_rgb)
+                self.drone_controller.get_control_value()
 
-                spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, fps)
+                spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, self.video_handler.fps)
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
+
+
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
                 self.pipe_timer.total_time.end()
+
             frame_id += 1
 
             if self.cfg['visual']:

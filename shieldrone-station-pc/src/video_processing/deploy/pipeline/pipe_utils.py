@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import time
 import os
 import glob
@@ -323,7 +324,7 @@ class HandAboveHeadTracker(object):
                 del self.holding_ids[tracker]
         return None
 
-class VideoHandler:
+class VideoReceiverHandler:
     def __init__(self, input_type, input_source):
         self.input_type = input_type
         self.input_source = input_source
