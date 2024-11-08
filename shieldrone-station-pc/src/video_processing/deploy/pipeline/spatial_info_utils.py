@@ -3,23 +3,10 @@ import numpy as np
 import math
 
 class SpatialInfoTracker:
-    def __init__(self, video_path, detection_data_path, target_id):
-        # 비디오 및 검출 데이터 로드
-        self.cap = cv2.VideoCapture(video_path)
-        self.det_res = np.load(detection_data_path)
-        self.frame_num = -1
-        self.target_id = target_id  # 목표 사람의 ID
-
+    def __init__(self):
         # 드론의 고도 및 카메라 각도 (실시간 업데이트 가능)
         self.DRONE_ALTITUDE = 2.6  # 초기값 (미터)
         self.rotation_angle_deg = 45  # 초기값 (도)
-
-        # 이미지 해상도 (픽셀)
-        self.FRAME_WIDTH = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.FRAME_HEIGHT = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        # 카메라 파라미터 초기화
-        self.initialize_camera_params()
 
         # 지수 이동 평균을 위한 알파 값 (0 < alpha <= 1)
         self.EMA_ALPHA = 0.2
@@ -31,11 +18,10 @@ class SpatialInfoTracker:
         # 이전 프레임에서의 각 사람의 위치를 저장할 딕셔너리 초기화
         self.prev_positions = {}  # Key: obj_id, Value: (x, y)
 
-        # FPS 가져오기
-        fps = self.cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0 or fps is None:
-            fps = 24  # 기본 FPS 값 설정 (필요에 따라 조정)
-        self.delta_t = 1 / fps  # 프레임 간 시간 간격 (초)
+    def lazy_init(self, FRAME_WIDTH, FRAME_HEIGHT):
+        self.FRAME_WIDTH = FRAME_WIDTH
+        self.FRAME_HEIGHT = FRAME_HEIGHT
+        self.initialize_camera_params()
 
     def initialize_camera_params(self):
         # 수평 시야각 (도)
@@ -47,8 +33,8 @@ class SpatialInfoTracker:
         # 수평 시야각의 탄젠트 값
         tan_half_horizontal_fov = np.tan(half_horizontal_fov_rad)
 
-        # 새로운 종횡비 (16:9)
-        aspect_ratio = self.FRAME_WIDTH / self.FRAME_HEIGHT  # 16/9
+        # 종횡비 계산
+        aspect_ratio = self.FRAME_WIDTH / self.FRAME_HEIGHT
 
         # 수직 시야각 계산
         tan_half_vertical_fov = tan_half_horizontal_fov / aspect_ratio
@@ -68,6 +54,13 @@ class SpatialInfoTracker:
         # 왜곡 계수 (왜곡이 없다고 가정)
         self.DIST_COEFFS = np.zeros((4, 1))
 
+        # 수평 시야각의 탄젠트 값 저장 (거리 계산에 사용)
+        self.tan_half_horizontal_fov = tan_half_horizontal_fov
+
+        self.update_R_T()
+
+
+    def update_R_T(self):
         # 회전 행렬 R 계산
         theta = np.radians(self.rotation_angle_deg)
         self.R = np.array([[1, 0, 0],
@@ -79,16 +72,13 @@ class SpatialInfoTracker:
                            [0],
                            [self.DRONE_ALTITUDE]])
 
-        # 수평 시야각의 탄젠트 값 저장 (거리 계산에 사용)
-        self.tan_half_horizontal_fov = tan_half_horizontal_fov
-
     def update_drone_parameters(self, altitude, rotation_angle_deg):
         # 드론의 고도와 카메라 각도를 업데이트
         self.DRONE_ALTITUDE = altitude
         self.rotation_angle_deg = rotation_angle_deg
 
         # 카메라 파라미터 재계산
-        self.initialize_camera_params()
+        self.update_R_T()
 
     def image_to_world(self, u, v):
         # 이미지 좌표를 정규화된 이미지 좌표로 변환
@@ -107,167 +97,140 @@ class SpatialInfoTracker:
 
         return world_coords[0][0], world_coords[1][0]
 
-    def run(self):
-        while self.cap.isOpened():
-            ret, frame = self.cap.read()
-            self.frame_num += 1
-            if not ret or self.frame_num >= len(self.det_res):
-                break
+    def run(self, target_bbox, other_bboxes, fps):
+        delta_t = 1 / fps  # 프레임 간 시간 간격 (초)
+        result = {
+            "target": None,
+            "others": {}
+        }
 
-            # 드론의 고도와 회전 각도를 실시간으로 업데이트 (예시)
-            # 실제 드론에서 데이터를 받아와서 업데이트해야 함
-            # self.update_drone_parameters(new_altitude, new_rotation_angle_deg)
+        # 목표 사람의 이미지 좌표 초기화
+        target_u = None
+        target_v = None
+        target_world_x = None
+        target_world_y = None
 
-            # 현재 프레임의 검출 결과 가져오기
-            boxes = self.det_res[self.frame_num]
+        # 현재 프레임에서 목표 사람의 위치 찾기
+        obj_id, obj_class, score, xmin, ymin, xmax, ymax = target_bbox
 
-            # 목표 사람의 이미지 좌표 초기화
-            target_u = None
-            target_v = None
-            target_world_x = None
-            target_world_y = None
-            target_bbox_width = None
-            target_bbox_height = None
+        # 바운딩 박스의 중심 좌표 계산
+        target_u = (xmin + xmax) / 2
+        target_v = (ymin + ymax) / 2
 
-            # 현재 프레임에서 목표 사람의 위치 찾기
-            for box in boxes:
-                obj_id, obj_class, score, xmin, ymin, xmax, ymax = box
+        # 바운딩 박스의 폭과 높이 계산 및 EMA 적용
+        bbox_width = xmax - xmin
+        bbox_height = ymax - ymin
 
-                if obj_id == self.target_id:
-                    # 바운딩 박스의 중심 좌표 계산
-                    target_u = (xmin + xmax) / 2
-                    target_v = (ymin + ymax) / 2
+        if self.ema_bbox_width is None:
+            self.ema_bbox_width = bbox_width
+            self.ema_bbox_height = bbox_height
+        else:
+            self.ema_bbox_width = self.EMA_ALPHA * bbox_width + (1 - self.EMA_ALPHA) * self.ema_bbox_width
+            self.ema_bbox_height = self.EMA_ALPHA * bbox_height + (1 - self.EMA_ALPHA) * self.ema_bbox_height
 
-                    # 바운딩 박스의 폭과 높이 계산
-                    bbox_width = xmax - xmin
-                    bbox_height = ymax - ymin
+        target_bbox_width = self.ema_bbox_width
+        target_bbox_height = self.ema_bbox_height
 
-                    # EMA 적용
-                    if self.ema_bbox_width is None:
-                        self.ema_bbox_width = bbox_width
-                        self.ema_bbox_height = bbox_height
-                    else:
-                        self.ema_bbox_width = self.EMA_ALPHA * bbox_width + (1 - self.EMA_ALPHA) * self.ema_bbox_width
-                        self.ema_bbox_height = self.EMA_ALPHA * bbox_height + (1 - self.EMA_ALPHA) * self.ema_bbox_height
+        # 이미지 좌표를 월드 좌표로 변환
+        target_world_x, target_world_y = self.image_to_world(target_u, target_v)
 
-                    target_bbox_width = self.ema_bbox_width
-                    target_bbox_height = self.ema_bbox_height
+        # 목표 사람의 정보 저장
+        result["target"] = {
+            "world_coords": (target_world_x, target_world_y),
+        }
 
-                    # 이미지 좌표를 월드 좌표로 변환
-                    target_world_x, target_world_y = self.image_to_world(target_u, target_v)
+        # 목표 사람의 위치를 이전 위치로 저장
+        self.prev_positions[obj_id] = (target_world_x, target_world_y)
 
-                    # 목표 사람의 위치를 이전 위치로 저장
-                    self.prev_positions[obj_id] = (target_world_x, target_world_y)
-                    break  # 목표 사람을 찾았으므로 루프 종료
+        # 다른 사람들의 상대 위치 계산
+        for box in other_bboxes:
+            obj_id_other, obj_class_other, score_other, xmin_other, ymin_other, xmax_other, ymax_other = box
+            obj_id_other = int(obj_id_other)
 
-            # 만약 목표 사람이 현재 프레임에 없다면, 다음 프레임으로 넘어감
-            if target_u is None or target_v is None:
-                continue
+            # 바운딩 박스의 중심 좌표 계산
+            person_u = (xmin_other + xmax_other) / 2
+            person_v = (ymin_other + ymax_other) / 2
 
-            # 다른 사람들의 상대 위치 계산 및 시각화
-            for box in boxes:
-                obj_id, obj_class, score, xmin, ymin, xmax, ymax = box
+            # 이미지 좌표를 월드 좌표로 변환
+            person_world_x, person_world_y = self.image_to_world(person_u, person_v)
 
-                # 바운딩 박스 그리기
-                xmin_int = int(xmin)
-                ymin_int = int(ymin)
-                xmax_int = int(xmax)
-                ymax_int = int(ymax)
+            # 상대 위치 계산
+            delta_x = person_world_x - target_world_x
+            delta_y = person_world_y - target_world_y
+            distance = math.hypot(delta_x, delta_y)
 
-                # 목표 사람은 빨간색, 다른 사람은 초록색으로 표시
-                if obj_id == self.target_id:
-                    color = (0, 0, 255)  # 빨간색
-                else:
-                    color = (0, 255, 0)  # 초록색
+            # 목표 사람과의 거리 기준 (바운딩 박스 폭의 2배)
+            bbox_width_meters = (target_bbox_width / self.FRAME_WIDTH) * (2 * self.DRONE_ALTITUDE * self.tan_half_horizontal_fov)
+            distance_threshold = 2 * bbox_width_meters
+            is_near = distance <= distance_threshold
 
-                # 바운딩 박스 그리기
-                cv2.rectangle(frame, (xmin_int, ymin_int), (xmax_int, ymax_int), color, 2)
+            # 이전 위치가 있는 경우 속도 계산
+            velocity = None
+            getting_closer_quickly = False
+            if obj_id_other in self.prev_positions:
+                prev_x, prev_y = self.prev_positions[obj_id_other]
+                vel_x = (person_world_x - prev_x) / delta_t
+                vel_y = (person_world_y - prev_y) / delta_t
 
-                # 바운딩 박스의 중심 좌표 계산
-                person_u = (xmin + xmax) / 2
-                person_v = (ymin + ymax) / 2
+                dir_x = target_world_x - person_world_x
+                dir_y = target_world_y - person_world_y
+                distance_to_target = math.hypot(dir_x, dir_y)
 
-                # 이미지 좌표를 월드 좌표로 변환
-                person_world_x, person_world_y = self.image_to_world(person_u, person_v)
+                if distance_to_target != 0:
+                    unit_dir_x = dir_x / distance_to_target
+                    unit_dir_y = dir_y / distance_to_target
+                    velocity = vel_x * unit_dir_x + vel_y * unit_dir_y
+                    # 빠르게 접근하는 경우
+                    if velocity and velocity > 0.5:
+                        getting_closer_quickly = True
 
-                # 상대 위치 계산
-                delta_x = person_world_x - target_world_x
-                delta_y = person_world_y - target_world_y
+            # 객체 정보를 결과 리스트에 추가
+            result["others"][obj_id_other]={
+                "world_coords": (person_world_x, person_world_y),
+                "delta_coords": (delta_x, delta_y),
+                "distance": distance,
+                "is_near": is_near,
+                "velocity": velocity,
+                "getting_closer_quickly": getting_closer_quickly
+            }
 
-                # 유클리드 거리 계산
-                distance = math.hypot(delta_x, delta_y)
+            # 현재 위치를 저장
+            self.prev_positions[obj_id_other] = (person_world_x, person_world_y)
 
-                # 목표 사람과의 거리 기준 (바운딩 박스 폭의 2배)
-                bbox_width_meters = (target_bbox_width / self.FRAME_WIDTH) * (2 * self.DRONE_ALTITUDE * self.tan_half_horizontal_fov)
-                distance_threshold = 2 * bbox_width_meters
+        return result
 
-                # 다른 사람이 목표 사람 근처에 있는지 판별
-                near = False
-                if obj_id != self.target_id and distance <= distance_threshold:
-                    near = True
-                    near_text = "Near"
-                    # 근처에 있는 사람은 노란색으로 표시
-                    color = (0, 255, 255)  # 노란색
-                    cv2.rectangle(frame, (xmin_int, ymin_int), (xmax_int, ymax_int), color, 2)
-                    cv2.putText(frame, near_text, (xmin_int, ymin_int - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+    def visualize(self, frame, result, other_bboxes):
 
-                # 이전 위치가 있는 경우 속도 계산
-                if obj_id in self.prev_positions:
-                    prev_x, prev_y = self.prev_positions[obj_id]
-                    # 속도 계산 (m/s)
-                    vel_x = (person_world_x - prev_x) / self.delta_t
-                    vel_y = (person_world_y - prev_y) / self.delta_t
+        # 다른 사람들 시각화
+        for box in other_bboxes:
+            obj_id_other, obj_class_other, score_other, xmin_other, ymin_other, xmax_other, ymax_other = box
+            person = result["others"][int(obj_id_other)]
+            person_x, person_y = person["world_coords"]
+            delta_x, delta_y = person["delta_coords"]
+            distance = person["distance"]
+            velocity = person["velocity"]
+            is_near = person["is_near"]
+            getting_closer_quickly = person["getting_closer_quickly"]
+            xmin_int = int(xmin_other)
+            ymin_int = int(ymin_other)
+            xmax_int = int(xmax_other)
+            ymax_int = int(ymax_other)
 
-                    # 목표 사람에 대한 상대 속도 계산
-                    dir_x = target_world_x - person_world_x
-                    dir_y = target_world_y - person_world_y
-                    distance_to_target = math.hypot(dir_x, dir_y)
+            # 바운딩 박스 내부 오른쪽 하단에 정보 수직 표시
+            info_lines = [
+                f"ID: {int(obj_id_other)}",
+                f"Δx: {delta_x:.2f}",
+                f"Δy: {delta_y:.2f}",
+                f"Dist: {distance:.2f}",
+                f"Vel: {velocity:.2f}" if velocity is not None else "Vel: N/A",
+                "Approaching" if getting_closer_quickly else "Stable"
+            ]
 
-                    # 단위 방향 벡터 계산
-                    if distance_to_target != 0:
-                        unit_dir_x = dir_x / distance_to_target
-                        unit_dir_y = dir_y / distance_to_target
+            # 텍스트를 바운딩 박스 내부에 수직으로 나열
+            text_x = xmax_int - 120  # 바운딩 박스의 오른쪽 하단 기준
+            text_y = ymin_int + 20   # 첫 번째 텍스트 위치
+            for line in info_lines:
+                cv2.putText(frame, line, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,255), 1)
+                text_y += 20  # 다음 줄로 이동
 
-                        # 상대 속도 계산 (스칼라 값)
-                        relative_velocity = vel_x * unit_dir_x + vel_y * unit_dir_y  # m/s
-
-                        # 접근 속도 임계값 설정 (필요에 따라 조정)
-                        velocity_threshold = 0.5  # m/s
-
-                        # 빠르게 접근하는지 판별
-                        if obj_id != self.target_id and relative_velocity > velocity_threshold:
-                            # 빠르게 접근하는 사람은 보라색으로 표시
-                            approach_text = "Approaching"
-                            color = (255, 0, 255)  # 보라색
-                            cv2.rectangle(frame, (xmin_int, ymin_int), (xmax_int, ymax_int), color, 2)
-                            cv2.putText(frame, approach_text, (xmin_int, ymin_int - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-
-                    # 현재 위치를 저장
-                    self.prev_positions[obj_id] = (person_world_x, person_world_y)
-                else:
-                    # 현재 위치를 저장
-                    self.prev_positions[obj_id] = (person_world_x, person_world_y)
-
-                # 정보 텍스트 작성
-                label = f"ID:{int(obj_id)}, Δx:{delta_x:.2f}, Δy:{delta_y:.2f}"
-                text_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                text_x = xmin_int + 5  # 바운딩 박스의 왼쪽 상단에서 약간 오른쪽으로
-                text_y = ymin_int + text_size[1] + 5  # 바운딩 박스의 상단에서 약간 아래로
-                cv2.putText(frame, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-
-            # 프레임 표시
-            cv2.imshow('Frame', frame)
-            if cv2.waitKey(42) == 27:  # ESC 키를 누르면 종료
-                break
-
-        self.cap.release()
-        cv2.destroyAllWindows()
-
-# 사용 예시
-if __name__ == "__main__":
-    video_path = '/home/soddong/S11P31A307/shieldrone-station-pc/src/api/socket/2.6mTest.mp4'
-    detection_data_path = '/home/soddong/S11P31A307/shieldrone-station-pc/src/api/socket/data_3d_array.npy'
-    target_id = 2  # 목표 사람의 ID
-
-    tracker = SpatialInfoTracker(video_path, detection_data_path, target_id)
-    tracker.run()
+        return frame

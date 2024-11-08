@@ -448,6 +448,7 @@ class VideoHandler:
         thread.start()
         time.sleep(1)
 
+
     def prepare_video(self, framequeue):
         print("FPS 측정중")
         self.start_time = time.time()  # FPS 측정 시작 시간
@@ -457,4 +458,4 @@ class VideoHandler:
             self.capture_webcam(framequeue, is_prepareing = True)
         elif self.input_type == "udp":
             self.receive_frames(framequeue, is_prepareing = True)
-        
+        return self.height, self.width

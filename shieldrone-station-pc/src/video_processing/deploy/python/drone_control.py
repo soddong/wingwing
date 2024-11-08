@@ -5,10 +5,9 @@ class DroneController:
     def __init__(self):
         self.is_init = False
 
-    def init(self, frame_width, frame_height, fps):
+    def init(self, frame_width, frame_height):
         self.frame_center_x = frame_width / 2
         self.frame_center_y = frame_height / 2
-        self.fps = fps
         self.desired_box_width = 100
         self.desired_box_height = 200
         self.is_init = True

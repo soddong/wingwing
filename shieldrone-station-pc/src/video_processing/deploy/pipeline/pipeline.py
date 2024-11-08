@@ -228,6 +228,7 @@ class PipePredictor(object):
         self.target_id = None
         self.drone_controller = DroneController()
         self.video_handler = VideoHandler(self.input_type,self.input_source)
+        self.spatial_info_tracker = SpatialInfoTracker()
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -283,19 +284,6 @@ class PipePredictor(object):
 
 
     def predict_video(self, thread_idx=0):
-        width = 1280
-        height = 720
-        fps = 20
-
-        if self.cfg['visual']:
-            video_out_name = 'output' if (
-                self.file_name is None or
-                type(self.file_name) == int) else self.file_name
-            if not os.path.exists(self.output_dir):
-                os.makedirs(self.output_dir)
-            out_path = os.path.join(self.output_dir, video_out_name + ".mp4")
-            fourcc = cv2.VideoWriter_fourcc(* 'mp4v')
-            writer = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
         frame_id = 0
 
@@ -309,12 +297,24 @@ class PipePredictor(object):
         prev_center = dict()
         records = list()
 
-        video_fps = fps
-     
         framequeue = queue.Queue(10)
-        self.video_handler.prepare_video(framequeue)
-        self.drone_controller.init(self.video_handler.width, self.video_handler.height, self.video_handler.fps)
+        frame_height, frame_width = self.video_handler.prepare_video(framequeue)
+        print(frame_height, frame_width)
+        video_fps = self.video_handler.fps
+        self.drone_controller.init(self.video_handler.width, self.video_handler.height)
+        self.spatial_info_tracker.lazy_init(self.video_handler.width, self.video_handler.height)
         self.video_handler.start_video(framequeue)
+
+
+        if self.cfg['visual']:
+            video_out_name = 'output' if (
+                self.file_name is None or
+                type(self.file_name) == int) else self.file_name
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir)
+            out_path = os.path.join(self.output_dir, video_out_name + ".mp4")
+            fourcc = cv2.VideoWriter_fourcc(* 'mp4v')
+            writer = cv2.VideoWriter(out_path, fourcc, video_fps, (self.video_handler.width, self.video_handler.height))
 
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
@@ -436,8 +436,11 @@ class PipePredictor(object):
                         self.pipeline_res.update(kpt_res, 'kpt')
                     else:
                         self.pipeline_res.clear('kpt')
-            
+
+
+
             if self.target_id is not None:
+                _, _, fps = self.pipe_timer.get_total_time()
                 boxes = mot_res['boxes']
 
                 target_mot_res = boxes[boxes[:, 0].astype(int) == self.target_id]
@@ -445,6 +448,9 @@ class PipePredictor(object):
 
                 drone_control =  self.drone_controller.adjust_drone(target_mot_res[0])
                 frame_rgb = self.drone_controller.visualize_control(frame_rgb, drone_control)
+
+                spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, fps)
+                self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
