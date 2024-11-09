@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.data.source.remote
 
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
+import retrofit2.Response
 
 interface TokenRefresher {
     /**
@@ -9,5 +10,5 @@ interface TokenRefresher {
      * @param refreshToken 현재 발급된 리프레시 토큰
      * @return 새로운 액세스 토큰 및 리프레시 토큰을 포함한 [TokenResponse]
      */
-    suspend fun refreshToken(refreshToken: String): TokenResponse
+    suspend fun refreshToken(refreshToken: String): Response<TokenResponse>
 }

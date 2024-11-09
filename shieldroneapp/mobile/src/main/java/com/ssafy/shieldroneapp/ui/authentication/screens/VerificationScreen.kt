@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.authentication.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,6 +67,7 @@ fun VerificationScreen(
 
     Column(
         modifier = Modifier
+            .background(MaterialTheme.colors.background)
             .fillMaxSize()
             .padding(16.dp)
             .clickable { keyboardController?.hide() }, // 화면 빈 곳을 클릭하면 키보드 숨기기

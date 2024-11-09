@@ -16,6 +16,7 @@ object Constants {
     object Navigation {
         const val ROUTE_LANDING = "landing_screen"
         const val ROUTE_AUTHENTICATION = "authentication"
+        const val ROUTE_MAP = "map"
         // const val ROUTE_MAIN = "main_screen"  // 추후 메인 화면 추가 시 사용
     }
 }

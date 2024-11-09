@@ -1,11 +1,11 @@
 package com.ssafy.shieldroneapp.ui.authentication
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ssafy.shieldroneapp.data.model.UserAuthData
-import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
+import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
 import com.ssafy.shieldroneapp.data.repository.UserRepository
-import com.ssafy.shieldroneapp.utils.ValidationUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +32,10 @@ import javax.inject.Inject
 class AuthenticationViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "AuthenticationViewModel"
+    }
 
     private val _state = MutableStateFlow(AuthenticationState())
     val state: StateFlow<AuthenticationState> = _state.asStateFlow()
@@ -84,7 +88,7 @@ class AuthenticationViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             phoneNumber = phone,
-//                            isVerificationSent = true,
+                            isVerificationSent = true,
                             error = null
                         )
                     }
@@ -150,17 +154,20 @@ class AuthenticationViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                val userData = UserAuthData(
+                val userData = UserAuthRequest(
                     username = state.value.username,
-                    birthday = state.value.birthday, // YYMMDD-G 형식 그대로 전달
+                    birthday = state.value.birthday,
                     phoneNumber = state.value.phoneNumber,
-                    isTermsAccepted = state.value.isTermsAccepted
                 )
+//                Log.d(TAG, userData.toString())
+                Log.d(TAG, "UserData JSON: ${Gson().toJson(userData)}")
                 userRepository.registerUser(userData)
-                    .onSuccess { user ->
+                    .onSuccess {
+                        Log.d(TAG, "회원가입 성공")
                         // 회원가입 성공 후 자동 로그인
-                        userRepository.loginUser(user.phoneNumber)
+                        userRepository.loginUser(userData.phoneNumber)
                             .onSuccess { tokens ->
+                                Log.d(TAG, "로그인 성공: $tokens")
                                 userRepository.saveTokens(tokens)
                                 _state.update {
                                     it.copy(
@@ -169,8 +176,11 @@ class AuthenticationViewModel @Inject constructor(
                                         error = null
                                     )
                                 }
+                            }.onFailure { error ->
+                                Log.e(TAG, "로그인 실패: ${error.message}")
                             }
                     }.onFailure { error ->
+                        Log.e(TAG, "회원가입 실패: ${error.message}")
                         setError(error.message ?: "회원가입에 실패했습니다")
                     }
             } finally {

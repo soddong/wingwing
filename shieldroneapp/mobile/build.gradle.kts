@@ -22,16 +22,22 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // KAKAO MAP API
+        // gradle.properties 파일에서 KAKAO_API_KEY 값을 가져와, AndroidManifest.xml 내의 <meta-data> 태그에 삽입
+        manifestPlaceholders["KAKAO_API_KEY"] = project.properties["KAKAO_API_KEY"].toString()
+        
         resourceConfigurations.addAll(listOf("en", "ko"))
     }
 
     buildTypes {
         debug {
             buildConfigField("String", "BASE_API_URL", "\"https://debug-api.example.com/\"")
+            buildConfigField("String", "KAKAO_API_KEY", "\"${project.properties["KAKAO_API_KEY"]}\"")
             isMinifyEnabled = false
         }
         release {
             buildConfigField("String", "BASE_API_URL", "\"https://api.example.com/\"")
+            buildConfigField("String", "KAKAO_API_KEY", "\"${project.properties["KAKAO_API_KEY"]}\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -106,6 +112,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.3")
 
+    // KAKAO MAP SDK
+    implementation("com.kakao.maps.open:android:2.12.8")
+
     // Jetpack Compose
     implementation(libs.androidx.activity.compose)
     implementation(platform("androidx.compose:compose-bom:2024.01.00")) // BOM(Bill of Materials): Compose 버전 통합 관리
@@ -134,7 +143,8 @@ dependencies {
     testImplementation(libs.junit) // 단위 테스트를 위한 기본 라이브러리
     androidTestImplementation(libs.androidx.junit) // 안드로이드 테스트용 JUnit
     androidTestImplementation(libs.androidx.espresso.core) // 안드로이드 테스트용 JUnit
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4") // Compose UI 테스트용
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.0") // Compose UI 테스트용
+
 
     wearApp(project(":wear"))
 }

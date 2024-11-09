@@ -1,12 +1,5 @@
 package com.ssafy.shieldroneapp
 
-/**
- * 앱이 실행될 때 가장 먼저 생성되는 클래스
- *
- * @HiltAndroidApp 어노테이션: Hilt의 의존성 주입 컨테이너를 생성
- * 앱 전역에서 사용할 초기 설정이나 싱글톤 객체들을 관리합니다.
- * */
-
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -14,11 +7,18 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.kakao.vectormap.KakaoMapSdk
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
+/**
+ * 앱이 실행될 때 가장 먼저 생성되는 클래스
+ *
+ * @HiltAndroidApp 어노테이션: Hilt의 의존성 주입 컨테이너를 생성
+ * 앱 전역에서 사용할 초기 설정이나 싱글톤 객체들을 관리합니다.
+ * */
 @HiltAndroidApp
 class MobileMainApplication : Application() {
     companion object {
@@ -30,16 +30,18 @@ class MobileMainApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 앱 시작시 필요한 초기화 작업
         // - SharedPreferences 초기화
         // - 네트워크 설정
-        // - 로깅 설정
-        setupLogging()
         // - 푸시 알림 설정 등
-        createNotificationChannels()
-        // 앱 시작시 필요한 초기화 작업
+
+        setupLogging() // 로깅 설정
+        createNotificationChannels() // 워치 연결 상태 알림 채널 생성
+        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY) // Kakao Maps SDK 초기화
+
         initializeWebSocket()
-        // 서비스 자동 시작
-        startService(Intent(this, WearableDataListenerService::class.java))
+        startService(Intent(this, WearableDataListenerService::class.java)) // 서비스 자동 시작
     }
 
     private fun createNotificationChannels() {

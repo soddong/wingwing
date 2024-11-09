@@ -15,9 +15,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import com.ssafy.shieldroneapp.BuildConfig
+import com.ssafy.shieldroneapp.data.model.request.TokenRequest
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import com.ssafy.shieldroneapp.data.source.remote.TokenRefresher
+import retrofit2.Response
 import javax.inject.Named
 
 @Module
@@ -112,8 +114,8 @@ object NetworkModule {
         return ApiInterceptor(
             userLocalDataSource,
             object : TokenRefresher {
-                override suspend fun refreshToken(refreshToken: String): TokenResponse {
-                    return tokenRefreshApiService.refreshToken(refreshToken)
+                override suspend fun refreshToken(refreshToken: String): Response<TokenResponse> {
+                    return tokenRefreshApiService.refreshToken(TokenRequest(refreshToken))
                 }
             },
             gson

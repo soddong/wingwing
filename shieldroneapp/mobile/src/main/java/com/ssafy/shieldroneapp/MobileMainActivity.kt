@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.Wearable
@@ -25,6 +26,8 @@ import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
 import com.ssafy.shieldroneapp.ui.MainScreen
+import com.ssafy.shieldroneapp.ui.map.MapScreen
+import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,6 +35,10 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MobileMainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var userLocalDataSource: UserLocalDataSourceImpl
+
     @Inject
     lateinit var connectionManager: MobileConnectionManager
 
@@ -58,6 +65,13 @@ class MobileMainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
+            // 토큰이 있는지 확인하여 초기 화면 결정
+            val startDestination = if (userLocalDataSource.getTokensSync() != null) {
+                ROUTE_MAP // 로그인 한 상태면(토큰 O) => Map 화면으로
+            } else {
+                ROUTE_LANDING // 로그인 하지 않은 상태면(토큰 X) => Landing 화면으로
+            }
+
             ShieldroneappTheme {
                 val systemUiController = rememberSystemUiController()
                 val useDarkIcons = !isSystemInDarkTheme()
@@ -72,7 +86,7 @@ class MobileMainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = ROUTE_LANDING
+                    startDestination = startDestination // 시작 화면 설정
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
@@ -81,6 +95,24 @@ class MobileMainActivity : ComponentActivity() {
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
                         })
+                    }
+                    composable(ROUTE_AUTHENTICATION) {
+                        AuthenticationScreen(
+                                onAuthComplete = {
+                                     navController.navigate(ROUTE_MAP) {
+                                         // 인증 화면들도 백스택에서 제거
+                                         popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
+                                     }
+
+                                    // 임시로 landing screen
+//                                    navController.navigate("main_screen") {
+//                                         popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
+//                                    }
+                                }
+                            )
+                    }
+                    composable(ROUTE_MAP) {
+                        MapScreen()
                     }
 
                     composable("main_screen") {

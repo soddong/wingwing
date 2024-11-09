@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.authentication.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ fun PhoneInputScreen(
 
     Column(
         modifier = Modifier
+            .background(MaterialTheme.colors.background)
             .fillMaxWidth()
             .padding(16.dp)
             .clickable { keyboardController?.hide() }, // 화면을 클릭하면 키보드 숨기기
