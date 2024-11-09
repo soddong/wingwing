@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.services.connection
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.State
@@ -12,6 +13,8 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.MainActivity
+import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.utils.await
@@ -28,11 +31,11 @@ import javax.inject.Singleton
 class WearConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val messageClient: MessageClient = Wearable.getMessageClient(context)  // @Inject 제거
+    private val messageClient: MessageClient = Wearable.getMessageClient(context)
     private var dataRepository: DataRepository? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val _isMobileActive = mutableStateOf(false) 
-    val isMobileActive: State<Boolean> = _isMobileActive 
+    private val _isMobileActive = mutableStateOf(false)
+    val isMobileActive: State<Boolean> = _isMobileActive
 
     @Inject
     fun injectDataRepository(repository: DataRepository) {
@@ -45,7 +48,7 @@ class WearConnectionManager @Inject constructor(
         private const val TAG = "워치: 연결 매니저"
         private const val PATH_WATCH_STATUS = "/watch_status"
         private const val PATH_MOBILE_STATUS = "/mobile_status"
-        private const val PATH_MOBILE_APP_LAUNCH = "/request_mobile_launch"
+        private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
     }
 
     interface MonitoringCallback {
@@ -59,19 +62,62 @@ class WearConnectionManager @Inject constructor(
 
     fun initialize() {
         setupMessageListener()
-        checkMobileConnection()
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            checkMobileConnection()
+        }
     }
 
     private fun setupMessageListener() {
         messageClient.addListener { messageEvent ->
-            Log.d(TAG, "메시지 수신: ${messageEvent.path}") 
+            Log.d(TAG, "메시지 수신: ${messageEvent.path}")
             when (messageEvent.path) {
                 PATH_MOBILE_STATUS -> {
-                    val isActive = messageEvent.data[0] == 1.toByte()
-                    Log.d(TAG, "모바일 상태 변경: $isActive") 
+                    val isActive = messageEvent.data?.let { it[0] == 1.toByte() } ?: false
+                    Log.d(TAG, "모바일 상태 변경: $isActive")
                     handleMobileStateChange(isActive)
                 }
             }
+        }
+    }
+
+    private suspend fun checkMobileConnection() {
+        try {
+            val nodes = getConnectedNodes()
+            Log.d(TAG, "연결된 노드 수: ${nodes.size}")
+
+            handleMobileStateChange(false) 
+
+            if (nodes.isNotEmpty()) {
+                // 모바일 앱 상태 요청
+                nodes.forEach { node ->
+                    try {
+                        messageClient.sendMessage(
+                            node.id,
+                            PATH_MOBILE_STATUS,
+                            null
+                        ).await(5000)
+                        Log.d(TAG, "모바일 앱 상태 요청 전송됨")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "모바일 앱 상태 요청 실패", e)
+                        requestMobileAppLaunchWithNotification()
+                    }
+                }
+            } else {
+                requestMobileAppLaunchWithNotification()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "모바일 앱 연결 확인 실패", e)
+            handleMobileStateChange(false)
+            requestMobileAppLaunchWithNotification()
+        }
+    }
+
+    private fun startWatchApp() {
+        if (isMobileActive.value) {
+            val application = MainApplication.getContext() as MainApplication
+            val intent = Intent(application, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            application.startActivity(intent)
         }
     }
 
@@ -85,85 +131,44 @@ class WearConnectionManager @Inject constructor(
                 dataRepository?.pauseMonitoring()
             } else {
                 dataRepository?.resumeMonitoring()
+                startWatchApp()
             }
         }
     }
-
-    private fun checkMobileConnection() {
-        scope.launch {
-            try {
-                val nodes = getConnectedNodes()
-                Log.d(TAG, "연결된 노드 수: ${nodes.size}") 
-                if (nodes.isEmpty()) {
-                    handleMobileStateChange(false)
-                    requestMobileAppLaunch()
-                } else {
-                    Log.d(TAG, "노드 발견, 모바일 앱 활성화 상태로 변경") 
-                    handleMobileStateChange(true)
-                    requestMobileAppState()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to check mobile connection", e)
-                handleMobileStateChange(false)
-            }
-        }
-    }
-
 
     private fun showMobileAppRequiredNotification() {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "mobile_required"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "모바일 앱 상태",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "모바일 앱 상태 관련 알림"
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val notification = NotificationCompat.Builder(context, channelId)
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notification = NotificationCompat.Builder(context, "mobile_app_channel")
             .setContentTitle("모바일 앱 실행 필요")
-            .setContentText("위험 감지를 위해 모바일 앱을 실행해주세요.")
+            .setContentText("정확한 위험 감지를 위해 모바일 앱을 실행해주세요")
             .setSmallIcon(R.drawable.shieldrone_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(1, notification)
+        notificationManager.notify(1001, notification)
     }
 
-    private suspend fun requestMobileAppLaunch() {
+    private suspend fun requestMobileAppLaunchWithNotification() {
         try {
             val nodes = getConnectedNodes()
             nodes.forEach { node ->
                 messageClient.sendMessage(
                     node.id,
-                    PATH_MOBILE_APP_LAUNCH,
+                    PATH_REQUEST_MOBILE_LAUNCH,
                     null
                 ).await(5000)
-                Log.d(TAG, "Sent mobile app launch request to: ${node.displayName}")
+                Log.d(TAG, "모바일 앱 실행 요청 전송: ${node.displayName}")
             }
+            showMobileAppRequiredNotification()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to request mobile app launch", e)
+            Log.e(TAG, "모바일 앱 실행 요청 실패", e)
         }
     }
 
-    private suspend fun requestMobileAppState() {
-        try {
-            val nodes = getConnectedNodes()
-            nodes.forEach { node ->
-                messageClient.sendMessage(
-                    node.id,
-                    PATH_MOBILE_STATUS,
-                    null
-                ).await(5000)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to request mobile app state", e)
+    fun requestMobileAppLaunch() {
+        scope.launch {
+            requestMobileAppLaunchWithNotification()
         }
     }
 
@@ -176,16 +181,16 @@ class WearConnectionManager @Inject constructor(
             try {
                 val nodes = getConnectedNodes()
                 nodes.forEach { node ->
-                    Log.d(TAG, "워치 상태 전송 시도: ${node.displayName}")  // 추가
+                    Log.d(TAG, "워치 상태 전송 시도: ${node.displayName}")
                     messageClient.sendMessage(
                         node.id,
                         PATH_WATCH_STATUS,
                         if (isActive) byteArrayOf(1) else byteArrayOf(0)
                     ).await(5000)
                 }
-                Log.d(TAG, "Watch state sent: $isActive")
+                Log.d(TAG, "워치 상태 전송: $isActive")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to send watch state", e)
+                Log.e(TAG, "워치 상태 전송 실패", e)
             }
         }
     }

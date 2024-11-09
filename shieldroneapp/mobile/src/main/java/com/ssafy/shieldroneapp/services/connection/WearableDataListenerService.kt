@@ -31,6 +31,7 @@ class WearableDataListenerService : BaseMobileService() {
         private const val NOTIFICATION_ID = 1001
         private const val PATH_HEART_RATE = "/sendPulseFlag"
         private const val PATH_WATCH_LAUNCHED = "/watch_app_launched"
+        private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
     }
 
     @Inject
@@ -66,6 +67,10 @@ class WearableDataListenerService : BaseMobileService() {
         Log.d(TAG, "메시지 수신됨: ${messageEvent.path}")
 
         when (messageEvent.path) {
+            PATH_REQUEST_MOBILE_LAUNCH -> {
+                Log.d(TAG, "워치로부터 모바일 앱 실행 요청 수신")
+                launchMobileApp()
+            }
             PATH_WATCH_LAUNCHED -> {
                 Log.d(TAG, "워치 앱 실행 확인됨")
                 connectionManager.updateWatchConnectionState(true)
@@ -86,6 +91,23 @@ class WearableDataListenerService : BaseMobileService() {
                     )
                 }
             }
+        }
+    }
+
+    private fun launchMobileApp() {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+
+            intent?.let {
+                startActivity(it)
+                Log.d(TAG, "모바일 앱 실행 인텐트 전송됨")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "모바일 앱 실행 실패", e)
         }
     }
 
