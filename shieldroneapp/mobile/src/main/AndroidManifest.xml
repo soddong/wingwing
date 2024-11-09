@@ -62,6 +62,7 @@
         <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag"/>
         <!-- 모바일 상태 체크를 위한 path 추가 -->
         <data android:scheme="wear" android:host="*" android:pathPrefix="/mobile_status"/>
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/request_mobile_launch" />
       </intent-filter>
     </service>
 

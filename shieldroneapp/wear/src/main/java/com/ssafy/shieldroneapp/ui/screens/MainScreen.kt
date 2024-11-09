@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.wear.compose.material.CircularProgressIndicator
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
@@ -30,7 +31,7 @@ fun MainScreen(
     val isMobileConnected by remember { wearConnectionManager.isMobileActive }
 
     if (!isMobileConnected) {
-        MobileDisconnectedScreen()
+        MobileDisconnectedScreen(wearConnectionManager = wearConnectionManager)
     } else {
         val heartRateViewModel: HeartRateViewModel = viewModel(
             factory = HeartRateMeasureViewModelFactory(
@@ -43,41 +44,39 @@ fun MainScreen(
         val hrAvailability by heartRateViewModel.availability
         val hrUiState by heartRateViewModel.uiState
 
-        // 권한 상태 관리
-        val hrPermissionState = rememberPermissionState(
-            permission = android.Manifest.permission.BODY_SENSORS,
-            onPermissionResult = { granted ->
-                if (granted) {
-                    heartRateViewModel.toggleEnabled()
-                }
-            }
-        )
-
-        val hrBackgroundPermissionState = rememberPermissionState(
-            permission = android.Manifest.permission.BODY_SENSORS_BACKGROUND,
-            onPermissionResult = { granted ->
-                if (granted) {
-                    Log.d(TAG, "바디 센서 권한 승인됨")
-                }
-            }
-        )
-
-        LaunchedEffect(Unit) {
-            if (hrPermissionState.status is PermissionStatus.Denied) {
-                hrPermissionState.launchPermissionRequest()
-            }
-        }
-
-        LaunchedEffect(hrPermissionState.status) {
-            if (hrPermissionState.status is PermissionStatus.Granted &&
-                hrBackgroundPermissionState.status is PermissionStatus.Denied
-            ) {
-                hrBackgroundPermissionState.launchPermissionRequest()
-            }
-        }
-
-        // 심박수 측정 화면 표시
         if (hrUiState == HeartRateMeasureUiState.Supported) {
+            val hrPermissionState = rememberPermissionState(
+                permission = android.Manifest.permission.BODY_SENSORS,
+                onPermissionResult = { granted ->
+                    if (granted) {
+                        heartRateViewModel.toggleEnabled()
+                    }
+                }
+            )
+
+            val hrBackgroundPermissionState = rememberPermissionState(
+                permission = android.Manifest.permission.BODY_SENSORS_BACKGROUND,
+                onPermissionResult = { granted ->
+                    if (granted) {
+                        Log.d(TAG, "바디 센서 권한 승인됨")
+                    }
+                }
+            )
+
+            LaunchedEffect(Unit) {
+                if (hrPermissionState.status is PermissionStatus.Denied) {
+                    hrPermissionState.launchPermissionRequest()
+                }
+            }
+
+            LaunchedEffect(hrPermissionState.status) {
+                if (hrPermissionState.status is PermissionStatus.Granted &&
+                    hrBackgroundPermissionState.status is PermissionStatus.Denied
+                ) {
+                    hrBackgroundPermissionState.launchPermissionRequest()
+                }
+            }
+
             when (hrPermissionState.status) {
                 is PermissionStatus.Granted -> {
                     when (hrBackgroundPermissionState.status) {
@@ -128,7 +127,6 @@ fun MainScreen(
                 }
 
                 is PermissionStatus.Denied -> {
-                    // BODY_SENSORS 권한이 거부된 경우에만 요청 UI 표시
                     Flex {
                         Spacer(Modifier.height(20.dp))
                         Text(
@@ -157,20 +155,35 @@ fun MainScreen(
 }
 
 @Composable
-fun MobileDisconnectedScreen() {
+fun MobileDisconnectedScreen(wearConnectionManager: WearConnectionManager) {
+    var isLoading by remember { mutableStateOf(false) }
+
     Flex {
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "모바일 앱과",
+            text = "모바일 앱이 실행되지 않았습니다",
             color = Color.White,
             fontSize = 14.sp
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = "연결되지 않았습니다",
+            text = "모바일 앱을 실행해주세요",
             color = Color.White,
             fontSize = 14.sp
         )
         Spacer(Modifier.height(16.dp))
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(32.dp),
+            )
+        } else {
+            PrimaryButton(
+                onClick = {
+                    isLoading = true
+                    wearConnectionManager.requestMobileAppLaunch()
+                },
+                text = "모바일 앱 실행"
+            )
+        }
     }
 }

@@ -55,11 +55,26 @@ class MobileMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 초기화
+        messageClient = Wearable.getMessageClient(this)
+        nodeClient = Wearable.getNodeClient(this)
+
+
         // 앱이 시작될 때 모바일 앱이 활성화되었음을 워치에 알림
         lifecycleScope.launch {
-            connectionManager.notifyWatchOfMobileStatus(true)
-            updateAppActive(true)
-            launchWatchAppWithRetry()
+            try {
+                // 워치 앱 실행 시도
+                val result = launchWatchAppWithRetry()
+                Log.d(TAG, "워치 앱 실행 결과: ${if (result) "성공" else "실패"}")
+
+                if (result) {
+                    delay(1000)
+                    connectionManager.notifyWatchOfMobileStatus(true)
+                    updateAppActive(true)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 초기화 중 오류 발생", e)
+            }
         }
 
         setContent {
@@ -123,6 +138,45 @@ class MobileMainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun launchWatchAppWithRetry(): Boolean {
+        repeat(5) { attempt ->
+            if (launchWatchApp()) return true
+            Log.d(TAG, "워치 앱 실행 재시도 ${attempt + 1}/5")
+            delay(2000L)
+        }
+        return false
+    }
+
+    private suspend fun launchWatchApp(): Boolean {
+        return try {
+            val nodes = nodeClient.connectedNodes.await(5000)
+            if (nodes.isEmpty()) {
+                Log.e(TAG, "연결된 워치가 없습니다")
+                return false
+            }
+
+            var success = false
+            nodes.forEach { node ->
+                try {
+                    messageClient.sendMessage(
+                        node.id,
+                        "/start",
+                        null
+                    ).await(5000)
+                    success = true
+                    Log.d(TAG, "워치 앱 실행 메시지 전송 성공: ${node.displayName}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "워치 앱 실행 메시지 전송 실패: ${node.displayName}", e)
+                }
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "워치 앱 실행 시도 중 오류", e)
+            false
+        }
+    }
+
+
     override fun onResume() {
         super.onResume()
         if (!isAppActive.value) {
@@ -151,44 +205,5 @@ class MobileMainActivity : ComponentActivity() {
 
     private fun updateAppActive(isActive: Boolean) {
         _isAppActive.value = isActive
-    }
-
-    private fun launchWatchAppWithRetry() {
-        lifecycleScope.launch {
-            repeat(3) { attempt ->
-                if (launchWatchApp()) return@launch
-                delay(1000L * (attempt + 1))
-            }
-        }
-    }
-
-    private suspend fun launchWatchApp(): Boolean {
-        return try {
-            val nodes = nodeClient.connectedNodes.await(5000)
-
-            if (nodes.isEmpty()) {
-                Log.d(TAG, "연결된 워치가 없습니다")
-                return false
-            }
-
-            var success = false
-            nodes.forEach { node ->
-                try {
-                    messageClient.sendMessage(
-                        node.id,
-                        "/start",
-                        null
-                    ).await(5000)
-                    success = true
-                    Log.d(TAG, "워치 앱 실행 메시지 전송 성공: ${node.displayName}")
-                } catch (e: Exception) {
-                    Log.e(TAG, "워치 앱 실행 메시지 전송 실패: ${node.displayName}", e)
-                }
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "워치 앱 실행 시도 중 오류", e)
-            false
-        }
     }
 }
