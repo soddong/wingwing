@@ -63,7 +63,7 @@ public class UserManagementService {
 
     private void saveNewUser(SignUpRequest signUpRequest, String phoneNumber) {
         String username = signUpRequest.username();
-        String birthday = signUpRequest.birthday();
+        LocalDate birthday = signUpRequest.birthday();
         User user = User.builder()
                 .phoneNumber(phoneNumber)
                 .username(username)
