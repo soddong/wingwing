@@ -1,11 +1,25 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Text
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.kakao.vectormap.KakaoMap
+import com.kakao.vectormap.LatLng
+import com.kakao.vectormap.MapView
+import com.kakao.vectormap.MapLifeCycleCallback
+import com.kakao.vectormap.KakaoMapReadyCallback
+import com.kakao.vectormap.camera.CameraUpdateFactory
 
 /**
  * 사용자의 현재 위치와 드론 경로 안내를 제공하는 메인 Map 화면.
@@ -18,48 +32,54 @@ import androidx.compose.ui.Modifier
  */
 @Composable
 fun MapScreen() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // MapView 생성 및 관리
+    val mapView = remember { MapView(context) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.start(
+                    object : MapLifeCycleCallback() {
+                        override fun onMapDestroy() {
+                            Log.d("MapScreen", "Map destroyed")
+                        }
+                        override fun onMapError(error: Exception) {
+                            Log.e("MapScreen", "Map error: ${error.message}", error)
+                        }
+                    },
+                    object : KakaoMapReadyCallback() {
+                        override fun onMapReady(kakaoMap: KakaoMap) {
+                            Log.d("MapScreen", "Map ready")
+                            val position = LatLng.from(37.5012743, 127.039585) // 서울 멀티캠퍼스 좌표
+                            try {
+                                kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(position))
+                                kakaoMap.moveCamera(CameraUpdateFactory.zoomTo(15))
+                                Log.d("MapScreen", "Camera moved")
+                            } catch (e: Exception) {
+                                Log.e("MapScreen", "Camera move error: ${e.message}", e)
+                            }
+                        }
+                    }
+                )
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // AndroidView를 사용하여 MapView 표시
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier
+            .background(MaterialTheme.colors.background)
+            .fillMaxSize()
     ) {
-        Text(text = "Map 화면입니다.")
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
-
-
-//@Composable
-//fun MapScreen(viewModel: MapViewModel = hiltViewModel()) {
-//    val state by viewModel.state.collectAsStateWithLifecycle()
-//
-//    // 카카오 맵 띄우기
-//    KakaoMap(
-//        modifier = Modifier.fillMaxSize(),
-//        userLocation = state.userLocation,
-//        markers = state.markers,
-//        onMarkerClick = { viewModel.onMarkerClick(it) },
-//    )
-//
-//    // 출발지, 도착지 입력란
-//    Column(
-//        Modifier.fillMaxWidth().padding(16.dp)
-//    ) {
-//        TextField(
-//            value = state.startLocation,
-//            onValueChange = { viewModel.updateStartLocation(it) },
-//            label = { Text("출발지 입력") }
-//        )
-//        TextField(
-//            value = state.destinationLocation,
-//            onValueChange = { viewModel.updateDestinationLocation(it) },
-//            label = { Text("도착지 입력") }
-//        )
-//    }
-//
-//    // 배정 요청 버튼 및 관련 알림들
-//    if (state.isDroneAssigned) {
-//        DroneStatusAlert(
-//            status = state.droneStatus,
-//            onDismiss = { viewModel.clearDroneStatus() }
-//        )
-//    }
-//}
