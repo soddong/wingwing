@@ -4,6 +4,11 @@
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# Kakao API keys and other sensitive data
+shieldroneapp/gradle.properties
+shieldroneapp/local.properties
+
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml
