@@ -4,10 +4,22 @@ import android.app.Application
 import android.content.Context
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
+import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@HiltAndroidApp
 class MainApplication : Application() {
-    val sensorRepository by lazy { SensorRepository(this) }
-    val dataRepository by lazy { DataRepository(this) }
+    @Inject
+    lateinit var wearConnectionManager: WearConnectionManager
+
+    @Inject 
+    lateinit var dataRepository: DataRepository
+
+    @Inject 
+    lateinit var sensorRepository: SensorRepository
 
     companion object {
         private lateinit var instance: MainApplication
@@ -17,5 +29,9 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        GlobalScope.launch {
+            wearConnectionManager.initialize()
+        }
     }
 }
