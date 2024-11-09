@@ -15,14 +15,25 @@ import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.data.repository.MeasureMessage
 import androidx.health.services.client.data.DataTypeAvailability
+import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class HeartRateService : LifecycleService() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
-    private lateinit var sensorRepository: SensorRepository
-    private lateinit var dataRepository: DataRepository
     private var measurementJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
+
+    @Inject
+    lateinit var sensorRepository: SensorRepository
+
+    @Inject
+    lateinit var dataRepository: DataRepository
+
+    @Inject
+    lateinit var wearConnectionManager: WearConnectionManager
 
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -33,8 +44,6 @@ class HeartRateService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
-        sensorRepository = SensorRepository(this)
-        dataRepository = DataRepository(this)
         acquireWakeLock()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification())

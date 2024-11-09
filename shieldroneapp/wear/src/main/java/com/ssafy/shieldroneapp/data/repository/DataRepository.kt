@@ -6,10 +6,30 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.HeartRateData
+import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import com.ssafy.shieldroneapp.utils.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class DataRepository(private val context: Context) {
+@Singleton
+class DataRepository @Inject constructor(
+    private val context: Context
+) : WearConnectionManager.MonitoringCallback {
     private val dataClient: DataClient = Wearable.getDataClient(context)
+    private var isMonitoring = false
+
+    @Inject
+    fun init(wearConnectionManager: WearConnectionManager) {
+        wearConnectionManager.setMonitoringCallback(this)
+    }
+
+    override fun pauseMonitoring() {
+        isMonitoring = false
+    }
+
+    override fun resumeMonitoring() {
+        isMonitoring = true
+    }
 
     companion object {
         private const val THRESHOLD_BPM = 75.0
@@ -22,6 +42,11 @@ class DataRepository(private val context: Context) {
     private var isCurrentlyHighBpm = false
 
     suspend fun sendHeartRateData(heartRateData: HeartRateData) {
+        if (!isMonitoring) {
+            Log.d(TAG, "심박수 모니터링이 일시 중지된 상태입니다")
+            return
+        }
+
         try {
             val currentTime = System.currentTimeMillis()
             val currentBpm = heartRateData.bpm
@@ -83,7 +108,7 @@ class DataRepository(private val context: Context) {
                 setUrgent()
             }
 
-            val result = dataClient.putDataItem(putDataRequest).await()
+            val result = dataClient.putDataItem(putDataRequest).await(5000)
             Log.d(TAG, "데이터 아이템 전송 완료 - URI: ${result.uri}")
             return true
         } catch (e: Exception) {

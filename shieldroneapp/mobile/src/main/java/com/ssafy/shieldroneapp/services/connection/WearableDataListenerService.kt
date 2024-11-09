@@ -1,31 +1,45 @@
 package com.ssafy.shieldroneapp.services.connection
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.MobileMainApplication
+import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.model.HeartRateData
 import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
 import com.ssafy.shieldroneapp.services.base.BaseMobileService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.Manifest
+import android.content.ComponentName
+import com.google.android.gms.wearable.Node
 
 @AndroidEntryPoint
 class WearableDataListenerService : BaseMobileService() {
+    companion object {
+        private const val TAG = "모바일: 웨어러블 기기 리스너"
+        private const val NOTIFICATION_ID = 1001
+        private const val PATH_HEART_RATE = "/sendPulseFlag"
+        private const val PATH_WATCH_LAUNCHED = "/watch_app_launched"
+    }
 
     @Inject
     lateinit var heartRateDataRepository: HeartRateDataRepository
 
-    private lateinit var dataClient: DataClient
+    @Inject
+    lateinit var connectionManager: MobileConnectionManager
 
-    companion object {
-        private const val TAG = "모바일: 웨어러블 기기 리스너"
-        private const val PATH_HEART_RATE = "/sendPulseFlag"
-    }
+    private lateinit var dataClient: DataClient
 
     override fun onCreate() {
         super.onCreate()
@@ -33,11 +47,89 @@ class WearableDataListenerService : BaseMobileService() {
         dataClient = Wearable.getDataClient(this)
         // 서비스 시작 시 로컬 데이터 전송 시작
         heartRateDataRepository.startSendingLocalHeartRateData()
-
-        // 현재 저장된 데이터 확인
         checkExistingData()
-        // 연결된 노드 확인
         checkConnectedNodes()
+    }
+
+    override fun onPeerConnected(node: Node) {
+        super.onPeerConnected(node)
+        Log.d(TAG, "워치 연결됨: ${node.displayName}")
+        connectionManager.updateWatchConnectionState(true)
+        showNotification(
+            "워치 연결됨",
+            "워치와 연결되어 심박수 모니터링을 시작합니다."
+        )
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        super.onMessageReceived(messageEvent)
+        Log.d(TAG, "메시지 수신됨: ${messageEvent.path}")
+
+        when (messageEvent.path) {
+            PATH_WATCH_LAUNCHED -> {
+                Log.d(TAG, "워치 앱 실행 확인됨")
+                connectionManager.updateWatchConnectionState(true)
+                sendBroadcast(Intent("WATCH_APP_LAUNCHED"))
+                showNotification(
+                    "워치 연결됨",
+                    "워치와 연결되어 심박수 모니터링을 시작합니다."
+                )
+            }
+            MobileConnectionManager.PATH_WATCH_STATUS -> {
+                val isWatchActive = messageEvent.data[0] == 1.toByte()
+                connectionManager.updateWatchConnectionState(isWatchActive)
+
+                if (!isWatchActive) {
+                    showNotification(
+                        "워치 연결 해제",
+                        "정확한 위험 감지를 위해 워치 앱을 실행해주세요."
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onPeerDisconnected(node: Node) {
+        super.onPeerDisconnected(node)
+        Log.d(TAG, "워치 연결 해제됨: ${node.displayName}")
+
+        // 연결이 의도치 않게 끊어진 경우 에러로 처리
+        if (connectionManager.watchConnectionState.value is MobileConnectionManager.WatchConnectionState.Connected) {
+            connectionManager.updateWatchConnectionStateWithError("워치와의 연결이 예기치 않게 끊어졌습니다")
+            showNotification(
+                "워치 연결 오류",
+                "워치와의 연결이 비정상적으로 종료되었습니다"
+            )
+        } else {
+            connectionManager.updateWatchConnectionState(false)
+            showNotification(
+                "워치 연결 해제",
+                "워치와의 연결이 끊어졌습니다"
+            )
+        }
+    }
+
+    private fun showNotification(title: String, content: String) {
+        try {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(this).notify(
+                    NOTIFICATION_ID,
+                    NotificationCompat.Builder(this, MobileMainApplication.NOTIFICATION_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.shieldrone_ic)
+                        .setContentTitle(title)
+                        .setContentText(content)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setAutoCancel(true)
+                        .build()
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "알림 표시 실패", e)
+        }
     }
 
     private fun checkExistingData() {

@@ -11,6 +11,7 @@ import com.ssafy.shieldroneapp.data.source.remote.WebSocketErrorHandler
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.permissions.PermissionManager
+import com.ssafy.shieldroneapp.services.connection.MobileConnectionManager
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 import dagger.Module
 import dagger.Provides
@@ -124,7 +125,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideHeartRateViewModel(): HeartRateViewModel {
-        return HeartRateViewModel()
+    fun provideHeartRateViewModel(
+        connectionManager: MobileConnectionManager
+    ): HeartRateViewModel {
+        return HeartRateViewModel(connectionManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMobileConnectionManager(
+        @ApplicationContext context: Context
+    ): MobileConnectionManager {
+        return MobileConnectionManager(context)
     }
 }

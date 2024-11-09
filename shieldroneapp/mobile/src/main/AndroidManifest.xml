@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ssafy.shieldroneapp">
   <!-- 권한 설정 -->
 
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -45,6 +45,8 @@
       </intent-filter>
     </activity>
 
+    <meta-data android:name="com.google.android.wearable.standalone" android:value="false"/>
+
     <service android:name=".services.connection.WearableDataListenerService" android:enabled="true" android:exported="true">
       <intent-filter android:priority="1000">
         <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
@@ -52,6 +54,8 @@
         <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED"/>
         <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT"/>
         <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag"/>
+        <!-- 모바일 상태 체크를 위한 path 추가 -->
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/mobile_status"/>
       </intent-filter>
     </service>
 
