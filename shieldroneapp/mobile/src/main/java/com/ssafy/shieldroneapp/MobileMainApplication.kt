@@ -10,6 +10,7 @@ package com.ssafy.shieldroneapp
 import android.app.Application
 import android.content.Intent
 import android.util.Log
+import com.kakao.vectormap.KakaoMapSdk
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
 import dagger.hilt.android.HiltAndroidApp
@@ -26,14 +27,13 @@ class MobileMainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         // 앱 시작시 필요한 초기화 작업
-        // - 로깅 설정
         // - SharedPreferences 초기화
         // - 네트워크 설정
         // - 푸시 알림 설정 등
-        setupLogging()
+        setupLogging() // 로깅 설정
+        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY) // Kakao Maps SDK 초기화
         initializeWebSocket()
-        // 서비스 자동 시작
-        startService(Intent(this, WearableDataListenerService::class.java))
+        startService(Intent(this, WearableDataListenerService::class.java)) // 서비스 자동 시작
     }
     private fun setupLogging() {
         if (BuildConfig.DEBUG) {
