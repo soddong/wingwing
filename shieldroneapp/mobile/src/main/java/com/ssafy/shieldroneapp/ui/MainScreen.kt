@@ -15,17 +15,20 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 import kotlinx.coroutines.launch
 import com.ssafy.shieldroneapp.utils.await
 
 @Composable
 fun MainScreen(
+    isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val heartRateState by viewModel.heartRateData.collectAsState()
+    val connectionState by viewModel.watchConnectionState.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var connectedNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
@@ -35,7 +38,7 @@ fun MainScreen(
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                val nodes = Wearable.getNodeClient(context).connectedNodes.await()
+                val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
                 connectedNodes = nodes
                 isChecking = false
                 if (nodes.isEmpty()) {
@@ -47,7 +50,7 @@ fun MainScreen(
                             node.id,
                             "/start/heart_rate_monitor",
                             ByteArray(0)
-                        ).await()
+                        ).await(5000)
                     }
                 }
             } catch (e: Exception) {
@@ -73,7 +76,13 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isChecking) {
+            if (!isAppActive) {
+                Text(
+                    text = "모바일 앱이 비활성화 되었습니다.",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            } else if (isChecking) {
                 Text(
                     text = "워치 연결 상태 확인 중...",
                     fontSize = 18.sp,
@@ -95,13 +104,19 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 음성 감지 상태 표시
+            // 음성 감지 상태 표시ㅇ
             Text(
                 text = "음성 감지: 활성화됨",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )
         }
+
+        // 연결 상태 스낵바 표시
+        ConnectionStatusSnackbar(
+            connectionState = connectionState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         // 워치 앱 실행 요청 다이얼로그
         if (showDialog) {

@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Entity
@@ -30,7 +31,7 @@ public class User extends BaseEntity {
     private String phoneNumber;
 
     @Column(name = "birthday", nullable = false)
-    private String birthday;
+    private LocalDate birthday;
 
     @OneToOne
     @JoinColumn(name = "start_hive_id")
@@ -52,7 +53,7 @@ public class User extends BaseEntity {
     private String detailAddress;
 
     @Builder
-    public User(String phoneNumber, String birthday, String username) {
+    public User(String phoneNumber, LocalDate birthday, String username) {
         this.phoneNumber = phoneNumber;
         this.birthday = birthday;
         this.username = username;
