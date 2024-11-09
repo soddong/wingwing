@@ -36,7 +36,13 @@
     <!-- HTTP 통신 허용 (배포 시 HTTPS 권장) -->
 
     <!-- WearOS 통신을 위한 Google Play Services Wearable API 사용 설정 -->
-    <meta-data android:name="com.google.android.wearable.beta.app" android:resource="@xml/wearable_app_desc"/>
+    <meta-data
+        android:name="com.google.android.wearable.beta.app"
+        android:resource="@xml/wearable_app_desc"/>
+
+    <meta-data
+        android:name="com.kakao.vectormap.APP_KEY"
+        android:value="${KAKAO_API_KEY}" />
 
     <activity android:name=".MobileMainActivity" android:exported="true">
       <intent-filter>
