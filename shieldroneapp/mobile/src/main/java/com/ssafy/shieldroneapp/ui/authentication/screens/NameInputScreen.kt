@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.authentication.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -46,6 +47,7 @@ fun NameInputScreen(
 
     Column(
         modifier = Modifier
+            .background(MaterialTheme.colors.background)
             .fillMaxSize()
             .padding(16.dp)
             .clickable { keyboardController?.hide() }, // 빈 공간 클릭 시 키보드 숨기기

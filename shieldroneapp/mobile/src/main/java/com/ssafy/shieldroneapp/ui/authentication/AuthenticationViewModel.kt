@@ -88,7 +88,7 @@ class AuthenticationViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             phoneNumber = phone,
-//                            isVerificationSent = true,
+                            isVerificationSent = true,
                             error = null
                         )
                     }

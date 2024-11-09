@@ -10,7 +10,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSource
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import com.ssafy.shieldroneapp.ui.authentication.AuthenticationScreen
 import com.ssafy.shieldroneapp.ui.landing.LandingScreen
