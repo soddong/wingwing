@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.ssafy.shieldroneapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.ssafy.shieldroneapp"
@@ -22,16 +22,15 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        resourceConfigurations.addAll(listOf("en", "ko"))
     }
 
     buildTypes {
         debug {
-            // 디버그 빌드용 API URL
             buildConfigField("String", "BASE_API_URL", "\"https://debug-api.example.com/\"")
             isMinifyEnabled = false
         }
         release {
-            // 릴리스 빌드용 API URL
             buildConfigField("String", "BASE_API_URL", "\"https://api.example.com/\"")
             isMinifyEnabled = false
             proguardFiles(
@@ -43,11 +42,17 @@ android {
 
     // Jetpack Compose 설정 추가
     buildFeatures {
-        compose = true // Jetpack Compose UI 툴킷 활성화
-        buildConfig = true // BuildConfig 활성화
+        compose = true
+        buildConfig = true
     }
+
+    // locale 설정 (중복 제거)
+    androidResources {
+        generateLocaleConfig = false
+    }
+
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.0" // Kotlin Compiler Extension 버전
+        kotlinCompilerExtensionVersion = "1.5.0"
     }
 
     compileOptions {
@@ -61,6 +66,15 @@ android {
 
     kapt {
         correctErrorTypes = true
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            pickFirsts += "**/values/attrs.xml"
+            pickFirsts += "**/values/styles.xml"
+            merges += "META-INF/LICENSE"
+        }
     }
 }
 
@@ -122,6 +136,5 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core) // 안드로이드 테스트용 JUnit
     androidTestImplementation("androidx.compose.ui:ui-test-junit4") // Compose UI 테스트용
 
-    // Wearable 관련 설정
     wearApp(project(":wear"))
 }

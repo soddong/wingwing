@@ -36,9 +36,7 @@
     <!-- HTTP 통신 허용 (배포 시 HTTPS 권장) -->
 
     <!-- WearOS 통신을 위한 Google Play Services Wearable API 사용 설정 -->
-    <meta-data
-        android:name="com.google.android.wearable.beta.app"
-        android:resource="@xml/wearable_app_desc"/>
+    <meta-data android:name="com.google.android.wearable.beta.app" android:resource="@xml/wearable_app_desc"/>
 
     <activity android:name=".MobileMainActivity" android:exported="true">
       <intent-filter>
@@ -47,6 +45,8 @@
       </intent-filter>
     </activity>
 
+    <meta-data android:name="com.google.android.wearable.standalone" android:value="false"/>
+
     <service android:name=".services.connection.WearableDataListenerService" android:enabled="true" android:exported="true">
       <intent-filter android:priority="1000">
         <action android:name="com.google.android.gms.wearable.DATA_CHANGED"/>
@@ -54,6 +54,8 @@
         <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED"/>
         <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT"/>
         <data android:scheme="wear" android:host="*" android:pathPrefix="/sendPulseFlag"/>
+        <!-- 모바일 상태 체크를 위한 path 추가 -->
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/mobile_status"/>
       </intent-filter>
     </service>
 
