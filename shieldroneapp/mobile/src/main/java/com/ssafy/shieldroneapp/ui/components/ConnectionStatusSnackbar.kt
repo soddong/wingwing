@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.ssafy.shieldroneapp.services.connection.MobileConnectionManager.WatchConnectionState
+import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

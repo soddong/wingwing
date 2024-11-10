@@ -23,6 +23,7 @@ import javax.inject.Inject
 import android.Manifest
 import android.content.ComponentName
 import com.google.android.gms.wearable.Node
+import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 
 @AndroidEntryPoint
 class WearableDataListenerService : BaseMobileService() {
@@ -116,7 +117,7 @@ class WearableDataListenerService : BaseMobileService() {
         Log.d(TAG, "워치 연결 해제됨: ${node.displayName}")
 
         // 연결이 의도치 않게 끊어진 경우 에러로 처리
-        if (connectionManager.watchConnectionState.value is MobileConnectionManager.WatchConnectionState.Connected) {
+        if (connectionManager.watchConnectionState.value is WatchConnectionState.Connected) {
             connectionManager.updateWatchConnectionStateWithError("워치와의 연결이 예기치 않게 끊어졌습니다")
             showNotification(
                 "워치 연결 오류",
