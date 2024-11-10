@@ -2,8 +2,34 @@ import cv2
 import numpy as np
 
 class DroneController:
+
+    class ControlValue:
+        def __init__(self):
+            self.offset_x = 0
+            self.offset_y = 0
+            self.movement = "hover"
+            self.box_width = 0
+            self.box_height = 0
+
+        def update(self, offset_x, offset_y, movement, box_width, box_height):
+            self.offset_x = offset_x
+            self.offset_y = offset_y
+            self.movement = movement
+            self.box_width = box_width
+            self.box_height = box_height
+
+        def get(self):
+            return {
+                'offset_x': self.offset_x,
+                'offset_y': self.offset_y,
+                'movement': self.movement,
+                'box_width': self.box_width,
+                'box_height': self.box_height
+            }
+    
     def __init__(self):
         self.is_init = False
+        self.control_value = self.ControlValue()
 
     def init(self, frame_width, frame_height):
         self.frame_width = frame_width
@@ -39,25 +65,13 @@ class DroneController:
             movement = "backward"
         else:
             movement = "hover"
+        self.control_value.update(offset_x, offset_y, movement, box_width, box_height)
 
-        control_values = {
-            'normalized_offset_x': normalized_offset_x,
-            'normalized_offset_y': normalized_offset_y,
-            'movement': movement,
-            'box_width': box_width,
-            'box_height': box_height
-        }
-        return control_values
-    
-    def visualize_control(self, frame, control_values):
-        """
-        드론 제어 정보를 시각적으로 표시합니다. 
-        normalized_offset_x, normalized_offset_y를 사용하여 화살표를 그립니다.
-        """
-        # 제어 값 추출
-        normalized_offset_x = control_values['normalized_offset_x']
-        normalized_offset_y = control_values['normalized_offset_y']
-        movement = control_values['movement']
+    def visualize_control(self, frame):
+        value = self.control_value.get()
+        offset_x = value['offset_x']
+        offset_y = value['offset_y']
+        movement = value['movement']
 
         # 화살표의 길이를 조절 (화면의 크기와 정규화된 오프셋에 따라)
         arrow_length_x = int(self.frame_width * 0.5 * normalized_offset_x)
@@ -76,5 +90,8 @@ class DroneController:
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         cv2.putText(frame, f"Drone Movement: {movement}",
                     (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
         return frame
+    
+    def get_control_value(self) -> ControlValue:
+        return self.control_value
+

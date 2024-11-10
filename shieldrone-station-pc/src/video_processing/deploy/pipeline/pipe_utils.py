@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import time
 import os
 import glob
@@ -323,7 +324,7 @@ class HandAboveHeadTracker(object):
                 del self.holding_ids[tracker]
         return None
 
-class VideoHandler:
+class VideoReceiverHandler:
     def __init__(self, input_type, input_source):
         self.input_type = input_type
         self.input_source = input_source
@@ -459,3 +460,74 @@ class VideoHandler:
         elif self.input_type == "udp":
             self.receive_frames(framequeue, is_prepareing = True)
         return self.height, self.width
+    
+
+class ResultSendHandler:
+    def __init__(self, ip, port):
+        """
+        초기화 함수
+        """
+        self.ip = ip
+        self.port = port
+        self.socket = None
+        self.thread = None
+
+    def connect_socket(self):
+        """
+        UDP 소켓을 초기화하고 연결
+        """
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.connect((self.ip, self.port))
+
+    def close_socket(self):
+        """
+        소켓 연결 종료
+        """
+        if self.socket:
+            self.socket.close()
+
+    def startSending(self, resultqueue):
+        """
+        결과 전송을 시작하는 함수 (스레드 생성 및 시작)
+        """
+        # 소켓 연결
+        self.connect_socket()
+
+        # 스레드를 시작하여 send_result 실행
+        self.thread = threading.Thread(
+            target=self.send_result, args=(resultqueue,)
+        )
+        self.thread.start()
+
+    def stopSending(self):
+        """
+        스레드 중지 및 소켓 종료
+        """
+        if self.thread is not None:
+            self.thread.join()
+        
+        # 소켓 종료
+        self.close_socket()
+
+    def send_result(self, resultqueue):
+        """
+        큐에서 결과를 가져와 JSON 형식으로 변환한 뒤 소켓을 통해 전송하는 함수
+        """
+        while True:
+            if resultqueue.empty():
+                time.sleep(0.1)
+            else:
+                result = resultqueue.get()
+                try:
+                    # dict 형식의 결과를 JSON 문자열로 변환
+                    json_result = json.dumps(result)
+                    
+                    # JSON 문자열을 소켓을 통해 전송
+                    self.socket.sendall(json_result.encode('utf-8'))
+                    print(f"Sent: {json_result}")
+                except Exception as e:
+                    print(f"Error sending data: {e}")
+                
+                # 큐 작업 완료 표시
+                resultqueue.task_done()
+                time.sleep(0.1)
