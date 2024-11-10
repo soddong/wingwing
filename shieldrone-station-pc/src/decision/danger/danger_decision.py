@@ -1,5 +1,6 @@
 import zmq
 import json
+import time
 from datetime import datetime
 
 class DangerDecision:
@@ -10,10 +11,12 @@ class DangerDecision:
         """
         self.context = zmq.Context()
         self.socket_sensor = self.context.socket(zmq.PULL)
-        self.socket_sensor.connect("tcp://127.0.0.1:5560") 
+        self.socket_sensor.connect("tcp://127.0.0.1:5560")
+        self.socket_sensor.setsockopt(zmq.RCVTIMEO, 5000) 
 
         self.socket_camera = self.context.socket(zmq.PULL)
         self.socket_camera.connect("tcp://127.0.0.1:5580")
+        self.socket_camera.setsockopt(zmq.RCVTIMEO, 5000) 
 
         self.socket_flag = self.context.socket(zmq.PUSH)
         self.socket_flag.connect("tcp://127.0.0.1:5590")
@@ -46,7 +49,7 @@ class DangerDecision:
         while True:
             try:
                 # 두 소켓에서 메시지 수신 대기
-                events = dict(self.poller.poll(timeout=1000))  # 1초 대기 후 넘어감
+                events = dict(self.poller.poll(timeout=100))  # 1초 대기 후 넘어감
 
                 # socket_sensor에서 메시지 수신
                 if self.socket_sensor in events:
