@@ -39,6 +39,7 @@ class Server:
 
         self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
         self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
+        self.socket_route.setsockopt(zmq.RCVTIMEO, 5000)
 
         threading.Thread(target=self.receive_flag_data, daemon=True).start()
 
@@ -133,7 +134,7 @@ class Server:
             "time": time,
             "location": {"lat": lat, "lng": lng}
         })
-        send_message_with_retry(self.socket_route, zmq_data) # type: ignore
+        await self.send_message_with_retry(self.socket_route, zmq_data) # type: ignore
 
 
     async def handle_send_pulse_flag(self, data):
@@ -153,7 +154,7 @@ class Server:
             "time": time,
             "pulseFlag": pulse_flag
         })
-        send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
+        await self.send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
 
     async def handle_send_db_flag(self, data):
         """
@@ -172,13 +173,13 @@ class Server:
             "time": time,
             "dbFlag": db_flag
         })
-        send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
+        await self.send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
 
     async def send_warning_beep(self):
         """
         경고음 전송 메시지를 모든 연결된 WebSocket 클라이언트에 전송.
         """
-        time = datetime.now()
+        time = datetime.now().isoformat()
         message = json.dumps({"type": "triggerWarningBeep", "time": time, "warningFlag": True})
 
         for client in self.ws_clients:
@@ -214,7 +215,6 @@ class Server:
         while attempt < retries:
             try:
                 socket.send_string(message)
-                print("Message sent successfully.")
                 break  # 성공 시 루프 종료
             except zmq.Again:
                 attempt += 1
