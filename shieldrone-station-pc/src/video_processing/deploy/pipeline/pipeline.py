@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import re
 import cv2
@@ -24,6 +25,7 @@ import queue
 import time
 from collections import defaultdict
 import zmq
+import socket as sc
 
 # add deploy path of PaddleDetection to sys.path
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
@@ -320,6 +322,8 @@ class PipePredictor(object):
         socket = context.socket(zmq.PUSH)
         socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
         socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
+        temp_sock = sc.socket(sc.AF_INET, sc.SOCK_DGRAM)
+        server_address = ("192.168.0.7", "23456")
 
         while (1):
             if framequeue.empty():
@@ -351,19 +355,7 @@ class PipePredictor(object):
                 reuse_det_result=reuse_det_result,
                 frame_count=frame_id)
 
-            # mot output format: id, class, score, xmin, ymin, xmax, ymax
             mot_res = parse_mot_res(res)
-
-            # data_bytes = mot_res["boxes"].tobytes()
-            # data_shape = mot_res["boxes"].shape
-            # data_dtype = str(mot_res["boxes"].dtype)
-            # print("데이터 변환")
-
-            # # 배열 데이터와 메타 정보를 함께 전송
-            # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
-            # print("json 전송")
-            # socket.send(data_bytes)
-            # print("데이터를 전송했습니다.")
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.module_time['mot'].end()
@@ -451,7 +443,14 @@ class PipePredictor(object):
 
                 spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, fps)
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
+                control_values = {
+                    'lat': 112.3,
+                    'lng': 123.4
+                }
 
+                # JSON 직렬화
+                message = json.dumps(control_values)
+                temp_sock.sendto(message.encode('utf-8'), server_address)
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
                 self.pipe_timer.total_time.end()
@@ -469,7 +468,8 @@ class PipePredictor(object):
                 cv2.imshow('Paddle-Pipeline', im)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-
+                
+        temp_sock.close()
         socket.close()
         context.term()
 
