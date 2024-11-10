@@ -28,7 +28,7 @@ class DangerDecision:
 
                 if message_type == "sendPulseFlag":
                     self.set_pulse_flag_trigger(data)
-                elif message_type == "sendDbFlag:
+                elif message_type == "sendDbFlag":
                     self.set_db_flag_trigger(data)
                 else:
                     print(f"Unknown Message Type: {message_type}")
@@ -39,11 +39,11 @@ class DangerDecision:
                 print(f"ZeroMQ 에러 발생: {e}")
                 break
 
-    def set_pulse_flag_trigger(data):
+    def set_pulse_flag_trigger(self, data):
         self.pulse_flag_trigger = data.get("pulseFlag")
         print("[트리거 설정] sendPulseFlag 트리거가 활성화되었습니다.")
 
-    def set_db_flag_trigger(data):
+    def set_db_flag_trigger(self, data):
         self.db_flag_trigger = data.get("dbFlag")
         print("[트리거 설정] sendDbFlag 트리거가 활성화되었습니다.")
 
