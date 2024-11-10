@@ -16,3 +16,52 @@ package com.ssafy.shieldroneapp.data.source.remote
  * 이 클래스는 WebSocketService에 의해 import되어 사용됩니다.
  * 또한 WebSocketMessageParser를 import하여 수신한 메시지를 파싱합니다.
  */
+
+
+import android.util.Log
+import com.google.gson.JsonParser
+import com.ssafy.shieldroneapp.services.alert.AlertService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+class WebSocketSubscriptions @Inject constructor(
+    private val messageParser: WebSocketMessageParser,
+    private val alertService: AlertService
+) {
+    companion object {
+        private const val TAG = "모바일: 웹소켓 구독"
+    }
+
+    private val subscriptionScope = CoroutineScope(Dispatchers.IO)
+
+    fun handleIncomingMessage(message: String) {
+        subscriptionScope.launch {
+            try {
+                Log.d(TAG, "수신된 메시지: $message")
+                val messageType = messageParser.getMessageType(message)
+                Log.d(TAG, "메시지 타입: $messageType")
+
+                when (messageType) {
+                    "triggerWarningBeep" -> {
+                        val warningData = messageParser.parseWarningMessage(message)
+                        if (warningData != null) {
+                            Log.d(TAG, "위험 알림 수신 - time: ${warningData.time}, warningFlag: ${warningData.warningFlag}")
+
+                            if (warningData.warningFlag) {
+                                Log.d(TAG, "⚠️ 위험 상황 감지! 경고음 발생 필요")
+                                alertService.handleWarningBeep(warningData.warningFlag)
+                            }
+                        }
+                    }
+                    null -> Log.e(TAG, "메시지 타입을 찾을 수 없음")
+                    else -> Log.d(TAG, "처리되지 않은 메시지 타입: $messageType")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "메시지 처리 중 오류 발생", e)
+                e.printStackTrace()
+            }
+        }
+    }
+}

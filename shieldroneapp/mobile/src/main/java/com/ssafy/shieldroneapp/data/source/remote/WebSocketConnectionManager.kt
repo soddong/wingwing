@@ -15,7 +15,8 @@ import kotlin.math.pow
 class WebSocketConnectionManager(
     private val webSocketService: WebSocketService,
     private val webSocketMessageSender: WebSocketMessageSender,
-    private val errorHandler: WebSocketErrorHandler
+    private val errorHandler: WebSocketErrorHandler,
+    private val webSocketSubscriptions: WebSocketSubscriptions
 ) {
     private val client = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
@@ -50,10 +51,15 @@ class WebSocketConnectionManager(
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     Log.d(TAG, "메시지 수신: $text")
+                    webSocketSubscriptions.handleIncomingMessage(text)
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Log.e(TAG, "연결 실패 - URL: ${WebSocketConfig.getWebSocketUrl()}, 응답: ${response?.message}", t)
+                    Log.e(
+                        TAG,
+                        "연결 실패 - URL: ${WebSocketConfig.getWebSocketUrl()}, 응답: ${response?.message}",
+                        t
+                    )
 
                     // Broken pipe 에러인 경우 즉시 재연결 시도
                     if (t is SocketException && t.message?.contains("Broken pipe") == true) {
