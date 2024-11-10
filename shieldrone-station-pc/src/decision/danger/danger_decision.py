@@ -78,7 +78,6 @@ class DangerDecision:
                 print(f"ZeroMQ 에러 발생: {e}")
                 break
 
-
     def set_pulse_flag_trigger(self, data):
         current_time = time.time()
         new_pulse_flag = data.get("pulseFlag")
