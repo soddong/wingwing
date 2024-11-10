@@ -4,6 +4,7 @@ import websockets
 import threading
 import json
 import zmq
+import time
 from datetime import datetime
 
 class Server:
@@ -106,7 +107,8 @@ class Server:
             "time": time,
             "location": {"lat": lat, "lng": lng}
         })
-        self.socket_route.send_string(zmq_data)
+        send_message_with_retry(self.socket_route, zmq_data) # type: ignore
+
 
     async def handle_send_pulse_flag(self, data):
         """
@@ -125,7 +127,7 @@ class Server:
             "time": time,
             "pulseFlag": pulse_flag
         })
-        self.socket_danger.send_string(zmq_data)
+        send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
 
     async def handle_send_db_flag(self, data):
         """
@@ -144,7 +146,7 @@ class Server:
             "time": time,
             "dbFlag": db_flag
         })
-        self.socket_danger.send_string(zmq_data)
+        send_message_with_retry(self.socket_danger, zmq_data) # type: ignore
 
     async def send_warning_beep(self):
         """
@@ -176,6 +178,28 @@ class Server:
         async with websockets.serve(self.websocket_handler, "0.0.0.0", 8765):
             print("WebSocket 서버가 8765 포트에서 대기 중입니다...")
             await asyncio.Future()
+
+    async def send_message_with_retry(self, socket, message):
+        """
+        메시지를 소켓을 통해 전송. 타임아웃 에러 발생 시 재시도.
+        """
+        retries=3
+        attempt = 0
+        while attempt < retries:
+            try:
+                socket.send_string(message)
+                print("Message sent successfully.")
+                break  # 성공 시 루프 종료
+            except zmq.Again:
+                attempt += 1
+                print(f"Attempt {attempt} failed. Retrying...")
+                time.sleep(1)  # 잠시 대기 후 재시도
+            except Exception as e:
+                print(f"Unexpected error while sending message: {e}")
+                break
+
+        if attempt == retries:
+            print("Failed to send message after multiple attempts.")
 
     def start(self):
         flask_thread = threading.Thread(target=self.run_flask)
