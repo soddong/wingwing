@@ -9,29 +9,68 @@ class DangerDecision:
         각 트리거 신호를 저장할 변수를 초기화.
         """
         self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.PULL)
-        self.socket.connect("tcp://127.0.0.1:5560")  
+        self.socket_sensor = self.context.socket(zmq.PULL)
+        self.socket_sensor.connect("tcp://127.0.0.1:5560") 
+
+        self.socket_camera = self.context.socket(zmq.PULL)
+        self.socket_camera.connect("tcp://127.0.0.1:5580")
+
+        self.socket_flag = self.context.socket(zmq.PUSH)
+        self.socket_flag.connect("tcp://127.0.0.1:5590")
 
         self.pulse_flag_trigger = False
         self.db_flag_trigger = False
+        self.camera_flag_trigger = False
+
+        # Poller 설정
+        self.poller = zmq.Poller()
+        self.poller.register(self.socket_sensor, zmq.POLLIN)
+        self.poller.register(self.socket_camera, zmq.POLLIN)
+
+        # 트리거와 타임스탬프 변수 초기화
+        self.pulse_flag_trigger = False
+        self.db_flag_trigger = False
+        self.camera_flag_trigger = False
+        self.pulse_flag_time = 0
+        self.db_flag_time = 0
+        self.camera_flag_time = 0
+
+        # 타임아웃 설정 (30초)
+        self.trigger_timeout = 30
 
     def receive_data(self):
         """
-        ZeroMQ를 통해 서버로부터 데이터를 수신하고 메시지 유형과 값에 따라 트리거 설정.
+        ZeroMQ를 통해 두 소켓에서 동시에 메시지를 수신하고, 메시지 유형과 값에 따라 트리거 설정.
         """
         print("ZeroMQ 서버로부터 메시지 수신을 대기 중...")
         while True:
             try:
-                message = self.socket.recv_string()
-                data = json.loads(message)
-                message_type = data.get("type")
+                # 두 소켓에서 메시지 수신 대기
+                events = dict(self.poller.poll(timeout=1000))  # 1초 대기 후 넘어감
 
-                if message_type == "sendPulseFlag":
-                    self.set_pulse_flag_trigger(data)
-                elif message_type == "sendDbFlag":
-                    self.set_db_flag_trigger(data)
-                else:
-                    print(f"Unknown Message Type: {message_type}")
+                # socket_sensor에서 메시지 수신
+                if self.socket_sensor in events:
+                    message = self.socket_sensor.recv_string()
+                    data = json.loads(message)
+                    message_type = data.get("type")
+
+                    if message_type == "sendPulseFlag":
+                        self.set_pulse_flag_trigger(data)
+                    elif message_type == "sendDbFlag":
+                        self.set_db_flag_trigger(data)
+                    else:
+                        print(f"Unknown Message Type from socket_sensor: {message_type}")
+
+                # socket_camera에서 메시지 수신
+                if self.socket_camera in events:
+                    message = self.socket_camera.recv_string()
+                    data = json.loads(message)
+                    message_type = data.get("type")
+
+                    if message_type == "sendCameraFlag":
+                        self.set_camera_flag_trigger(data)
+                    else:
+                        print(f"Unknown Message Type from socket_camera: {message_type}")
 
                 self.check_condition()
 
@@ -40,20 +79,70 @@ class DangerDecision:
                 break
 
     def set_pulse_flag_trigger(self, data):
-        self.pulse_flag_trigger = data.get("pulseFlag")
-        print("[트리거 설정] sendPulseFlag 트리거가 활성화되었습니다.")
+        current_time = time.time()
+        new_pulse_flag = data.get("pulseFlag")
+        
+        if self.pulse_flag_trigger:
+            if current_time - self.pulse_flag_time > self.trigger_timeout:
+                self.pulse_flag_trigger = new_pulse_flag
+                self.pulse_flag_time = current_time
+                print("[트리거 재설정] sendPulseFlag 트리거가 재설정되었습니다.")
+        else:
+            if new_pulse_flag:
+                self.pulse_flag_trigger = True
+                self.pulse_flag_time = current_time
+                print("[트리거 설정] sendPulseFlag 트리거가 발동되었습니다.")
 
     def set_db_flag_trigger(self, data):
-        self.db_flag_trigger = data.get("dbFlag")
-        print("[트리거 설정] sendDbFlag 트리거가 활성화되었습니다.")
+        current_time = time.time()
+        new_db_flag = data.get("dbFlag")
+        
+        if self.db_flag_trigger:
+            if current_time - self.db_flag_time > self.trigger_timeout:
+                self.db_flag_trigger = new_db_flag
+                self.db_flag_time = current_time
+                print("[트리거 재설정] sendDbFlag 트리거가 재설정되었습니다.")
+        else:
+            if new_db_flag:
+                self.db_flag_trigger = True
+                self.db_flag_time = current_time
+                print("[트리거 설정] sendDbFlag 트리거가 발동되었습니다.")
+
+    def set_camera_flag_trigger(self, data):
+        current_time = time.time()
+        new_camera_flag = data.get("cameraFlag")
+        
+        if self.camera_flag_trigger:
+            if current_time - self.camera_flag_time > self.trigger_timeout:
+                self.camera_flag_trigger = new_camera_flag
+                self.camera_flag_time = current_time
+                print("[트리거 재설정] sendCameraFlag 트리거가 재설정되었습니다.")
+        else:
+            if new_camera_flag:
+                self.camera_flag_trigger = True
+                self.camera_flag_time = current_time
+                print("[트리거 설정] sendCameraFlag 트리거가 발동되었습니다.")
 
     def check_condition(self):
-
-        if all([self.pulse_flag_trigger, self.db_flag_trigger]):
-            print("[경고] 조건이 충족되었습니다. 위험 상황 처리 로직을 수행합니다.")
-            # TODO: 위험 상황 처리 로직 수행
+        # 세 개의 트리거 중 두 개 이상이 True인 경우 위험 상황 처리
+        active_triggers = sum([self.pulse_flag_trigger, self.db_flag_trigger, self.camera_flag_trigger])
         
+        if active_triggers >= 2:
+            print("[경고] 조건이 충족되었습니다. 위험 상황 처리 로직을 수행합니다.")
+            self.send_danger_signal()
             self.reset_triggers()
+
+    def send_danger_signal(self):
+        """
+        위험 상황 발생 시 5590 포트로 triggerWarningBeep 메시지를 전송합니다.
+        """
+        message = json.dumps({
+            "type": "triggerWarningBeep",
+            "time": datetime.now().isoformat(),
+            "warningFlag": True
+        })
+        self.socket_flag.send_string(message)
+        print("[위험 경고 전송] 경고 메시지가 5590 포트로 전송되었습니다.")
 
     def reset_triggers(self):
         """
@@ -61,6 +150,7 @@ class DangerDecision:
         """
         self.pulse_flag_trigger = False
         self.db_flag_trigger = False
+        self.camera_flag_trigger = False
         print("[트리거 초기화] 모든 트리거가 초기화되었습니다.")
 
     def start(self):

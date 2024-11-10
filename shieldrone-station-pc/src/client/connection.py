@@ -31,10 +31,16 @@ class Server:
         self.context = zmq.Context()
         self.socket_danger = self.context.socket(zmq.PUSH)
         self.socket_route = self.context.socket(zmq.PUSH)
+        self.socket_flag = self.context.socket(zmq.PULL) 
+
         self.socket_danger.bind("tcp://127.0.0.1:5560") 
-        self.socket_route.bind("tcp://127.0.0.1:5570") 
+        self.socket_route.bind("tcp://127.0.0.1:5570")
+        self.socket_flag.bind("tcp://127.0.0.1:5590") 
+
         self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
         self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
+
+        threading.Thread(target=self.receive_flag_data, daemon=True).start()
 
     def test(self):
         """
@@ -87,6 +93,26 @@ class Server:
             print("WebSocket 연결이 닫혔습니다.")
         finally:
             self.ws_clients.remove(websocket)
+
+    def receive_flag_data(self):
+        """
+        5590 포트에서 flag 데이터를 수신하여 처리.
+        """
+        while True:
+            try:
+                message = self.socket_flag.recv_string()
+                data = json.loads(message)
+                time = data.get("time", datetime.now().isoformat())
+                warningFlag = data.get("warningFlag", False)
+                print(f"[triggerWarningBeep] {data}")
+                
+                # 위험 상황 판단 및 경고음 전송
+                if data.get("type") == "triggerWarningBeep" and warningFlag == True:
+                    self.trigger_warning_beep()
+
+            except zmq.ZMQError as e:
+                print(f"ZeroMQ 에러 발생: {e}")
+                break
 
     async def handle_track_position(self, data):
         """
