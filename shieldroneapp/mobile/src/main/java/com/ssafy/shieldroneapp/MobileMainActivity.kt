@@ -59,7 +59,6 @@ class MobileMainActivity : ComponentActivity() {
         messageClient = Wearable.getMessageClient(this)
         nodeClient = Wearable.getNodeClient(this)
 
-
         // 앱이 시작될 때 모바일 앱이 활성화되었음을 워치에 알림
         lifecycleScope.launch {
             try {
@@ -105,7 +104,7 @@ class MobileMainActivity : ComponentActivity() {
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
-                            navController.navigate("main_screen") {
+                            navController.navigate(ROUTE_AUTHENTICATION) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
@@ -113,21 +112,17 @@ class MobileMainActivity : ComponentActivity() {
                     }
                     composable(ROUTE_AUTHENTICATION) {
                         AuthenticationScreen(
-                                onAuthComplete = {
+                            onAuthComplete = {
                                      navController.navigate(ROUTE_MAP) {
-                                         // 인증 화면들도 백스택에서 제거
-                                         popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
-                                     }
-
-                                    // 임시로 landing screen
-//                                    navController.navigate("main_screen") {
-//                                         popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
-//                                    }
+//                                navController.navigate("main_screen") {
+                                    // 인증 화면들도 백스택에서 제거
+                                    popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                 }
-                            )
+                            }
+                        )
                     }
                     composable(ROUTE_MAP) {
-                        MapScreen()
+                        MapScreen(isAppActive = isAppActive.value)
                     }
 
                     composable("main_screen") {
