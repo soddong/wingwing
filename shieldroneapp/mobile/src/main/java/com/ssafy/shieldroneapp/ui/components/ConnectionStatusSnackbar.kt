@@ -63,7 +63,7 @@ fun ConnectionStatusSnackbar(
                         text = when (connectionState) {
                             is WatchConnectionState.Connected -> "워치와 연결되었습니다"
                             is WatchConnectionState.Disconnected -> "워치와 연결이 끊어졌습니다"
-                            is WatchConnectionState.Error -> "워치 연결 오류: ${connectionState.message}"
+                            is WatchConnectionState.Error -> "워치와 연결이 되어 있지 않습니다"
                         },
                         color = Color.White
                     )
