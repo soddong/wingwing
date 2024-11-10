@@ -12,6 +12,7 @@ import android.util.Log
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.utils.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,12 +33,6 @@ class MobileConnectionManager @Inject constructor(
         private const val TAG = "모바일: 연결 매니저"
         const val PATH_MOBILE_STATUS = "/mobile_status"
         const val PATH_WATCH_STATUS = "/watch_status"
-    }
-
-    sealed class WatchConnectionState {
-        object Connected : WatchConnectionState()
-        object Disconnected : WatchConnectionState()
-        data class Error(val message: String) : WatchConnectionState()
     }
 
     fun updateWatchConnectionState(isConnected: Boolean) {
