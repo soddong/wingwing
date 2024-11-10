@@ -1,0 +1,20 @@
+crop_thresh: 0.5
+kpt_thresh: 0.2
+visual: True
+warmup_frame: 50
+
+DET:
+  model_dir: https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_s_36e_pipeline.zip
+  batch_size: 1
+
+MOT:
+  model_dir: https://bj.bcebos.com/v1/paddledet/models/pipeline/mot_ppyoloe_s_36e_pipeline.zip
+  tracker_config: deploy/pipeline/config/tracker_config.yml
+  batch_size: 1
+  skip_frame_num: 2 # preferably no more than 3
+  enable: True
+
+KPT:
+  model_dir: https://bj.bcebos.com/v1/paddledet/models/pipeline/dark_hrnet_w32_256x192.zip
+  # model_dir: /home/soddong/S11P31A307/shieldrone-station-pc/src/object_tracking/tinypose_256x192 # 속도차이는 비슷한듯함 10~20%?
+  batch_size: 8
