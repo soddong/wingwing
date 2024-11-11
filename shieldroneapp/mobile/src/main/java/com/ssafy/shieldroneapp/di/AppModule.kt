@@ -100,13 +100,11 @@ object AppModule {
     @Singleton
     fun provideAudioRecorder(
         @ApplicationContext context: Context,
-        audioDataRepository: AudioDataRepository,
         webSocketService: WebSocketService,
         audioAnalyzer: AudioAnalyzer
     ): AudioRecorder {
         return AudioRecorder(
             context,
-            audioDataRepository,
             webSocketService,
             audioAnalyzer
         )
