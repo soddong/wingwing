@@ -18,9 +18,14 @@ package com.ssafy.shieldroneapp.data.source.remote
  */
 
 
+import android.content.Context
 import android.util.Log
-import com.google.gson.JsonParser
+import com.google.android.gms.wearable.Wearable
+import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.AlertData
 import com.ssafy.shieldroneapp.services.alert.AlertService
+import com.ssafy.shieldroneapp.utils.await
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,13 +33,17 @@ import javax.inject.Inject
 
 class WebSocketSubscriptions @Inject constructor(
     private val messageParser: WebSocketMessageParser,
-    private val alertService: AlertService
+    private val alertService: AlertService,
+    @ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "모바일: 웹소켓 구독"
+        private const val PATH_DANGER_ALERT = "/danger_alert"
     }
 
+    private val messageClient = Wearable.getMessageClient(context)
     private val subscriptionScope = CoroutineScope(Dispatchers.IO)
+    private val gson = Gson()
 
     fun handleIncomingMessage(message: String) {
         subscriptionScope.launch {
@@ -49,10 +58,11 @@ class WebSocketSubscriptions @Inject constructor(
                         if (warningData != null) {
                             Log.d(TAG, "위험 알림 수신 - time: ${warningData.time}, warningFlag: ${warningData.warningFlag}")
 
-                            if (warningData.warningFlag) {
-                                Log.d(TAG, "⚠️ 위험 상황 감지! 경고음 발생 필요")
-                                alertService.handleWarningBeep(warningData.warningFlag)
-                            }
+                            // 모바일 앱에서 알림 처리
+                            alertService.handleWarningBeep(warningData.warningFlag)
+
+                            // 워치로 위험 알림 전송
+                            sendDangerAlertToWatch(warningData.warningFlag)
                         }
                     }
                     null -> Log.e(TAG, "메시지 타입을 찾을 수 없음")
@@ -62,6 +72,40 @@ class WebSocketSubscriptions @Inject constructor(
                 Log.e(TAG, "메시지 처리 중 오류 발생", e)
                 e.printStackTrace()
             }
+        }
+    }
+
+    private suspend fun sendDangerAlertToWatch(warningFlag: Boolean) {
+        try {
+            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
+            if (nodes.isEmpty()) {
+                Log.e(TAG, "연결된 워치가 없음")
+                return
+            }
+
+            val alertData = AlertData(
+                warningFlag = warningFlag,
+                timestamp = System.currentTimeMillis()
+            )
+
+            // JSON으로 변환
+            val alertJson = gson.toJson(alertData)
+
+            nodes.forEach { node ->
+                try {
+                    messageClient.sendMessage(
+                        node.id,
+                        PATH_DANGER_ALERT,
+                        alertJson.toByteArray()
+                    ).await(5000)
+                    Log.d(TAG, "워치로 위험 알림 전송 성공 - node: ${node.displayName}, warningFlag: $warningFlag")
+                } catch (e: Exception) {
+                    Log.e(TAG, "워치로 위험 알림 전송 실패 - node: ${node.displayName}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "워치 알림 전송 중 오류 발생", e)
+            e.printStackTrace()
         }
     }
 }
