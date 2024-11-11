@@ -11,10 +11,10 @@ public record HiveResponse(
         String direction,
         BigDecimal lat,
         BigDecimal lng,
-        double distance
+        int distance
 ) {
 
-    public static HiveResponse toResponse(Hive hive, double distance) {
+    public static HiveResponse toResponse(Hive hive, int distance) {
         return new HiveResponse(
                 hive.getId(),
                 hive.getHiveName(),
