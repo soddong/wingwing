@@ -2,9 +2,10 @@ package com.shieldrone.station.service.route
 
 import android.util.Log
 
-class RouteAdapter {
+class RouteAdapter(private val listener: RouteListener) {
     fun process(latitude: Double, longitude: Double) {
         Log.i("RouteAdapter", "Received Data $latitude $longitude")
-        TODO("Not yet implemented")
+        // Listener에게 데이터 전달
+        listener.onRouteProcessed(latitude, longitude)
     }
 }

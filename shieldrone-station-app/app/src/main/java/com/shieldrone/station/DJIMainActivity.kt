@@ -30,9 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
+import com.shieldrone.station.service.route.RouteAdapter
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
 import dji.v5.manager.KeyManager
@@ -42,6 +44,7 @@ import org.opencv.android.OpenCVLoader
 class DJIMainActivity : AppCompatActivity() {
 
     private lateinit var streamController: StreamController
+    private lateinit var routeController: RouteController
     private var cameraPermissionGranted by mutableStateOf(false)
     private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
@@ -118,13 +121,29 @@ class DJIMainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        // 스트리밍 중지 및 streamController 해제
         if (isStreaming) {
             streamController.stopLive()
+            isStreaming = false
         }
-        KeyManager.getInstance().cancelListen(this)
+
+        routeController.stopReceivingLocation()
+        // Handler의 모든 콜백 제거
         handler.removeCallbacksAndMessages(null)
+
+        // CompositeDisposable 해제
         disposable.dispose()
+
+        // KeyManager 구독 해제
+        KeyManager.getInstance().cancelListen(this)
+
+        // OpenCV 초기화 플래그 해제
+        isOpenCVInitialized = false
+
+        Log.d("DJIMainActivity", "모든 리소스가 해제되었습니다.")
     }
+
 
     private fun checkAndRequestPermissions() {
         val permissionsToRequest = REQUIRED_PERMISSIONS.filter {
@@ -230,7 +249,11 @@ class DJIMainActivity : AppCompatActivity() {
             StreamController(DroneImageFrameProvider(this))
         }
 
+        val routeAdapter = RouteAdapter()
+        routeController = RouteController(routeAdapter)
+
         streamController.startLive()
+        routeController.startReceivingLocation()
         isStreaming = true
     }
 

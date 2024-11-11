@@ -3,9 +3,9 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.shieldrone.station.constant.FlightContstant.Companion.EARTH_RADIUS
-import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_DEGREE
+import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
+import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.VIRTUAL_STICK_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
@@ -19,6 +19,9 @@ import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
 import dji.v5.manager.KeyManager
+import dji.v5.manager.aircraft.simulator.InitializationSettings
+import dji.v5.manager.aircraft.simulator.SimulatorManager
+import dji.v5.manager.aircraft.simulator.SimulatorStatusListener
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -27,9 +30,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class FlightControlModel {
-
-    var isVirtualStickEnabled = false
+class SimulatorModel {
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
@@ -42,7 +43,9 @@ class FlightControlModel {
         val velocity3D by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftVelocity) }
         val compassHeading by lazy { KeyTools.createKey(FlightControllerKey.KeyCompassHeading) }
         val keyGPSSignalLevel by lazy { KeyTools.createKey(FlightControllerKey.KeyGPSSignalLevel) }
-        val attitude by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftAttitude) }
+
+        val simulatorManager by lazy { SimulatorManager.getInstance() }
+
     }
 
     /**
@@ -63,12 +66,13 @@ class FlightControlModel {
         }
 
         KeyManager.getInstance().run {
-            keyStartTakeoff.action({
-                // 이륙 성공 시 Yaw 조정
-                adjustYawToNorth(callback)
-            }, { e: IDJIError ->
-                callback.onFailure(e)
-            })
+            keyStartTakeoff
+                .action({
+                    // 이륙 성공 시 콜백 호출
+                    callback.onSuccess()
+                }, { e: IDJIError ->
+                    callback.onFailure(e)
+                })
         }
     }
 
@@ -93,11 +97,6 @@ class FlightControlModel {
     private fun checkPreconditionsForTakeoff(): Boolean {
         val isConnected = KeyManager.getInstance().getValue(keyConnection) ?: false
         val isFlying = KeyManager.getInstance().getValue(keyIsFlying) ?: false
-        Log.d(
-            FLIGHT_CONTROL_TAG,
-            "Preconditions for takeoff - isConnected: $isConnected, isFlying: $isFlying"
-        )
-
         return isConnected && !isFlying
     }
 
@@ -107,7 +106,7 @@ class FlightControlModel {
     fun monitorTakeoffStatus() {
         KeyManager.getInstance().listen(keyIsFlying, this) { _, isFlying ->
             if (isFlying == true) {
-                Log.d(FLIGHT_CONTROL_TAG, "Drone is now flying")
+                Log.d(SIMULATOR_TAG, "Drone is now flying")
 
             }
         }
@@ -117,14 +116,16 @@ class FlightControlModel {
      * Virtual Stick 모드 활성화
      */
     fun enableVirtualStickMode(callback: CommonCallbacks.CompletionCallback) {
-        virtualStickManager.enableVirtualStick(object : CommonCallbacks.CompletionCallback {
+        virtualStickManager.enableVirtualStick(object :
+            CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                isVirtualStickEnabled = true
-                virtualStickManager.setVirtualStickAdvancedModeEnabled(false)
+                Log.d(SIMULATOR_TAG, "Virtual Stick 모드가 활성화되었습니다.")
                 callback.onSuccess()
             }
 
             override fun onFailure(error: IDJIError) {
+                Log.d(SIMULATOR_TAG, "Virtual Stick 활성화 실패: ${error.description()}")
+
                 callback.onFailure(error)
             }
         })
@@ -134,13 +135,15 @@ class FlightControlModel {
      * Virtual Stick 모드 비활성화
      */
     fun disableVirtualStickMode(callback: CommonCallbacks.CompletionCallback) {
-        virtualStickManager.disableVirtualStick(object : CommonCallbacks.CompletionCallback {
+        virtualStickManager.disableVirtualStick(object :
+            CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                isVirtualStickEnabled = false
+                Log.d(VIRTUAL_STICK_TAG, "Virtual Stick 모드가 비활성화되었습니다.")
                 callback.onSuccess()
             }
 
             override fun onFailure(error: IDJIError) {
+                Log.d(VIRTUAL_STICK_TAG, "Virtual Stick 비활성화 실패: ${error.description()}")
                 callback.onFailure(error)
             }
         })
@@ -151,34 +154,21 @@ class FlightControlModel {
      */
     fun subscribeDroneLocation(onUpdate: (State) -> Unit) {
         val state = State()
-
-        // 초기 값 설정
-        state.pitch = attitude.get()?.pitch
-        state.roll = attitude.get()?.roll
-        state.yaw = attitude.get()?.yaw
         state.xVelocity = velocity3D.get()?.x
         state.yVelocity = velocity3D.get()?.y
         state.zVelocity = velocity3D.get()?.z
         state.compassHeading = compassHeading.get()
-
-
-        KeyManager.getInstance().listen(attitude, this) { _, data ->
-            data?.let {
-                state.yaw = it.yaw
-                state.roll = it.roll
-                state.pitch = it.pitch
-                onUpdate(state)
-            }
+        val simulatorListener = SimulatorStatusListener { simulatorState ->
+            state.roll = simulatorState.roll.toDouble()
+            state.pitch = simulatorState.pitch.toDouble()
+            state.yaw = simulatorState.yaw.toDouble()
+            onUpdate(state)
+            Log.d(
+                SIMULATOR_TAG, "Roll: ${state.roll}, Pitch: ${state.pitch}, Yaw: ${state.yaw}, " +
+                        "Longitude: ${state.xVelocity}, Latitude: ${state.yVelocity}, Altitude: ${state.zVelocity}"
+            )
         }
-        // 업데이트 리스너 설정
-        KeyManager.getInstance().listen(location3D, this) { _, data ->
-            data?.let {
-                state.longitude = it.longitude
-                state.latitude = it.latitude
-                state.altitude = it.altitude
-                onUpdate(state)
-            }
-        }
+        simulatorManager.addSimulatorStateListener(simulatorListener)
 
         KeyManager.getInstance().listen(velocity3D, this) { _, data ->
             data?.let {
@@ -201,17 +191,6 @@ class FlightControlModel {
      * 드론의 leftStick과 rightStick 위치 값을 설정하여 제어하는 함수
      */
     fun setControlValues(controls: Controls, callback: CommonCallbacks.CompletionCallback) {
-        if (!isVirtualStickEnabled) {
-            callback.onFailure(object : IDJIError {
-                override fun errorType() = ErrorType.UNKNOWN
-                override fun errorCode() = "VIRTUAL_STICK_DISABLED"
-                override fun innerCode() = "VIRTUAL_STICK_DISABLED"
-                override fun hint() = "Virtual Stick 모드가 활성화되지 않았습니다."
-                override fun description() = "Virtual Stick 모드를 활성화 후 시도하세요."
-                override fun isError(p0: String?) = true
-            })
-            return
-        }
 
         val stickManager = virtualStickManager
 
@@ -235,10 +214,6 @@ class FlightControlModel {
      * 드론의 control 값을 구독하고 지속적으로 업데이트하여 제어하는 함수
      */
     fun subscribeControlValues(onUpdate: (Controls) -> Unit) {
-        if (!isVirtualStickEnabled) {
-            Log.e(VIRTUAL_STICK_TAG, "Virtual Stick 모드가 활성화되지 않았습니다.")
-            return
-        }
 
         val stickManager = virtualStickManager
 
@@ -275,9 +250,12 @@ class FlightControlModel {
                 // 이전 상태와 새로운 상태 비교 후 변경이 있을 때만 적용
                 if (currentControls != newControls) {
                     stickManager.leftStick.verticalPosition = newControls.leftStick.verticalPosition
-                    stickManager.leftStick.horizontalPosition = newControls.leftStick.horizontalPosition
-                    stickManager.rightStick.verticalPosition = newControls.rightStick.verticalPosition
-                    stickManager.rightStick.horizontalPosition = newControls.rightStick.horizontalPosition
+                    stickManager.leftStick.horizontalPosition =
+                        newControls.leftStick.horizontalPosition
+                    stickManager.rightStick.verticalPosition =
+                        newControls.rightStick.verticalPosition
+                    stickManager.rightStick.horizontalPosition =
+                        newControls.rightStick.horizontalPosition
                     Log.d(
                         VIRTUAL_STICK_TAG,
                         "Control updated: leftStick(vertical: ${newControls.leftStick.verticalPosition}, horizontal: ${newControls.leftStick.horizontalPosition}), " +
@@ -298,8 +276,6 @@ class FlightControlModel {
      * 드론의 위치 정보 (altitude, latitude, longitude)를 구독하여 지속적으로 업데이트하는 함수
      */
     fun subscribePosition(onUpdate: (Position) -> Unit) {
-
-
         // 초기 위치 설정
         var currentPosition = Position(
             altitude = location3D.get()?.altitude ?: 0.0,
@@ -323,7 +299,7 @@ class FlightControlModel {
                     currentPosition = newPosition
                     onUpdate(newPosition)
                     Log.d(
-                        FLIGHT_CONTROL_TAG,
+                        SIMULATOR_TAG,
                         "Position updated: altitude = $newAltitude, latitude = $newLatitude, longitude = $newLongitude"
                     )
                 }
@@ -335,23 +311,57 @@ class FlightControlModel {
     }
 
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
-        var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
-        Log.d(FLIGHT_CONTROL_TAG, "current GPS Level: $currentGPSLevel")
+        var currentGPSLevel =
+            KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
+        Log.d(SIMULATOR_TAG, "current GPS Level: $currentGPSLevel")
         handler.post(object : Runnable {
             override fun run() {
                 // 새로운 GPS 신호 레벨 가져오기
-                val newGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
+                val newGPSLevel =
+                    KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value()
+                        ?: 0
 
                 // GPS 신호 레벨이 변경되었을 때만 업데이트
                 if (currentGPSLevel != newGPSLevel) {
                     currentGPSLevel = newGPSLevel
                     onUpdate(newGPSLevel)
-                    Log.d(FLIGHT_CONTROL_TAG, "GPS Signal Level updated: $newGPSLevel")
+                    Log.d(SIMULATOR_TAG, "GPS Signal Level updated: $newGPSLevel")
                 }
 
                 // 100ms 마다 반복
                 handler.postDelayed(this, 100)
             }
+        })
+    }
+
+
+    fun enableSimulator(initializationSettings: InitializationSettings) {
+        simulatorManager.enableSimulator(
+            initializationSettings,
+            object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(SIMULATOR_TAG, "SimulatorMode 연결 성공")
+                }
+
+                override fun onFailure(p0: IDJIError) {
+                    Log.d(SIMULATOR_TAG, "SimulatorMode 연결 실패 ${p0.description()}")
+
+                }
+            })
+    }
+
+    fun disableSimulator() {
+        simulatorManager.disableSimulator(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                Log.d(SIMULATOR_TAG, "SimulatorMode 비 활성화 성공 ")
+
+            }
+
+            override fun onFailure(p0: IDJIError) {
+                Log.d(SIMULATOR_TAG, "SimulatorMode 비 활성화 실패 ${p0.description()}")
+
+            }
+
         })
     }
 
@@ -361,7 +371,6 @@ class FlightControlModel {
     private fun onDestroy() {
         // 핸들러의 모든 콜백 제거
         handler.removeCallbacksAndMessages(null)
-
         // KeyManager의 모든 구독 제거
         KeyManager.getInstance().cancelListen(keyConnection)
         KeyManager.getInstance().cancelListen(keyIsFlying)
@@ -369,21 +378,20 @@ class FlightControlModel {
         KeyManager.getInstance().cancelListen(velocity3D)
         KeyManager.getInstance().cancelListen(compassHeading)
         KeyManager.getInstance().cancelListen(keyGPSSignalLevel)
-        KeyManager.getInstance().cancelListen(attitude)
-        // Virtual Stick 모드가 활성화되어 있다면 비활성화
-        if (isVirtualStickEnabled) {
-            disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
-                override fun onSuccess() {
-                    Log.d(VIRTUAL_STICK_TAG, "Virtual Stick 모드가 비활성화되었습니다.")
-                }
 
-                override fun onFailure(error: IDJIError) {
-                    Log.e(VIRTUAL_STICK_TAG, "Virtual Stick 모드 비활성화 실패: ${error.description()}")
-                }
-            })
-        }
+        disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                Log.d(VIRTUAL_STICK_TAG, "Virtual Stick 모드가 비활성화되었습니다.")
+            }
 
-        Log.d(FLIGHT_CONTROL_TAG, "FlightControlModel의 리소스가 해제되었습니다.")
+            override fun onFailure(error: IDJIError) {
+                Log.e(
+                    VIRTUAL_STICK_TAG,
+                    "Virtual Stick 모드 비활성화 실패: ${error.description()}"
+                )
+            }
+        })
+        Log.d(SIMULATOR_TAG, "SimulatorModel의 리소스가 해제되었습니다.")
     }
 
     // 드론의 현재 위치를 가져오는 메서드
@@ -409,6 +417,8 @@ class FlightControlModel {
         startLat: Double, startLng: Double,
         endLat: Double, endLng: Double
     ): Pair<Double, Double> {
+        val earthRadius = 6371000.0 // 지구 반지름 (미터 단위)
+
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
 
@@ -417,7 +427,7 @@ class FlightControlModel {
                 sin(dLng / 2).pow(2.0)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-        val distance = EARTH_RADIUS * c // 거리 (미터 단위)
+        val distance = earthRadius * c // 거리 (미터 단위)
 
         // 방위각 계산
         val y = sin(dLng) * cos(Math.toRadians(endLat))
@@ -431,33 +441,43 @@ class FlightControlModel {
 
     // 목표 방위각과 현재 Yaw 값의 차이 계산
     fun calculateYawDifference(targetBearing: Double, currentYaw: Double): Double {
-        val difference = ((targetBearing - currentYaw + 540) % MAX_DEGREE) - 180
+        val difference = ((targetBearing - currentYaw + 540) % 360) - 180
         return difference
     }
 
     // 드론의 Yaw 값을 조정하여 방향 전환
     fun adjustYaw(yawDifference: Double) {
-        val yawRate = yawDifference.coerceIn(-30.0, 30.0).toInt() // Yaw 속도 제한 (deg/s)
+        val maxYawSpeed = 100.0 // 드론의 최대 Yaw 속도 (deg/s)
+        val yawInput = (yawDifference / maxYawSpeed).coerceIn(-1.0, 1.0) * MAX_STICK_VALUE
+
         val controls = Controls(
-            leftStick = StickPosition(0, yawRate), // Throttle, Yaw Rate
-            rightStick = StickPosition(0, 0) // Pitch, Roll
+            leftStick = StickPosition(0, yawInput.toInt()), // Yaw 제어
+            rightStick = StickPosition(0, 0)
         )
         setDroneControlValues(controls)
-        Log.d(FLIGHT_CONTROL_TAG, "Adjusting yaw with yawRate: $yawRate")
+
+        // 일정 시간 후 Yaw 입력 값 초기화
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, 500) // 500ms 후 초기화
     }
 
-    // 드론을 전진시키는 메서드 (Pitch 값 조정)
+    // 드론을 전진시키는 메서드
     fun moveToForward() {
-        val pitchAngle = 10 // 드론의 기울기 각도 (deg), 10도 전진 기울기
+        val pitchInput = 0.5 * MAX_STICK_VALUE // 전진 속도 설정 (-660 ~ +660 범위)
         val controls = Controls(
             leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(pitchAngle, 0)
+            rightStick = StickPosition(pitchInput.toInt(), 0)
         )
         setDroneControlValues(controls)
-        Log.d(FLIGHT_CONTROL_TAG, "Moving forward with pitchAngle: $pitchAngle")
+
+        // 일정 시간 후 입력 값 초기화
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, 500) // 500ms 후 초기화
     }
 
-    // moveToTarget 메서드 수정
+    // 드론을 목표 위치로 이동시키는 메서드
     fun moveToTarget(targetLat: Double, targetLng: Double) {
         val checkInterval = 1000L // 1초마다 위치 확인
         handler.post(object : Runnable {
@@ -469,11 +489,7 @@ class FlightControlModel {
                     targetLat, targetLng
                 )
                 val yawDifference = calculateYawDifference(targetBearing, currentYaw)
-                Log.d(FLIGHT_CONTROL_TAG, "Current Position: lat=${currentPosition.latitude}, lng=${currentPosition.longitude}")
-                Log.d(FLIGHT_CONTROL_TAG, "Current Yaw: $currentYaw")
-                Log.d(FLIGHT_CONTROL_TAG, "Distance to Target: $distance")
-                Log.d(FLIGHT_CONTROL_TAG, "Target Bearing: $targetBearing")
-                Log.d(FLIGHT_CONTROL_TAG, "Yaw Difference: $yawDifference")
+
                 if (abs(yawDifference) > 5) {
                     // 드론의 방향을 조정
                     adjustYaw(yawDifference)
@@ -483,7 +499,7 @@ class FlightControlModel {
                 } else {
                     // 목표 지점에 도달하면 정지
                     initVirtualStickValue()
-                    Log.d(FLIGHT_CONTROL_TAG, "목표 지점에 도달했습니다.")
+                    Log.d(SIMULATOR_TAG, "목표 지점에 도달했습니다.")
                     return
                 }
 
@@ -493,25 +509,18 @@ class FlightControlModel {
         })
     }
 
-    // 드론의 Yaw 값을 북쪽으로 조정
-    private fun adjustYawToNorth(callback: CommonCallbacks.CompletionCallback) {
-        val currentYaw = getCurrentYaw()
-        val yawDifference = calculateYawDifference(0.0, currentYaw)
-        adjustYaw(yawDifference)
-
-        handler.postDelayed({
-            callback.onSuccess()
-        }, 2000)
-    }
-
-    // Control 값을 설정하는 메서드
+    // 드론 제어 값을 설정하는 메서드
     private fun setDroneControlValues(controls: Controls) {
-        virtualStickManager.leftStick.verticalPosition = controls.leftStick.verticalPosition
-        virtualStickManager.leftStick.horizontalPosition = controls.leftStick.horizontalPosition
-        virtualStickManager.rightStick.verticalPosition = controls.rightStick.verticalPosition
-        virtualStickManager.rightStick.horizontalPosition = controls.rightStick.horizontalPosition
+        virtualStickManager.leftStick.verticalPosition =
+            controls.leftStick.verticalPosition.toDouble().toInt()
+        virtualStickManager.leftStick.horizontalPosition =
+            controls.leftStick.horizontalPosition.toDouble().toInt()
+        virtualStickManager.rightStick.verticalPosition =
+            controls.rightStick.verticalPosition.toDouble().toInt()
+        virtualStickManager.rightStick.horizontalPosition =
+            controls.rightStick.horizontalPosition.toDouble().toInt()
 
-        Log.d(FLIGHT_CONTROL_TAG, "Control values set: $controls")
+        Log.d(SIMULATOR_TAG, "Control values set: $controls")
     }
 
     // Virtual Stick 입력 값을 초기화하는 메서드
@@ -522,7 +531,7 @@ class FlightControlModel {
                 rightStick = StickPosition(0, 0)
             )
         )
-        Log.d(FLIGHT_CONTROL_TAG, "Virtual Stick values initialized.")
+        Log.d(SIMULATOR_TAG, "Virtual Stick values initialized.")
     }
 
 }

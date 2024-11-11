@@ -9,4 +9,7 @@ data class State(
     var zVelocity: Double? = null,
     var compassHeading: Double? = null,
     var sticks: Controls? = null,
+    var roll: Double? = null,
+    var yaw: Double? = null,
+    var pitch: Double? = null
 )
