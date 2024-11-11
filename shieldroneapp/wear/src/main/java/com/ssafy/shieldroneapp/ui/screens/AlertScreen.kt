@@ -1,7 +1,7 @@
 package com.ssafy.shieldroneapp.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -9,30 +9,30 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.ssafy.shieldroneapp.ui.components.PrimaryButton
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import com.ssafy.shieldroneapp.viewmodels.AlertViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun AlertScreen(
-    onSafeConfirm: () -> Unit,
+    viewModel: AlertViewModel,  // AlertViewModel 주입
     modifier: Modifier = Modifier
 ) {
+    val currentAlert by viewModel.currentAlert.collectAsState(initial = null)
     var timeLeft by remember { mutableStateOf(5) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+
+    // 현재 알림이 없으면 빈 화면 반환
+    if (currentAlert == null) {
+        return
+    }
 
     fun showEmergencyAlert() {
         val notificationManager =
@@ -62,6 +62,7 @@ fun AlertScreen(
         notificationManager.notify(1, notification)
     }
 
+    // TODO: 위험 상황 모바일 앱으로 알림 전송
     @Composable
     fun EmergencyNotificationScreen() {
         Column(
@@ -88,7 +89,6 @@ fun AlertScreen(
         }
     }
 
-
     LaunchedEffect(isTimerRunning) {
         while (isTimerRunning && timeLeft > 0) {
             delay(1000L)
@@ -98,10 +98,9 @@ fun AlertScreen(
             showEmergencyAlert()
             showEmergencyNotification = true
             delay(2000L)
-            onSafeConfirm()
+            viewModel.clearAlert()
         }
     }
-
 
     if (showEmergencyNotification) {
         EmergencyNotificationScreen()
@@ -140,7 +139,7 @@ fun AlertScreen(
                 text = "안전 확인",
                 onClick = {
                     isTimerRunning = false
-                    onSafeConfirm()
+                    viewModel.clearAlert() 
                 }
             )
         }

@@ -18,6 +18,8 @@ import com.ssafy.shieldroneapp.ui.components.*
 import com.ssafy.shieldroneapp.viewmodels.*
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 
 private const val TAG = "워치: 메인스크린"
 
@@ -28,7 +30,15 @@ fun MainScreen(
     dataRepository: DataRepository,
     wearConnectionManager: WearConnectionManager,
 ) {
+    val alertViewModel: AlertViewModel = hiltViewModel()
+    val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
+
     val isMobileConnected by remember { wearConnectionManager.isMobileActive }
+
+    if (currentAlert != null) {
+        AlertScreen(viewModel = alertViewModel)
+        return
+    }
 
     if (!isMobileConnected) {
         MobileDisconnectedScreen(wearConnectionManager = wearConnectionManager)
@@ -93,7 +103,6 @@ fun MainScreen(
                         }
 
                         is PermissionStatus.Denied -> {
-                            // 백그라운드 권한이 거부된 경우에만 요청 UI 표시
                             Flex {
                                 Spacer(Modifier.height(20.dp))
                                 Text(
