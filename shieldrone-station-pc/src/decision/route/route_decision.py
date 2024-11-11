@@ -78,7 +78,7 @@ class RouteDecision:
                 current_time = datetime.now()
                 if self.last_processed_time is None or (current_time - self.last_processed_time).total_seconds() >= 1:
                     if message_type == "trackPosition":
-                        self.set_position(data)
+                        self.set_position(data.get("location"))
                         self.last_processed_time = current_time
                     else:
                         print(f"Unknown Message Type: {message_type}")
@@ -104,8 +104,8 @@ class RouteDecision:
         
 
     def set_position(self, data):
-        self.lat = data.get("location").get("lat")
-        self.lng = data.get("location").get("lng")
+        self.lat = data.get("lat")
+        self.lng = data.get("lng")
         print(f"[위치 업데이트] 위치 정보가 lat:{self.lat}, lng:{self.lng} 로 업데이트 되었습니다.")
 
     def select_file(self):
