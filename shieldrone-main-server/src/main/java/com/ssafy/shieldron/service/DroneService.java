@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.ssafy.shieldron.global.exception.ErrorCode.ALREADY_MATCHED_DRONE;
@@ -91,6 +92,7 @@ public class DroneService {
     @Transactional
     public DroneMatchResponse droneMatch(DroneMatchRequest droneMatchRequest, String phoneNumber) {
         Integer droneId = droneMatchRequest.droneId();
+        Integer droneCode = droneMatchRequest.droneCode();
         User user = getUserOrThrow(phoneNumber);
         Drone drone = getDroneOrThrow(droneId);
 
@@ -106,6 +108,11 @@ public class DroneService {
         if (hive == null) {
             throw new CustomException(INVALID_HIVE);
         }
+
+        if (!Objects.equals(drone.getDroneCode(), droneCode)) {
+            throw new CustomException(INVALID_DRONE);
+        }
+
         String hiveIp = hive.getHiveIp();
         return new DroneMatchResponse(droneId, hiveIp);
     }

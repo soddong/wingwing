@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public class HiveService {
     private static final double EARTH_RADIUS_KM = 6371.0;
     private static final double MAX_DISTANCE_KM = 1.0;
+    private static final int MAX_DISTANCE_METER = 1000;
 
     private final HiveRepository hiveRepository;
 
@@ -41,7 +42,7 @@ public class HiveService {
         List<Hive> hiveInBox = hiveRepository.findHivesInBoundingBox(minLat, maxLat, minLng, maxLng);
         return hiveInBox.stream()
                 .map(hive -> HiveResponse.toResponse(hive, calculateDistance(lat, lng, hive.getHiveLat(), hive.getHiveLng())))
-                .filter(response -> response.distance() <= MAX_DISTANCE_KM)
+                .filter(response -> response.distance() <= MAX_DISTANCE_METER)
                 .sorted(Comparator.comparing(HiveResponse::distance))
                 .collect(Collectors.toList());
 
@@ -56,8 +57,8 @@ public class HiveService {
                 .collect(Collectors.toList());
     }
 
-    private double calculateDistance(BigDecimal lat1, BigDecimal lng1,
-                                     BigDecimal lat2, BigDecimal lng2) {
+    private int calculateDistance(BigDecimal lat1, BigDecimal lng1,
+                                  BigDecimal lat2, BigDecimal lng2) {
         double lat1Rad = Math.toRadians(lat1.doubleValue());
         double lat2Rad = Math.toRadians(lat2.doubleValue());
         double dLat = lat2Rad - lat1Rad;
@@ -67,7 +68,7 @@ public class HiveService {
                 + Math.cos(lat1Rad) * Math.cos(lat2Rad)
                 * Math.sin(dLng / 2) * Math.sin(dLng / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return EARTH_RADIUS_KM * c;
+        return (int) (EARTH_RADIUS_KM * 1000 * c);
     }
 
 }
