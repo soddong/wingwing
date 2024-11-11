@@ -99,7 +99,7 @@ class AlertService @Inject constructor(
         val notification = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
             .setContentTitle("⚠️ 위험 상황 감지!")
             .setContentText("주변 상황에 주의하세요.")
-            .setSmallIcon(R.drawable.shieldrone_ic)
+            .setSmallIcon(R.drawable.alert_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)
