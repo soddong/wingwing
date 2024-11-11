@@ -69,9 +69,8 @@ class FlightControlVM : ViewModel() {
      * RouteAdapter로부터 받은 목표 위치 설정
      */
     fun setTargetLocation(lat: Double, lng: Double) {
-        _targetLat.value = lat
-        _targetLng.value = lng
-        _message.postValue("목표 위치 설정됨: 위도=$lat, 경도=$lng")
+        _targetLat.postValue(lat)
+        _targetLng.postValue(lng)
     }
 
     /**

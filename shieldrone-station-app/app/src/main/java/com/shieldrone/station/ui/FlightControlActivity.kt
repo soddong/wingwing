@@ -6,16 +6,24 @@ import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
+import com.shieldrone.station.constant.FlightContstant.Companion.EARTH_RADIUS
+import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
+import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.databinding.FlightControlActivityBinding
 import com.shieldrone.station.model.FlightControlVM
 import com.shieldrone.station.service.route.RouteAdapter
-import com.shieldrone.station.service.route.RouteListener
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
-class FlightControlActivity : AppCompatActivity(), RouteListener {
+class FlightControlActivity : AppCompatActivity() {
 
     private lateinit var binding: FlightControlActivityBinding
     private val flightControlVM: FlightControlVM by viewModels()
     private lateinit var routeAdapter: RouteAdapter
+    private lateinit var routeController: RouteController
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,19 +36,17 @@ class FlightControlActivity : AppCompatActivity(), RouteListener {
         // RouteListener 구현
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double) {
-                // 위치 업데이트에 대한 작업 수행
-                Log.i("FlightControlActivity", "Updated Route to: $latitude, $longitude")
+                flightControlVM.setTargetLocation(latitude, longitude)
+                Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
             }
         }
         routeAdapter = RouteAdapter(routeListener)
+        routeController = RouteController(routeAdapter)
         subscribeDroneValues()
         initUiElements()
         observeData()
     }
 
-    override fun onRouteProcessed(latitude: Double, longitude: Double) {
-        flightControlVM.setTargetLocation(latitude, longitude)
-    }
 
     private fun subscribeDroneValues() {
         flightControlVM.subscribeDroneLocation()
@@ -69,6 +75,11 @@ class FlightControlActivity : AppCompatActivity(), RouteListener {
         binding.btnRotateRight.setOnClickListener { flightControlVM.rotateRight() }
         binding.btnInitValue.setOnClickListener { flightControlVM.initVirtualStickValue() }
         binding.btnMoveToTarget.setOnClickListener { flightControlVM.moveToTarget() }
+        // 버튼 클릭 시 위치 수신 시작
+        binding.btnGetTargetLocation.setOnClickListener {
+            routeController.startReceivingLocation()
+            Log.d(FLIGHT_CONTROL_TAG, "Started receiving location updates")
+        }
     }
 
     private fun initTextViews() {
@@ -77,6 +88,7 @@ class FlightControlActivity : AppCompatActivity(), RouteListener {
         binding.txtDronePosition.text = "Drone Position"
         binding.txtMessage.text = "Message"
         binding.txtGpsLevel.text = "GPS Level"
+        binding.txtTargetLocation.text = "타겟 위치 표시"
     }
 
     private fun observeData() {
@@ -126,6 +138,61 @@ class FlightControlActivity : AppCompatActivity(), RouteListener {
 
             binding.txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
         }
+        // 목표 위도와 경도 관찰 및 거리 업데이트
+        flightControlVM.targetLat.observe(this) {
+            Log.d("FlightControlActivity", "targetLat updated: $it")
+            updateTargetLocation()
+        }
+
+        flightControlVM.targetLng.observe(this) {
+            Log.d("FlightControlActivity", "targetLng updated: $it")
+            updateTargetLocation()
+        }
+
+    }
+
+    @SuppressLint("DefaultLocale")
+    private fun updateTargetLocation() {
+        val currentLat = flightControlVM.dronePosition.value?.latitude
+        val currentLng = flightControlVM.dronePosition.value?.longitude
+        val targetLat = flightControlVM.targetLat.value
+        val targetLng = flightControlVM.targetLng.value
+
+        if (currentLat != null && currentLng != null && targetLat != null && targetLng != null) {
+            val distance = calculateDistance(currentLat, currentLng, targetLat, targetLng)
+            val targetLocationText = """
+            목표 위도: $targetLat
+            목표 경도: $targetLng
+            거리: ${String.format("%.2f", distance)} 
+        """.trimIndent()
+            binding.txtTargetLocation.text = targetLocationText
+        } else if (targetLat != null && targetLng != null) {
+            val targetLocationText = """
+            목표 위도: $targetLat
+            목표 경도: $targetLng
+        """.trimIndent()
+            binding.txtTargetLocation.text = targetLocationText
+        }
+    }
+
+    // 두 지점 간의 거리를 미터 단위로 계산
+    private fun calculateDistance(
+        startLat: Double,
+        startLng: Double,
+        endLat: Double,
+        endLng: Double
+    ): Double {
+
+
+        val dLat = Math.toRadians(endLat - startLat)
+        val dLng = Math.toRadians(endLng - startLng)
+
+        val a = sin(dLat / 2).pow(2.0) +
+                cos(Math.toRadians(startLat)) * cos(Math.toRadians(endLat)) *
+                sin(dLng / 2).pow(2.0)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return EARTH_RADIUS * c
     }
 
 

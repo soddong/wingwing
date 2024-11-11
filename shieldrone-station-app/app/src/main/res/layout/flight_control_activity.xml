@@ -37,7 +37,13 @@
         android:text="드론 GPS 레벨 정보"
         android:textSize="12sp"
         android:padding="6dp" />
-
+    <TextView
+        android:id="@+id/txtLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="사용자 위치"
+        android:textSize="12sp"
+        android:padding="6dp" />
     <!-- 메시지 표시 -->
     <TextView
         android:id="@+id/txtMessage"
@@ -46,7 +52,13 @@
         android:text="메시지"
         android:textSize="12sp"
         android:padding="6dp" />
-
+    <TextView
+        android:id="@+id/txtTargetLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="목표위치 및 거리"
+        android:textSize="12sp"
+        android:padding="6dp" />
     <!-- 버튼들 (4개씩 한 줄에 배치) -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -164,7 +176,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="3">
+        android:weightSum="4">
 
         <Button
             android:id="@+id/btnMoveToTarget"
@@ -172,6 +184,12 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="목표 이동" />
+        <Button
+            android:id="@+id/btnGetTargetLocation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="값 받기" />
         <Button
             android:id="@+id/btnStopMove"
             android:layout_width="match_parent"
