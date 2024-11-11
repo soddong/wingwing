@@ -17,6 +17,7 @@ import com.ssafy.shieldroneapp.MainActivity
 import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.repository.DataRepository
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -29,11 +30,12 @@ import javax.inject.Singleton
 
 @Singleton
 class WearConnectionManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val alertHandler: AlertHandler
 ) {
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
     private var dataRepository: DataRepository? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _isMobileActive = mutableStateOf(false)
     val isMobileActive: State<Boolean> = _isMobileActive
 
@@ -49,6 +51,7 @@ class WearConnectionManager @Inject constructor(
         private const val PATH_WATCH_STATUS = "/watch_status"
         private const val PATH_MOBILE_STATUS = "/mobile_status"
         private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
+        private const val PATH_DANGER_ALERT = "/danger_alert"
     }
 
     interface MonitoringCallback {
@@ -76,6 +79,14 @@ class WearConnectionManager @Inject constructor(
                     Log.d(TAG, "모바일 상태 변경: $isActive")
                     handleMobileStateChange(isActive)
                 }
+
+                PATH_DANGER_ALERT -> {
+                    messageEvent.data?.let {
+                        val alertJson = String(it)
+                        Log.d(TAG, "위험 알림 수신: $alertJson")
+                        alertHandler.handleDangerAlert(alertJson)
+                    }
+                }
             }
         }
     }
@@ -85,7 +96,7 @@ class WearConnectionManager @Inject constructor(
             val nodes = getConnectedNodes()
             Log.d(TAG, "연결된 노드 수: ${nodes.size}")
 
-            handleMobileStateChange(false) 
+            handleMobileStateChange(false)
 
             if (nodes.isNotEmpty()) {
                 // 모바일 앱 상태 요청
