@@ -62,7 +62,7 @@ def argsparser():
         default=-1,
         help="device id of camera to predict.")
     parser.add_argument(
-        "--udp_config",
+        "--udp",
         type=str,
         default=None,
         help="recive udp ex '0.0.0.0:65432'")
@@ -79,7 +79,7 @@ def argsparser():
     parser.add_argument(
         "--device",
         type=str,
-        default='cpu',
+        default='gpu',
         help="Choose the device you want to run, it can be: CPU/GPU/XPU, default is CPU."
     )
     parser.add_argument(

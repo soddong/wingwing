@@ -515,7 +515,7 @@ class ResultSendHandler:
         """
         while True:
             if resultqueue.empty():
-                time.sleep(0.1)
+                time.sleep(0.01)
             else:
                 result = resultqueue.get()
                 try:
@@ -524,10 +524,6 @@ class ResultSendHandler:
                     
                     # JSON 문자열을 소켓을 통해 전송
                     self.socket.sendall(json_result.encode('utf-8'))
-                    print(f"Sent: {json_result}")
+                    # print(f"Sent: {json_result}")
                 except Exception as e:
                     print(f"Error sending data: {e}")
-                
-                # 큐 작업 완료 표시
-                resultqueue.task_done()
-                time.sleep(0.1)

@@ -16,6 +16,7 @@ from datetime import datetime
 import json
 import os
 import re
+import socket
 import cv2
 import numpy as np
 import math
@@ -33,7 +34,7 @@ sys.path.insert(0, parent_path)
 
 from datacollector import DataCollector, Result
 from cfg_utils import argsparser, print_arguments, merge_cfg
-from pipe_utils import PipeTimer, HandAboveHeadTracker, VideoReceiverHandler
+from pipe_utils import PipeTimer, HandAboveHeadTracker, ResultSendHandler, VideoReceiverHandler
 from pipe_utils import crop_image_with_mot, parse_mot_res
 from spatial_info_utils import SpatialInfoTracker
 
@@ -63,7 +64,7 @@ class Pipeline(object):
         self.is_video = True
         self.output_dir = args.output_dir
         self.vis_result = cfg['visual']
-        self.input, input_type = self._parse_input(args.video_file, args.camera_id, args.udp_config)
+        self.input, input_type = self._parse_input(args.video_file, args.camera_id, args.udp)
 
         self.predictor = PipePredictor(args, cfg, self.input, input_type)
         if self.is_video:
@@ -103,7 +104,7 @@ class Pipeline(object):
 
         else:
             raise ValueError(
-                "Illegal Input, please set one of ['video_file', 'camera_id', 'udp_config']"
+                "Illegal Input, please set one of ['video_file', 'camera_id', 'udp']"
             )
 
         return input, input_type
@@ -231,6 +232,9 @@ class PipePredictor(object):
         self.drone_controller = DroneController()
         self.video_handler = VideoReceiverHandler(self.input_type,self.input_source)
         self.spatial_info_tracker = SpatialInfoTracker()
+        # TODO : arg로 변경
+        # 앱서버의 ip와 port로 변경하고 사용
+        self.res_sender = ResultSendHandler("192.168.0.7", 23456)
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -294,9 +298,15 @@ class PipePredictor(object):
             "warningFlag": flag
         })
         socket.send_string(message)
+        if flag:
+            print(f"가까운 곳에서 빠르게 접근하는 객체 존재합니다")
 
-        print(f"가까운 곳에서 빠르게 접근하는 객체에 대한 경고가 5580 포트로 전송되었습니다.{flag}")
-
+    def send_flight_info(self, send_socket, info):
+        message = json.dumps({
+            "time": datetime.now().isoformat(),
+            "info": info
+        })
+        send_socket.send_string(message)
 
     def predict_video(self, thread_idx=0):
 
@@ -319,6 +329,9 @@ class PipePredictor(object):
         self.drone_controller.init(self.video_handler.width, self.video_handler.height)
         self.spatial_info_tracker.lazy_init(self.video_handler.width, self.video_handler.height)
         self.video_handler.start_video(framequeue)
+
+        resultqueue = queue.Queue(10)
+        self.res_sender.startSending(resultqueue)
 
 
         if self.cfg['visual']:
@@ -368,17 +381,6 @@ class PipePredictor(object):
 
             # mot output format: id, class, score, xmin, ymin, xmax, ymax
             mot_res = parse_mot_res(res)
-
-            # data_bytes = mot_res["boxes"].tobytes()
-            # data_shape = mot_res["boxes"].shape
-            # data_dtype = str(mot_res["boxes"].dtype)
-            # print("데이터 변환")
-
-            # # 배열 데이터와 메타 정보를 함께 전송
-            # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
-            # print("json 전송")
-            # socket.send(data_bytes)
-            # print("데이터를 전송했습니다.")
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.module_time['mot'].end()
@@ -459,7 +461,8 @@ class PipePredictor(object):
 
                 self.drone_controller.adjust_drone(target_mot_res[0])
                 self.drone_controller.visualize_control(frame_rgb)
-                self.drone_controller.get_control_value()
+                control_res = self.drone_controller.get_control_value()
+                resultqueue.put(control_res.get())
 
                 spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, self.video_handler.fps)
                 is_danger = False
