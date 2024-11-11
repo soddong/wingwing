@@ -10,10 +10,8 @@ class RouteAdapter {
 
     private var listener: RouteListener? = null
 
-    // 기본 생성자
     constructor()
 
-    // 리스너가 있는 생성자
     constructor(listener: RouteListener) {
         this.listener = listener
     }
