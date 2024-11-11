@@ -28,8 +28,12 @@ import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
 import com.ssafy.shieldroneapp.ui.map.MapScreen
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -103,7 +107,7 @@ class MobileMainActivity : ComponentActivity() {
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
-                           navController.navigate(ROUTE_AUTHENTICATION) {
+                            navController.navigate(ROUTE_AUTHENTICATION) {
                             // navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
@@ -170,30 +174,39 @@ class MobileMainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (!isAppActive.value) {
-            lifecycleScope.launch {
-                connectionManager.notifyWatchOfMobileStatus(true)
-                updateAppActive(true)
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    connectionManager.notifyWatchOfMobileStatus(true)
+                    withContext(Dispatchers.Main) {
+                        updateAppActive(true)
+                    }
+                    Log.d(TAG, "앱 활성화 상태 전송 완료")
+                } catch (e: Exception) {
+                    Log.e(TAG, "앱 활성화 상태 전송 실패", e)
+                }
             }
         }
     }
 
     override fun onPause() {
         super.onPause()
-        lifecycleScope.launch {
-            connectionManager.notifyWatchOfMobileStatus(false)
-            updateAppActive(false)
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        lifecycleScope.launch {
-            connectionManager.notifyWatchOfMobileStatus(false)
-            updateAppActive(false)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "앱 종료 감지: isFinishing=$isFinishing")
+                connectionManager.notifyWatchOfMobileStatus(false)
+                updateAppActive(false)
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 종료 상태 전송 실패", e)
+            }
         }
     }
 
     private fun updateAppActive(isActive: Boolean) {
         _isAppActive.value = isActive
+        Log.d(TAG, "앱 활성 상태 업데이트: $isActive")
     }
 }
