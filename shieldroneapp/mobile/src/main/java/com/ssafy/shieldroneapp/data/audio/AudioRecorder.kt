@@ -8,6 +8,7 @@ import android.media.MediaRecorder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.ssafy.shieldroneapp.data.model.AudioData
+import com.ssafy.shieldroneapp.data.repository.AudioDataRepository
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketState
 import kotlinx.coroutines.CoroutineScope
@@ -26,11 +27,13 @@ import kotlin.math.sqrt
 @Singleton
 class AudioRecorder @Inject constructor(
     private val context: Context,
+    private val audioDataRepository: AudioDataRepository,
     private val webSocketService: WebSocketService,
-    private val audioAnalyzer: AudioAnalyzer
+    private val audioAnalyzer: AudioAnalyzer,
 ) {
     private var audioRecord: AudioRecord? = null
     private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
+    private var isRecording = false
 
     companion object {
         private const val SAMPLE_RATE = 16000
@@ -42,7 +45,6 @@ class AudioRecorder @Inject constructor(
     }
 
     private val bufferSize = calculateBufferSize()
-    private var isRecording = false
 
     private fun calculateBufferSize(): Int {
         val minBufferSize = AudioRecord.getMinBufferSize(
@@ -59,34 +61,27 @@ class AudioRecorder @Inject constructor(
         webSocketService.setAudioRecorderCallback { state ->
             when (state) {
                 is WebSocketState.Connected -> {
-                    Log.d(TAG, "WebSocket 연결됨 - 녹음 시작 시도")
-                    if (checkAudioPermission()) {
+                    Log.d(TAG, "WebSocket 연결됨 - 녹음 상태 확인")
+                    if (checkAudioPermission() && !isRecording) {
                         recordingScope.launch {
                             try {
-                                if (!isRecording) {
-                                    initializeAudioRecord()
-                                    startRecordingInternal()
-                                }
+                                startRecording()
                             } catch (e: Exception) {
                                 Log.e(TAG, "WebSocket 연결 후 녹음 시작 실패", e)
                                 handleRecordingError(e)
                             }
                         }
-                    } else {
-                        Log.e(TAG, "마이크 권한 없음 - 녹음 시작 불가")
                     }
                 }
                 is WebSocketState.Disconnected -> {
-                    Log.d(TAG, "WebSocket 연결 해제됨 - 녹음 중지")
-                    if (isRecording) {
-                        stopRecording()
-                    }
+                    Log.d(TAG, "WebSocket 연결 해제됨")
+                    // 연결이 끊어져도 녹음은 계속 유지
+                    // 데이터 로컬에 저장됨
                 }
                 is WebSocketState.Error -> {
-                    Log.e(TAG, "WebSocket 오류 발생 - 녹음 중지", state.throwable)
-                    if (isRecording) {
-                        stopRecording()
-                    }
+                    Log.e(TAG, "WebSocket 오류 발생", state.throwable)
+                    // 오류가 발생해도 녹음은 계속 유지
+                    // 데이터 로컬에 저장됨
                 }
             }
         }
@@ -94,7 +89,6 @@ class AudioRecorder @Inject constructor(
 
     // 녹음을 시작하는 함수
     fun startRecording() {
-        Log.d(TAG, "startRecording 호출됨")
         if (!checkAudioPermission()) {
             Log.e(TAG, "RECORD_AUDIO 권한 없음")
             throw SecurityException("RECORD_AUDIO permission not granted")
@@ -143,14 +137,23 @@ class AudioRecorder @Inject constructor(
                             dbFlag = dbFlag
                         )
                         Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $dbFlag")
-                        webSocketService.sendAudioData(audioData)
+
+                        try {
+                            // WebSocketService 대신 Repository를 통해 데이터 전송
+                            audioDataRepository.processAudioData(audioData)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "오디오 데이터 처리 실패", e)
+                            // 실패해도 녹음은 계속 진행
+                        }
                     }
                     readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
                         Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 형식")
+                        handleRecordingError(IllegalStateException("Invalid operation"))
                         break
                     }
                     readResult == AudioRecord.ERROR_BAD_VALUE -> {
                         Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 값")
+                        handleRecordingError(IllegalArgumentException("Bad value"))
                         break
                     }
                 }
@@ -229,10 +232,16 @@ class AudioRecorder @Inject constructor(
 
     fun stopRecording() {
         isRecording = false
+        audioDataRepository.stopSendingData()
+
         recordingScope.cancel()
         audioRecord?.apply {
-            stop()
-            release()
+            try {
+                stop()
+                release()
+            } catch (e: Exception) {
+                Log.e(TAG, "오디오 녹음 중지 중 오류 발생", e)
+            }
         }
         audioRecord = null
     }
