@@ -25,8 +25,14 @@ class FlightControlActivity : AppCompatActivity(), RouteListener {
         setContentView(binding.root)
 
         // RouteAdapter 초기화 및 Listener 설정
-        routeAdapter = RouteAdapter(this)
-
+        // RouteListener 구현
+        val routeListener = object : RouteAdapter.RouteListener {
+            override fun onRouteUpdate(latitude: Double, longitude: Double) {
+                // 위치 업데이트에 대한 작업 수행
+                Log.i("FlightControlActivity", "Updated Route to: $latitude, $longitude")
+            }
+        }
+        routeAdapter = RouteAdapter(routeListener)
         subscribeDroneValues()
         initUiElements()
         observeData()
