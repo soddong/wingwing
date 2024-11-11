@@ -25,7 +25,6 @@ import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
-import com.ssafy.shieldroneapp.ui.MainScreen
 import com.ssafy.shieldroneapp.ui.map.MapScreen
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
@@ -104,7 +103,8 @@ class MobileMainActivity : ComponentActivity() {
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
-                            navController.navigate(ROUTE_AUTHENTICATION) {
+                           navController.navigate(ROUTE_AUTHENTICATION) {
+                            // navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
@@ -113,8 +113,7 @@ class MobileMainActivity : ComponentActivity() {
                     composable(ROUTE_AUTHENTICATION) {
                         AuthenticationScreen(
                             onAuthComplete = {
-                                     navController.navigate(ROUTE_MAP) {
-//                                navController.navigate("main_screen") {
+                                navController.navigate(ROUTE_MAP) {
                                     // 인증 화면들도 백스택에서 제거
                                     popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                 }
@@ -123,10 +122,6 @@ class MobileMainActivity : ComponentActivity() {
                     }
                     composable(ROUTE_MAP) {
                         MapScreen(isAppActive = isAppActive.value)
-                    }
-
-                    composable("main_screen") {
-                        MainScreen(isAppActive = isAppActive.value)
                     }
                 }
             }
