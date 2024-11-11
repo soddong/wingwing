@@ -234,7 +234,7 @@ class PipePredictor(object):
         self.spatial_info_tracker = SpatialInfoTracker()
         # TODO : arg로 변경
         # 앱서버의 ip와 port로 변경하고 사용
-        self.res_sender = ResultSendHandler("192.168.0.7", 23456)
+        self.res_sender = ResultSendHandler("192.168.0.8", 11435)
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -429,6 +429,9 @@ class PipePredictor(object):
             # update target
             if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
                 self.target_id=None
+                self.drone_controller.control_value.init_zero()
+                control_res = self.drone_controller.get_control_value()
+                resultqueue.put(control_res.get())
             if self.target_id is None:
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
