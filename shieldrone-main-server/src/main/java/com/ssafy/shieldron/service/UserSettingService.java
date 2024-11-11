@@ -3,6 +3,7 @@ package com.ssafy.shieldron.service;
 import com.ssafy.shieldron.domain.Guardian;
 import com.ssafy.shieldron.domain.User;
 import com.ssafy.shieldron.dto.request.EndPosRequest;
+import com.ssafy.shieldron.dto.request.GetHivesInfoRequest;
 import com.ssafy.shieldron.dto.request.GuardianDeleteRequest;
 import com.ssafy.shieldron.dto.request.GuardianRequest;
 import com.ssafy.shieldron.dto.request.GuardianUpdateRequest;
@@ -31,6 +32,7 @@ import static com.ssafy.shieldron.global.exception.ErrorCode.MAX_GUARDIAN_REACHE
 @RequiredArgsConstructor
 public class UserSettingService {
 
+    private static final double EARTH_RADIUS_KM = 6371.0;
     private final UserRepository userRepository;
     private final GuardianRepository guardianRepository;
 
@@ -46,12 +48,15 @@ public class UserSettingService {
     }
 
     @Transactional(readOnly = true)
-    public EndPosResponse getEndPos(String phoneNumber) {
+    public EndPosResponse getEndPos(GetHivesInfoRequest getHivesInfoRequest, String phoneNumber) {
+        BigDecimal lat = getHivesInfoRequest.lat();
+        BigDecimal lng = getHivesInfoRequest.lng();
         User user = getUserOrThrow(phoneNumber);
         String detailAddress = user.getDetailAddress();
         BigDecimal endLat = user.getEndLat();
         BigDecimal endLng = user.getEndLng();
-        return new EndPosResponse(detailAddress, endLat, endLng);
+        int distance = calculateDistance(lat, lng, endLat, endLat);
+        return new EndPosResponse(detailAddress, endLat, endLng, distance);
     }
 
     @Transactional
@@ -114,5 +119,19 @@ public class UserSettingService {
         return userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new CustomException(INVALID_USER));
     }
+    private int calculateDistance(BigDecimal lat1, BigDecimal lng1,
+                                  BigDecimal lat2, BigDecimal lng2) {
+        double lat1Rad = Math.toRadians(lat1.doubleValue());
+        double lat2Rad = Math.toRadians(lat2.doubleValue());
+        double dLat = lat2Rad - lat1Rad;
+        double dLng = Math.toRadians(lng2.subtract(lng1).doubleValue());
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(lat1Rad) * Math.cos(lat2Rad)
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return (int) (EARTH_RADIUS_KM * 1000 * c);
+    }
+
 
 }
