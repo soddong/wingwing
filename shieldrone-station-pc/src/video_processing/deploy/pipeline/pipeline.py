@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 import json
 import os
 import re
@@ -25,7 +26,6 @@ import queue
 import time
 from collections import defaultdict
 import zmq
-import socket as sc
 
 # add deploy path of PaddleDetection to sys.path
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
@@ -284,6 +284,19 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
+    def send_danger_signal(self, socket, flag = False):
+        """
+        위험 상황 발생 시 메시지를 전송합니다.
+        """
+        message = json.dumps({
+            "type": "sendCameraFlag",
+            "time": datetime.now().isoformat(),
+            "warningFlag": flag
+        })
+        socket.send_string(message)
+
+        print(f"가까운 곳에서 빠르게 접근하는 객체에 대한 경고가 5580 포트로 전송되었습니다.{flag}")
+
 
     def predict_video(self, thread_idx=0):
 
@@ -319,11 +332,9 @@ class PipePredictor(object):
             writer = cv2.VideoWriter(out_path, fourcc, video_fps, (self.video_handler.width, self.video_handler.height))
 
         context = zmq.Context()
-        socket = context.socket(zmq.PUSH)
-        socket.bind("tcp://127.0.0.1:5555")  # 송신자 주소를 지정 (예: 포트 5555)
-        socket.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
-        temp_sock = sc.socket(sc.AF_INET, sc.SOCK_DGRAM)
-        server_address = ("192.168.0.7", "23456")
+        socket_camera = context.socket(zmq.PUSH)
+        socket_camera.bind("tcp://127.0.0.1:5580")  # 송신자 주소를 지정 (예: 포트 5555)
+        socket_camera.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
         while (1):
             if framequeue.empty():
@@ -355,7 +366,19 @@ class PipePredictor(object):
                 reuse_det_result=reuse_det_result,
                 frame_count=frame_id)
 
+            # mot output format: id, class, score, xmin, ymin, xmax, ymax
             mot_res = parse_mot_res(res)
+
+            # data_bytes = mot_res["boxes"].tobytes()
+            # data_shape = mot_res["boxes"].shape
+            # data_dtype = str(mot_res["boxes"].dtype)
+            # print("데이터 변환")
+
+            # # 배열 데이터와 메타 정보를 함께 전송
+            # socket.send_json({'shape': data_shape, 'dtype': data_dtype})
+            # print("json 전송")
+            # socket.send(data_bytes)
+            # print("데이터를 전송했습니다.")
 
             if frame_id > self.warmup_frame:
                 self.pipe_timer.module_time['mot'].end()
@@ -439,18 +462,20 @@ class PipePredictor(object):
                 self.drone_controller.get_control_value()
 
                 spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, self.video_handler.fps)
+                is_danger = False
+                for other_id, info in spatial_info["others"].items():
+                    if info["is_near"] and info["getting_closer_quickly"]:
+                        is_danger = True
+                        break
+                self.send_danger_signal(socket_camera, is_danger)
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
-                control_values = {
-                    'lat': 112.3,
-                    'lng': 123.4
-                }
 
-                # JSON 직렬화
-                message = json.dumps(control_values)
-                temp_sock.sendto(message.encode('utf-8'), server_address)
+
+
             if frame_id > self.warmup_frame:
                 self.pipe_timer.img_num += 1
                 self.pipe_timer.total_time.end()
+
             frame_id += 1
 
             if self.cfg['visual']:
@@ -465,9 +490,8 @@ class PipePredictor(object):
                 cv2.imshow('Paddle-Pipeline', im)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-                
-        temp_sock.close()
-        socket.close()
+
+        socket_camera.close()
         context.term()
 
         if self.cfg['visual']:
