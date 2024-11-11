@@ -47,7 +47,7 @@ class RouteDecision:
         with open(csv_file_path, mode='r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                lat, lng = self.parse_wkt_point(row['WKT'])
+                lng, lat = self.parse_wkt_point(row['WKT'])
                 positions.append({'lat': lat, 'lng': lng})
         return positions
 
@@ -58,10 +58,11 @@ class RouteDecision:
         print("CSV 파일에서 위치 데이터를 읽어옵니다...")
         positions = self.read_position_from_csv(csv_file_path)
         
-        for position in positions:
-            self.set_position(position)
-            self.send_data()
-            time.sleep(1)
+        while True:
+            for position in positions:
+                self.set_position(position)
+                self.send_data()
+                time.sleep(1)
 
 
     def receive_data(self):
@@ -113,11 +114,11 @@ class RouteDecision:
         사용자로부터 'map_o', 'map_l', 또는 'map_z' 중 하나를 입력받아 해당 파일명을 반환.
         """
         while True:
-            choice = input("Choose a map file (map_o, map_l, map_z): ").strip()
-            if choice in ['map_o', 'map_l', 'map_z']:
+            choice = input("Choose a map file (map_o, map_l, map_z, multi_map_L): ").strip()
+            if choice in ['map_o', 'map_l', 'map_z', 'multi_map_L']:
                 return f"{choice}.csv"
             else:
-                print("Invalid choice. Please choose 'map_o', 'map_l', or 'map_z'.")
+                print("Invalid choice. Please choose 'map_o', 'map_l', or 'map_z'. or 'multi_map_L")
 
     def start(self, use_csv=False):
         """
