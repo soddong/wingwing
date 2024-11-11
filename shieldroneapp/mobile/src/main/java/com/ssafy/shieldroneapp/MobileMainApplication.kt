@@ -10,8 +10,13 @@ import android.util.Log
 import com.kakao.vectormap.KakaoMapPhase
 import com.kakao.vectormap.KakaoMapSdk
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
+import com.ssafy.shieldroneapp.services.connection.MobileConnectionManager
 import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 /**
@@ -25,9 +30,28 @@ class MobileMainApplication : Application() {
     companion object {
         private const val TAG = "모바일: 메인 앱"
         const val NOTIFICATION_CHANNEL_ID = "watch_connection_channel"
+        var isApplicationActive = true
     }
     @Inject
     lateinit var webSocketService: WebSocketService
+
+    @Inject
+    lateinit var connectionManager: MobileConnectionManager
+
+    init {
+        // 프로세스 강제 종료 시
+        Runtime.getRuntime().addShutdownHook(Thread {
+            try {
+                runBlocking {
+                    Log.d(TAG, "앱 프로세스 종료 감지")
+                    connectionManager.notifyWatchOfMobileStatus(false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 종료 상태 전송 실패", e)
+            }
+        })
+    }
+
 
     override fun onCreate() {
         super.onCreate()
@@ -73,5 +97,18 @@ class MobileMainApplication : Application() {
     }
     private fun initializeWebSocket() {
         webSocketService.initialize()
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        isApplicationActive = false
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "앱 정상 종료 감지")
+                connectionManager.notifyWatchOfMobileStatus(false)
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 종료 상태 전송 실패", e)
+            }
+        }
     }
 }
