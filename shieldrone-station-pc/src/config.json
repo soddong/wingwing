@@ -1,4 +1,4 @@
 {
-    "APPSERVER_HOST": "localhost",
+    "APPSERVER_HOST": "192.168.253.236",
     "APPSERVER_PORT": 23456
 }

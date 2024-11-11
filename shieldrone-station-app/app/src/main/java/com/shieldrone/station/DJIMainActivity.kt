@@ -121,29 +121,14 @@ class DJIMainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-
-        // 스트리밍 중지 및 streamController 해제
         if (isStreaming) {
             streamController.stopLive()
-            isStreaming = false
         }
-
         routeController.stopReceivingLocation()
-        // Handler의 모든 콜백 제거
-        handler.removeCallbacksAndMessages(null)
-
-        // CompositeDisposable 해제
-        disposable.dispose()
-
-        // KeyManager 구독 해제
         KeyManager.getInstance().cancelListen(this)
-
-        // OpenCV 초기화 플래그 해제
-        isOpenCVInitialized = false
-
-        Log.d("DJIMainActivity", "모든 리소스가 해제되었습니다.")
+        handler.removeCallbacksAndMessages(null)
+        disposable.dispose()
     }
-
 
     private fun checkAndRequestPermissions() {
         val permissionsToRequest = REQUIRED_PERMISSIONS.filter {

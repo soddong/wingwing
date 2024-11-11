@@ -1,5 +1,0 @@
-{
-    "HOST": "0.0.0.0",
-    "PORT": 65432,
-    "YOLO_MODEL_PATH": "models/yolov8n.pt"
-}
