@@ -345,9 +345,9 @@ class PipePredictor(object):
             writer = cv2.VideoWriter(out_path, fourcc, video_fps, (self.video_handler.width, self.video_handler.height))
 
         context = zmq.Context()
-        socket_camera = context.socket(zmq.PUSH)
+        socket_camera = context.socket(zmq.PUB)
         socket_camera.bind("tcp://127.0.0.1:5580")  # 송신자 주소를 지정 (예: 포트 5555)
-        socket_camera.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
+        socket_camera.setsockopt(zmq.SNDTIMEO, 5000) # 5초 타임아웃 설정
 
         while (1):
             if framequeue.empty():

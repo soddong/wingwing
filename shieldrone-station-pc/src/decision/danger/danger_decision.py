@@ -10,16 +10,18 @@ class DangerDecision:
         각 트리거 신호를 저장할 변수를 초기화.
         """
         self.context = zmq.Context()
-        self.socket_sensor = self.context.socket(zmq.PULL)
+        self.socket_sensor = self.context.socket(zmq.SUB)
         self.socket_sensor.connect("tcp://127.0.0.1:5560")
+        self.socket_sensor.setsockopt_string(zmq.SUBSCRIBE, "")
         self.socket_sensor.setsockopt(zmq.RCVTIMEO, 5000) 
 
-        self.socket_camera = self.context.socket(zmq.PULL)
+        self.socket_camera = self.context.socket(zmq.SUB)
         self.socket_camera.connect("tcp://127.0.0.1:5580")
+        self.socket_camera.setsockopt_string(zmq.SUBSCRIBE, "")
         self.socket_camera.setsockopt(zmq.RCVTIMEO, 5000) 
 
-        self.socket_flag = self.context.socket(zmq.PUSH)
-        self.socket_flag.connect("tcp://127.0.0.1:5590")
+        self.socket_flag = self.context.socket(zmq.PUB)
+        self.socket_flag.bind("tcp://127.0.0.1:5590")
 
         self.pulse_flag_trigger = False
         self.db_flag_trigger = False
@@ -113,7 +115,7 @@ class DangerDecision:
 
     def set_camera_flag_trigger(self, data):
         current_time = time.time()
-        new_camera_flag = data.get("cameraFlag")
+        new_camera_flag = data.get("warningFlag")
         
         if self.camera_flag_trigger:
             if current_time - self.camera_flag_time > self.trigger_timeout:
@@ -124,25 +126,44 @@ class DangerDecision:
             if new_camera_flag:
                 self.camera_flag_trigger = True
                 self.camera_flag_time = current_time
+                self.send_object_signal()
                 print("[트리거 설정] sendCameraFlag 트리거가 발동되었습니다.")
 
     def check_condition(self):
-        # 세 개의 트리거 중 두 개 이상이 True인 경우 위험 상황 처리
-        active_triggers = sum([self.pulse_flag_trigger, self.db_flag_trigger, self.camera_flag_trigger])
-        
-        if active_triggers >= 2:
+        pulse_weight = 1/3
+        db_weight = 1/3
+        camera_weight = 1/3
+
+        active_triggers = (self.pulse_flag_trigger * pulse_weight + 
+                        self.db_flag_trigger * db_weight + 
+                        self.camera_flag_trigger * camera_weight)
+
+        if active_triggers >= 0.5:
             print("[경고] 조건이 충족되었습니다. 위험 상황 처리 로직을 수행합니다.")
             self.send_danger_signal()
             self.reset_triggers()
 
+
     def send_danger_signal(self):
         """
-        위험 상황 발생 시 5590 포트로 triggerWarningBeep 메시지를 전송합니다.
+        위험 상황 발생 시 5590 포트로 sendWarningFlag 메시지를 전송합니다.
         """
         message = json.dumps({
-            "type": "triggerWarningBeep",
+            "type": "sendWarningFlag",
             "time": datetime.now().isoformat(),
             "warningFlag": True
+        })
+        self.socket_flag.send_string(message)
+        print("[위험 경고 전송] 경고 메시지가 5590 포트로 전송되었습니다.")
+
+    def send_object_signal(self):
+        """
+        객체 감지시 5590 포트로 sendObectFlag 메시지를 전송합니다.
+        """
+        message = json.dumps({
+            "type": "sendObjectFlag",
+            "time": datetime.now().isoformat(),
+            "objectFlag": True
         })
         self.socket_flag.send_string(message)
         print("[위험 경고 전송] 경고 메시지가 5590 포트로 전송되었습니다.")
