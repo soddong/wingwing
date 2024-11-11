@@ -30,9 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
+import com.shieldrone.station.service.route.RouteAdapter
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
 import dji.v5.manager.KeyManager
@@ -42,6 +44,7 @@ import org.opencv.android.OpenCVLoader
 class DJIMainActivity : AppCompatActivity() {
 
     private lateinit var streamController: StreamController
+    private lateinit var routeController: RouteController
     private var cameraPermissionGranted by mutableStateOf(false)
     private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
@@ -121,6 +124,7 @@ class DJIMainActivity : AppCompatActivity() {
         if (isStreaming) {
             streamController.stopLive()
         }
+        routeController.stopReceivingLocation()
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
@@ -230,7 +234,11 @@ class DJIMainActivity : AppCompatActivity() {
             StreamController(DroneImageFrameProvider(this))
         }
 
+        val routeAdapter = RouteAdapter()
+        routeController = RouteController(routeAdapter)
+
         streamController.startLive()
+        routeController.startReceivingLocation()
         isStreaming = true
     }
 
