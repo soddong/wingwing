@@ -1,5 +1,8 @@
 package com.ssafy.shieldroneapp.data.model.response
 
+import com.ssafy.shieldroneapp.data.model.LocationType
+import com.ssafy.shieldroneapp.data.model.RouteLocation
+
 /**
  * 기본 도착지(집) 정보 응답 모델
  *
@@ -34,7 +37,20 @@ data class HiveResponse(
     val distance: Int,
     val lat: Double,
     val lng: Double,
-)
+) {
+    fun toRouteLocation(): RouteLocation {
+        return RouteLocation(
+            locationType = LocationType.START,
+            hiveId = hiveId,
+            hiveName = hiveName,
+            hiveNo = hiveNo,
+            direction = direction,
+            distance = distance,
+            lat = lat,
+            lng = lng
+        )
+    }
+}
 
 /**
  * 드론 경로 안내 가능 여부 응답 모델
@@ -76,12 +92,11 @@ data class KakaoSearchResponse(
     val distance: Int,
     val lat: Double,
     val lng: Double
-)
-//{
-//    fun toHomeLocationResponse() = HomeLocationResponse(
-//        homeAddress = roadAddressName,
-//        distance = distance,
-//        lat = lat,
-//        lng = lng,
-//    )
-//}
+) {
+    fun toHomeLocationResponse() = HomeLocationResponse(
+        homeAddress = roadAddressName,
+        distance = distance,
+        lat = lat,
+        lng = lng,
+    )
+}
