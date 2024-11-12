@@ -23,7 +23,9 @@ import android.util.Log
 import com.google.android.gms.wearable.Wearable
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.AlertData
+import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.services.alert.AlertService
+import com.ssafy.shieldroneapp.ui.map.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +35,8 @@ import javax.inject.Inject
 
 class WebSocketSubscriptions @Inject constructor(
     private val messageParser: WebSocketMessageParser,
+    private val alertRepository: AlertRepository,
+    private val alertHandler: AlertHandler,
     private val alertService: AlertService,
     @ApplicationContext private val context: Context
 ) {
@@ -48,20 +52,19 @@ class WebSocketSubscriptions @Inject constructor(
     fun handleIncomingMessage(message: String) {
         subscriptionScope.launch {
             try {
-                Log.d(TAG, "수신된 메시지: $message")
                 val messageType = messageParser.getMessageType(message)
-                Log.d(TAG, "메시지 타입: $messageType")
 
                 when (messageType) {
                     "triggerWarningBeep" -> {
                         val warningData = messageParser.parseWarningMessage(message)
                         if (warningData != null) {
-                            Log.d(TAG, "위험 알림 수신 - time: ${warningData.time}, warningFlag: ${warningData.warningFlag}")
-
-                            // 모바일 앱에서 알림 처리
+                            // UI 업데이트
+                            alertHandler.handleWarningBeep(warningData.warningFlag)
+                            // 데이터 상태 관리
+                            alertRepository.updateAlertState(warningData.warningFlag)
+                            // 시스템 알림 처리 (소리, 진동 등)
                             alertService.handleWarningBeep(warningData.warningFlag)
-
-                            // 워치로 위험 알림 전송
+                            // 워치로 알림 전송
                             sendDangerAlertToWatch(warningData.warningFlag)
                         }
                     }
@@ -70,7 +73,6 @@ class WebSocketSubscriptions @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "메시지 처리 중 오류 발생", e)
-                e.printStackTrace()
             }
         }
     }
@@ -88,7 +90,6 @@ class WebSocketSubscriptions @Inject constructor(
                 timestamp = System.currentTimeMillis()
             )
 
-            // JSON으로 변환
             val alertJson = gson.toJson(alertData)
 
             nodes.forEach { node ->

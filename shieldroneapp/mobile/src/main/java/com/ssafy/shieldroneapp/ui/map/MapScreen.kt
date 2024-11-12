@@ -22,6 +22,8 @@ import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
+import com.ssafy.shieldroneapp.ui.components.DangerAlertModal
+import com.ssafy.shieldroneapp.ui.components.DangerAlertState
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 
@@ -38,12 +40,28 @@ import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 @Composable
 fun MapScreen(
     isAppActive: Boolean,
-    viewModel: HeartRateViewModel = hiltViewModel()
+    viewModel: HeartRateViewModel = hiltViewModel(),
+    mapViewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val heartRateState by viewModel.heartRateData.collectAsState()
     val connectionState by viewModel.watchConnectionState.collectAsState()
+    val alertState by mapViewModel.alertState.collectAsState()
+
+    // TODO: 실제 위험 알림 상태 관리
+//    val alertState by mapViewModel.alertState.collectAsState()
+
+// TODO: 임시
+    var dangerAlertState by remember {
+        mutableStateOf(
+            DangerAlertState(
+                isVisible = true,  // 모달 표시
+                level = 3,         // 위험 정도, 현재는 3만 적용
+                timestamp = System.currentTimeMillis()  // 현재 시간
+            )
+        )
+    }
 
     // 워치 연결 관리
     WatchConnectionManager(
@@ -55,7 +73,6 @@ fun MapScreen(
         }
     )
 
-    // MapView 생성 및 관리
     val mapView = remember { MapView(context) }
 
     DisposableEffect(lifecycleOwner) {
@@ -92,7 +109,6 @@ fun MapScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // AndroidView를 사용하여 MapView 표시
     Box(
         modifier = Modifier
             .background(MaterialTheme.colors.background)
@@ -103,7 +119,22 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 연결 상태 Snackbar 추가
+/*
+        // TODO: 실제: 위험 알림 모달
+        DangerAlertModal(
+            alertState = alertState,
+            onDismiss = mapViewModel::dismissAlert
+        )
+*/
+
+        // TODO: 임시 코드 사용 중
+        DangerAlertModal(
+            alertState = dangerAlertState,
+            onDismiss = {
+                dangerAlertState = dangerAlertState.copy(isVisible = false)
+            },
+        )
+
         ConnectionStatusSnackbar(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)

@@ -16,6 +16,7 @@ import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.MainActivity
 import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
+import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
@@ -23,6 +24,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -70,16 +72,32 @@ class WearConnectionManager @Inject constructor(
         }
     }
 
+    private val _connectionState =
+        mutableStateOf<WatchConnectionState>(WatchConnectionState.Disconnected)
+    val connectionState: State<WatchConnectionState> = _connectionState
+
+    private fun updateConnectionState(newState: WatchConnectionState) {
+        scope.launch(Dispatchers.Main) {
+            _connectionState.value = newState
+        }
+    }
+
     private fun setupMessageListener() {
         messageClient.addListener { messageEvent ->
-            Log.d(TAG, "메시지 수신: ${messageEvent.path}")
             when (messageEvent.path) {
+                PATH_WATCH_STATUS -> { 
+                    val isActive = messageEvent.data?.let { it[0] == 1.toByte() } ?: false
+                    Log.d(TAG, "워치 상태 수신: ${if (isActive) "활성화" else "비활성화"}")
+                    if (isActive) {
+                        updateConnectionState(WatchConnectionState.Connected)
+                    } else {
+                        updateConnectionState(WatchConnectionState.Disconnected)
+                    }
+                }
                 PATH_MOBILE_STATUS -> {
                     val isActive = messageEvent.data?.let { it[0] == 1.toByte() } ?: false
-                    Log.d(TAG, "모바일 상태 변경: $isActive")
                     handleMobileStateChange(isActive)
                 }
-
                 PATH_DANGER_ALERT -> {
                     messageEvent.data?.let {
                         val alertJson = String(it)
@@ -93,32 +111,29 @@ class WearConnectionManager @Inject constructor(
 
     private suspend fun checkMobileConnection() {
         try {
+            updateConnectionState(WatchConnectionState.Connecting())
             val nodes = getConnectedNodes()
-            Log.d(TAG, "연결된 노드 수: ${nodes.size}")
 
-            handleMobileStateChange(false)
-
-            if (nodes.isNotEmpty()) {
-                // 모바일 앱 상태 요청
-                nodes.forEach { node ->
-                    try {
-                        messageClient.sendMessage(
-                            node.id,
-                            PATH_MOBILE_STATUS,
-                            null
-                        ).await(5000)
-                        Log.d(TAG, "모바일 앱 상태 요청 전송됨")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "모바일 앱 상태 요청 실패", e)
-                        requestMobileAppLaunchWithNotification()
-                    }
-                }
-            } else {
+            if (nodes.isEmpty()) {
+                updateConnectionState(WatchConnectionState.Disconnected)
                 requestMobileAppLaunchWithNotification()
+                return
+            }
+
+            nodes.forEach { node ->
+                try {
+                    messageClient.sendMessage(
+                        node.id,
+                        PATH_MOBILE_STATUS,
+                        null
+                    ).await(5000)
+                } catch (e: Exception) {
+                    updateConnectionState(WatchConnectionState.Error)
+                    requestMobileAppLaunchWithNotification()
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "모바일 앱 연결 확인 실패", e)
-            handleMobileStateChange(false)
+            updateConnectionState(WatchConnectionState.Error)
             requestMobileAppLaunchWithNotification()
         }
     }
@@ -192,19 +207,20 @@ class WearConnectionManager @Inject constructor(
             try {
                 val nodes = getConnectedNodes()
                 nodes.forEach { node ->
-                    Log.d(TAG, "워치 상태 전송 시도: ${node.displayName}")
-                    messageClient.sendMessage(
-                        node.id,
-                        PATH_WATCH_STATUS,
-                        if (isActive) byteArrayOf(1) else byteArrayOf(0)
-                    ).await(5000)
+                    try {
+                        messageClient.sendMessage(
+                            node.id,
+                            PATH_WATCH_STATUS, 
+                            if (isActive) byteArrayOf(1) else byteArrayOf(0)
+                        ).await(5000)
+                        Log.d(TAG, "워치 상태 전송: ${if (isActive) "활성화" else "비활성화"}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "워치 상태 전송 실패", e)
+                    }
                 }
-                Log.d(TAG, "워치 상태 전송: $isActive")
             } catch (e: Exception) {
-                Log.e(TAG, "워치 상태 전송 실패", e)
+                Log.e(TAG, "워치 상태 변경 실패", e)
             }
         }
     }
-
-    fun isMobileConnected() = isMobileActive
 }

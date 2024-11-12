@@ -67,7 +67,7 @@ class AudioRecordService : BaseMobileService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("음성 감지 중")
             .setContentText("백그라운드에서 음성을 감지하고 있습니다")
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Todo: 임시 아이콘 삽입
+            .setSmallIcon(R.drawable.record_ic)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true) // 사용자가 쉽게 지울 수 없도록 설정
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

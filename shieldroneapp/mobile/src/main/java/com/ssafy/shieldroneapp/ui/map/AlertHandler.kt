@@ -12,3 +12,47 @@ package com.ssafy.shieldroneapp.ui.map
  *
  * @property context 애플리케이션 컨텍스트 (알림을 표시하거나 시스템 리소스를 사용할 때 필요)
  */
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.ssafy.shieldroneapp.data.repository.AlertRepository
+import com.ssafy.shieldroneapp.ui.components.DangerAlertState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class AlertHandler @Inject constructor(
+    private val alertRepository: AlertRepository
+) {
+    // UI 상태 관리
+    var alertState by mutableStateOf(DangerAlertState())
+        private set
+
+    private val scope = CoroutineScope(Dispatchers.Main)
+    private var alertJob: Job? = null
+
+    fun showDangerAlert(level: Int) {
+        alertState = DangerAlertState(
+            isVisible = true,
+            level = level,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun dismissAlert() {
+        alertState = alertState.copy(isVisible = false)
+        alertJob?.cancel()
+        alertRepository.clearAlert()
+    }
+
+    fun handleWarningBeep(warningFlag: Boolean) {
+        if (warningFlag) {
+            showDangerAlert(3)
+            alertRepository.updateAlertState(warningFlag)
+        }
+    }
+}
