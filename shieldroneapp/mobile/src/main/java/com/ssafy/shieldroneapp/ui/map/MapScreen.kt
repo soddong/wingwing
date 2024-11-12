@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -34,11 +33,12 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.ui.components.AlertModal
+import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
-import com.ssafy.shieldroneapp.ui.components.DangerAlertModal
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.utils.setupMap
 import com.ssafy.shieldroneapp.utils.updateCurrentLocationMarker
@@ -56,10 +56,13 @@ import kotlinx.coroutines.launch
  * @property viewModel Map 화면의 상태와 로직을 관리하는 ViewModel
  */
 
+private const val TAG = "모바일: 맵 화면"
+
 @Composable
 fun MapScreen(
     isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
+    alertHandler: AlertHandler,
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope()
 ) {
@@ -69,21 +72,10 @@ fun MapScreen(
 //    var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
     var kakaoMap: KakaoMap? = null // mutableStateOf 대신 일반 변수로 선언
     val lifecycleOwner = LocalLifecycleOwner.current
-
+    val mapViewModel: MapViewModel = hiltViewModel()
     val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
-
-    /*// TODO: 임시
-        var dangerAlertState by remember {
-            mutableStateOf(
-                DangerAlertState(
-                    isVisible = true,  // 모달 표시
-                    level = 3,         // 위험 정도, 현재는 3만 적용
-                    timestamp = System.currentTimeMillis()  // 현재 시간
-                )
-            )
-        }*/
 
     // 워치 연결 관리
     WatchConnectionManager (
@@ -128,7 +120,6 @@ fun MapScreen(
         ) {
             // 지도 영역
             val mapView = remember { MapView(context) } // 기존 MapView
-
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -194,28 +185,24 @@ fun MapScreen(
                 )
             }
 
-            DangerAlertModal(
+        AlertModal(
             alertState = alertState,
             onDismiss = mapViewModel::dismissAlert,
-            onEmergencyAlert = {
-                coroutineScope.launch {
-                    val success = mapViewModel.sendEmergencyAlert()
-                    if (success) {
-                        mapViewModel.showToast()
-                    } else {
-                        // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
+            onEmergencyAlert = if (alertState.alertType == AlertType.WARNING) {
+                {
+                    coroutineScope.launch {
+                        val success = mapViewModel.sendEmergencyAlert()
+                        if (success) {
+                            mapViewModel.showToast()
+                        } else {
+                            // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
+                        }
                     }
+                    true
                 }
-                true
-                }
-            )
-        /* // TODO: 임시 코드 사용 중
-         DangerAlertModal(
-             alertState = dangerAlertState,
-             onDismiss = {
-                 dangerAlertState = dangerAlertState.copy(isVisible = false)
-             },
-         )*/
+            } else null,
+            alertHandler = alertHandler
+        )
 
         ConnectionStatusSnackbar(
             connectionState = connectionState,
