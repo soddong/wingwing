@@ -109,6 +109,7 @@ fun MapScreen(
             if (state.isTrackingLocation) {
                 updateCurrentLocationMarker(map, state.currentLocation)
             }
+            Log.d("MapScreen", "Updating Map with Current Location: ${state.currentLocation}")
             state.currentLocation?.let { setupMap(map, state) }
         }
     }

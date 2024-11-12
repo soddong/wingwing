@@ -91,10 +91,11 @@ class MapViewModel @Inject constructor(
             try {
                 val location = mapRepository.getCurrentLocation() // 현재 위치 (LatLng)
                 _state.update { it.copy(currentLocation = location, isLoading = false) }
+                Log.d("MapViewModel", "Fetched Location: $location") // 현재 위치 확인
 
                 fetchNearbyHives(location) // LatLng 값을 통해 주변 출발지 (드론 정류장) 조회
             } catch (e: Exception) {
-                setError("현재 위치를 불러오는 중 오류가 발생했습니다.")
+                setError("MapViewModel: 현재 위치를 불러오는 중 오류가 발생했습니다.")
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
