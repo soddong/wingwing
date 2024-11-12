@@ -9,6 +9,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ssafy.shieldroneapp.R
@@ -20,19 +21,36 @@ import javax.inject.Singleton
 
 @Singleton
 class AlertService @Inject constructor(
-    private val context: Context
+    private val context: Context,
 ) {
     companion object {
         private const val TAG = "모바일: 알림 서비스"
         private const val ALERT_CHANNEL_ID = "alert_channel"
         private const val ALERT_CHANNEL_NAME = "위험 알림"
         private const val WARNING_NOTIFICATION_ID = 2000
-        private val VIBRATION_PATTERN = longArrayOf(0, 300, 150, 300)
+
+        // 위험 감지용 진동 패턴 (0: 대기, 300: 진동, 150: 대기, 300: 진동)
+        private val WARNING_VIBRATION_PATTERN = longArrayOf(0, 300, 150, 300)
+
+        // 타인 감지용 진동 패턴 (한 번만 짧게)
+        private val OBJECT_VIBRATION_PATTERN = longArrayOf(0, 100)
+
+        // 진동 세기 (안드로이드 O 이상)
+        private val WARNING_VIBRATION_AMPLITUDE = intArrayOf(0, 255, 0, 255)  // 최대 세기
+        private val OBJECT_VIBRATION_AMPLITUDE = intArrayOf(0, 100)  // 약한 세기
     }
 
     private var mediaPlayer: MediaPlayer? = null
-    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    private val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager =
+            context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
 
     init {
         createNotificationChannel()
@@ -54,7 +72,7 @@ class AlertService @Inject constructor(
                         .build()
                 )
                 enableVibration(true)
-                vibrationPattern = VIBRATION_PATTERN
+                vibrationPattern = WARNING_VIBRATION_PATTERN
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -64,12 +82,26 @@ class AlertService @Inject constructor(
         if (warningFlag) {
             startWarningSound()
             showWarningNotification()
-            startWarningVibration()
+            startVibration(VibrationType.WARNING)
         } else {
             stopWarningSound()
             cancelWarningNotification()
-            stopWarningVibration()
+            stopVibration()
         }
+    }
+
+    fun handleObjectBeep(objectFlag: Boolean) {
+        if (objectFlag) {
+            startWarningSound()
+            startVibration(VibrationType.OBJECT)
+        } else {
+            stopWarningSound()
+            stopVibration()
+        }
+    }
+
+    private enum class VibrationType {
+        WARNING, OBJECT
     }
 
     private fun startWarningSound() {
@@ -82,6 +114,11 @@ class AlertService @Inject constructor(
             }
             Log.d(TAG, "경고음 재생 시작")
         }
+    }
+
+    private fun stopVibration() {
+        vibrator.cancel()
+        Log.d(TAG, "진동 중지")
     }
 
     private fun stopWarningSound() {
@@ -110,28 +147,6 @@ class AlertService @Inject constructor(
         Log.d(TAG, "위험 알림 표시")
     }
 
-    private fun startWarningVibration() {
-        CoroutineScope(Dispatchers.Default).launch {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(
-                    VibrationEffect.createWaveform(
-                        VIBRATION_PATTERN,
-                        -1
-                    )
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(VIBRATION_PATTERN, -1)
-            }
-            Log.d(TAG, "진동 시작")
-        }
-    }
-
-    private fun stopWarningVibration() {
-        vibrator.cancel()
-        Log.d(TAG, "진동 중지")
-    }
-
     private fun cancelWarningNotification() {
         notificationManager.cancel(WARNING_NOTIFICATION_ID)
         Log.d(TAG, "위험 알림 취소")
@@ -140,6 +155,47 @@ class AlertService @Inject constructor(
     fun release() {
         stopWarningSound()
         cancelWarningNotification()
-        stopWarningVibration()
+        stopVibration()
+    }
+
+    private fun startVibration(type: VibrationType) {
+        CoroutineScope(Dispatchers.Default).launch {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                when (type) {
+                    VibrationType.WARNING -> {
+                        val effect = VibrationEffect.createWaveform(
+                            WARNING_VIBRATION_PATTERN,
+                            WARNING_VIBRATION_AMPLITUDE,
+                            -1
+                        )
+                        vibrator.vibrate(effect)
+                        Log.d(TAG, "위험 감지 진동 시작 - 강한 세기")
+                    }
+
+                    VibrationType.OBJECT -> {
+                        val effect = VibrationEffect.createWaveform(
+                            OBJECT_VIBRATION_PATTERN,
+                            OBJECT_VIBRATION_AMPLITUDE,
+                            -1
+                        )
+                        vibrator.vibrate(effect)
+                        Log.d(TAG, "타인 감지 진동 시작 - 약한 세기")
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                when (type) {
+                    VibrationType.WARNING -> {
+                        vibrator.vibrate(WARNING_VIBRATION_PATTERN, -1)
+                        Log.d(TAG, "위험 감지 진동 시작 (하위 버전)")
+                    }
+
+                    VibrationType.OBJECT -> {
+                        vibrator.vibrate(OBJECT_VIBRATION_PATTERN, -1)
+                        Log.d(TAG, "타인 감지 진동 시작 (하위 버전)")
+                    }
+                }
+            }
+        }
     }
 }
