@@ -25,7 +25,7 @@ class WebSocketMessageParser @Inject constructor() {
             Log.d(TAG, "파싱 시도 중인 메시지: $message")
 
             if (jsonObject.has("type") &&
-                jsonObject.get("type").asString == "triggerWarningBeep") {
+                jsonObject.get("type").asString == "sendWarning") {
 
                 val time = jsonObject.get("time").asString
                 val warningFlag = jsonObject.get("warningFlag").asBoolean
@@ -37,7 +37,7 @@ class WebSocketMessageParser @Inject constructor() {
                     warningFlag = warningFlag
                 )
             } else {
-                Log.d(TAG, "triggerWarningBeep 타입이 아니거나 필수 필드 누락")
+                Log.d(TAG, "sendWarningFlag 타입이 아니거나 필수 필드 누락")
                 null
             }
         } catch (e: Exception) {

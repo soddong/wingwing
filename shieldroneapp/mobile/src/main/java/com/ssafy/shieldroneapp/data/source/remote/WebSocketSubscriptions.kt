@@ -55,7 +55,7 @@ class WebSocketSubscriptions @Inject constructor(
                 val messageType = messageParser.getMessageType(message)
 
                 when (messageType) {
-                    "triggerWarningBeep" -> {
+                    "sendWarning" -> {
                         val warningData = messageParser.parseWarningMessage(message)
                         if (warningData != null) {
                             // UI 업데이트
