@@ -17,7 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
-import com.ssafy.shieldroneapp.ui.components.DangerAlertState
+import com.ssafy.shieldroneapp.ui.components.AlertState
+import com.ssafy.shieldroneapp.ui.components.AlertType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,17 +29,24 @@ import javax.inject.Singleton
 class AlertHandler @Inject constructor(
     private val alertRepository: AlertRepository
 ) {
-    // UI 상태 관리
-    var alertState by mutableStateOf(DangerAlertState())
+    var alertState by mutableStateOf(AlertState())
         private set
 
     private val scope = CoroutineScope(Dispatchers.Main)
     private var alertJob: Job? = null
 
-    fun showDangerAlert(level: Int) {
-        alertState = DangerAlertState(
+    fun showDangerAlert() {
+        alertState = AlertState(
             isVisible = true,
-            level = level,
+            alertType = AlertType.WARNING,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun showObjectAlert() {
+        alertState = AlertState(
+            isVisible = true,
+            alertType = AlertType.OBJECT,
             timestamp = System.currentTimeMillis()
         )
     }
@@ -49,10 +57,26 @@ class AlertHandler @Inject constructor(
         alertRepository.clearAlert()
     }
 
+    fun dismissObjectAlert() {
+        alertState = alertState.copy(isVisible = false)
+        alertRepository.clearAlert()
+    }
+
     fun handleWarningBeep(warningFlag: Boolean) {
         if (warningFlag) {
-            showDangerAlert(3)
-            alertRepository.updateAlertState(warningFlag)
+            showDangerAlert()
+            alertRepository.updateWarningAlert() 
+        } else {
+            dismissAlert()
+        }
+    }
+
+    fun handleObjectBeep(objectFlag: Boolean) {
+        if (objectFlag) {
+            showObjectAlert()
+            alertRepository.updateObjectAlert()
+        } else {
+            dismissObjectAlert()
         }
     }
 }
