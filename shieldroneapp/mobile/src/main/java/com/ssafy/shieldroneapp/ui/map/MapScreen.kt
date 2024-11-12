@@ -16,7 +16,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,7 +33,6 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
 import com.ssafy.shieldroneapp.ui.components.DangerAlertModal
@@ -66,8 +64,7 @@ fun MapScreen(
 
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
-//    var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
-    var kakaoMap: KakaoMap? = null // mutableStateOf 대신 일반 변수로 선언
+    val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
@@ -95,7 +92,6 @@ fun MapScreen(
         }
     )
 
-    
     // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -105,7 +101,7 @@ fun MapScreen(
             mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
         }
     }
-    LaunchedEffect (Unit) {
+    LaunchedEffect(Unit) {
         locationPermissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -116,19 +112,19 @@ fun MapScreen(
 
     // 위치 갱신 시, 지도 초기화 (카메라 및 마커 위치 설정)
     LaunchedEffect(state.currentLocation, state.isTrackingLocation) {
-        kakaoMap?.let { map ->
+        kakaoMap.value?.let { map ->
             if (state.isTrackingLocation) {
                 updateCurrentLocationMarker(map, state.currentLocation)
             }
             state.currentLocation?.let { setupMap(map, state) }
         }
     }
+
      Box(
             modifier = Modifier.fillMaxWidth()
         ) {
             // 지도 영역
             val mapView = remember { MapView(context) } // 기존 MapView
-
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -145,7 +141,8 @@ fun MapScreen(
                             object : KakaoMapReadyCallback() {
                                 override fun onMapReady(map: KakaoMap) {
                                     Log.d("MapScreen", "Map ready")
-                                    kakaoMap = map
+                                    kakaoMap.value = map
+
                                     // 초기 위치 로드 및 주변 정류장(출발지) 조회 이벤트 호출
                                     mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
                                     setupMap(map, state) // 카메라 초기 위치 설정
@@ -158,7 +155,7 @@ fun MapScreen(
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
-                    kakaoMap = null
+                    kakaoMap.value = null
                 }
             }
 
@@ -209,6 +206,7 @@ fun MapScreen(
                 true
                 }
             )
+
         /* // TODO: 임시 코드 사용 중
          DangerAlertModal(
              alertState = dangerAlertState,
@@ -221,5 +219,5 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-        }
+     }
 }

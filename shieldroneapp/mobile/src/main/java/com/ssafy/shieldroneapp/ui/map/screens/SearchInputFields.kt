@@ -21,7 +21,7 @@ fun SearchInputFields(
     onEndTextChange: (String) -> Unit
 ) {
     Column (
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colors.surface).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TextField(
