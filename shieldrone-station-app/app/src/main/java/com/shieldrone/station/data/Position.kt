@@ -1,7 +1,7 @@
 package com.shieldrone.station.data
 
 data class Position(
-    val altitude: Double,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    val altitude: Double
 )
