@@ -66,12 +66,11 @@ fun MapScreen(
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope()
 ) {
-
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val mapViewModel: MapViewModel = hiltViewModel()
+
     val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
