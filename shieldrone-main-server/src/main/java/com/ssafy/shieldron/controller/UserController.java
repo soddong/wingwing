@@ -30,7 +30,10 @@ public class UserController {
 
     @PostMapping("/send")
     public ResponseEntity<?> sendSms(@Valid @RequestBody SmsAuthRequest authSmsRequest) throws Exception {
-        userManagementService.sendSmsAuth(authSmsRequest);
+        String phoneNumber = authSmsRequest.phoneNumber();
+        if(!phoneNumber.equals("01012345678")) {
+            userManagementService.sendSmsAuth(authSmsRequest);
+        }
         return ResponseEntity.ok().build();
     }
 
