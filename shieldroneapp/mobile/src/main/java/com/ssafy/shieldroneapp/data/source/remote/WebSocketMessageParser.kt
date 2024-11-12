@@ -11,6 +11,11 @@ data class WarningData(
     val warningFlag: Boolean
 )
 
+data class ObjectData(
+    val time: String,
+    val objectFlag: Boolean
+)
+
 @Singleton
 class WebSocketMessageParser @Inject constructor() {
     companion object {
@@ -25,7 +30,8 @@ class WebSocketMessageParser @Inject constructor() {
             Log.d(TAG, "파싱 시도 중인 메시지: $message")
 
             if (jsonObject.has("type") &&
-                jsonObject.get("type").asString == "sendWarningFlag") {
+                jsonObject.get("type").asString == "sendWarningFlag"
+            ) {
 
                 val time = jsonObject.get("time").asString
                 val warningFlag = jsonObject.get("warningFlag").asBoolean
@@ -42,6 +48,35 @@ class WebSocketMessageParser @Inject constructor() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "경고음 메시지 파싱 실패: ${e.message}")
+            Log.e(TAG, "수신된 메시지: $message")
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun parseObjectMessage(message: String): ObjectData? {
+        return try {
+            val jsonObject = JsonParser.parseString(message).asJsonObject
+            Log.d(TAG, "파싱 시도 중인 메시지: $message")
+
+            if (jsonObject.has("type") &&
+                jsonObject.get("type").asString == "sendObjectFlag") {
+
+                val time = jsonObject.get("time").asString
+                val objectFlag = jsonObject.get("objectFlag").asBoolean
+
+                Log.d(TAG, "객체 경고 메시지 파싱 성공 - time: $time, objectFlag: $objectFlag")
+
+                ObjectData(
+                    time,
+                    objectFlag
+                )
+            } else {
+                Log.d(TAG, "sendObjectFlag 타입이 아니거나 필수 필드 누락")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "객체 경고 메시지 파싱 실패: ${e.message}")
             Log.e(TAG, "수신된 메시지: $message")
             e.printStackTrace()
             null
