@@ -75,6 +75,9 @@ class SimulatorActivity : AppCompatActivity() {
                 속도(Y): ${state.yVelocity}
                 속도(Z): ${state.zVelocity}
                 나침반 방향: ${state.compassHeading}
+                lat: ${state.latitude}
+                lng: ${state.longitude}
+                alt: ${state.altitude}
             """.trimIndent()
             binding.txtSimulatorState.text = statusText
         })
@@ -95,16 +98,6 @@ class SimulatorActivity : AppCompatActivity() {
             binding.txtSimulatorControls.text = statusText
         }
 
-        // 드론 위치 정보 관찰
-        simulatorVM.dronePosition.observe(this) { position ->
-            val positionText = """
-                위도: ${position.latitude}
-                경도: ${position.longitude}
-                고도: ${position.altitude}
-            """.trimIndent()
-            binding.txtSimulatorPosition.text = positionText
-        }
-
         // GPS 신호 레벨 관찰
         simulatorVM.gpsSignalLevel.observe(this) { gpsLevel ->
             binding.txtSimulatorGpsLevel.text = "GPS Signal Level: $gpsLevel"
@@ -120,8 +113,8 @@ class SimulatorActivity : AppCompatActivity() {
 
     @SuppressLint("DefaultLocale")
     private fun updateTargetLocation() {
-        val currentLat = simulatorVM.dronePosition.value?.latitude
-        val currentLng = simulatorVM.dronePosition.value?.longitude
+        val currentLat = simulatorVM.droneState.value?.latitude
+        val currentLng = simulatorVM.droneState.value?.longitude
         val targetPosition = simulatorVM.targetPosition.value
         val targetLat = targetPosition?.latitude
         val targetLng = targetPosition?.longitude

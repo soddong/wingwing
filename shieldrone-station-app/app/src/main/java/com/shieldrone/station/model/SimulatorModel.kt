@@ -3,12 +3,9 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.shieldrone.station.constant.FlightContstant.Companion.ANGLE_THRESHOLD
 import com.shieldrone.station.constant.FlightContstant.Companion.EARTH_RADIUS
 import com.shieldrone.station.constant.FlightContstant.Companion.LANDING_DELAY_MILLISECONDS
-import com.shieldrone.station.constant.FlightContstant.Companion.MAX_DEGREE
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
 import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.VIRTUAL_STICK_TAG
@@ -52,7 +49,7 @@ class SimulatorModel {
         val velocity3D by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftVelocity) }
         val compassHeading by lazy { KeyTools.createKey(FlightControllerKey.KeyCompassHeading) }
         val keyGPSSignalLevel by lazy { KeyTools.createKey(FlightControllerKey.KeyGPSSignalLevel) }
-
+        val location2D by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftLocation) }
         val virtualStickManager by lazy { VirtualStickManager.getInstance() }
         val simulatorManager by lazy { SimulatorManager.getInstance() }
 
@@ -84,7 +81,10 @@ class SimulatorModel {
         KeyManager.getInstance().cancelListen(compassHeading)
         KeyManager.getInstance().cancelListen(keyGPSSignalLevel)
         KeyManager.getInstance().cancelListen(attitude)
+        KeyManager.getInstance().cancelListen(location2D)
 
+        KeyManager.getInstance().cancelListen(keyStartTakeoff)
+        KeyManager.getInstance().cancelListen(keyStartAutoLanding)
         // Virtual Stick 모드가 활성화되어 있다면 비활성화
         if (isVirtualStickEnabled) {
             disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
@@ -97,6 +97,8 @@ class SimulatorModel {
                 }
             })
         }
+
+        disableSimulator()
 
         Log.d(SIMULATOR_TAG, "SimulatorModel의 리소스가 해제되었습니다.")
     }
@@ -232,8 +234,9 @@ class SimulatorModel {
      */
     fun subscribeDroneState(onUpdate: (State) -> Unit) {
         val state = State()
-
         // 초기 값 설정
+        state.latitude = location2D.get()?.latitude
+        state.longitude = location2D.get()?.longitude
         state.pitch = attitude.get()?.pitch
         state.roll = attitude.get()?.roll
         state.yaw = attitude.get()?.yaw
@@ -261,14 +264,14 @@ class SimulatorModel {
             }
         }
         simulatorManager.addSimulatorStateListener(simulatorListener)
-        KeyManager.getInstance().listen(attitude, this) { _, data ->
-            data?.let {
-                state.yaw = it.yaw
-                state.roll = it.roll
-                state.pitch = it.pitch
-                onUpdate(state)
-            }
-        }
+//        KeyManager.getInstance().listen(attitude, this) { _, data ->
+//            data?.let {
+//                state.yaw = it.yaw
+//                state.roll = it.roll
+//                state.pitch = it.pitch
+//                onUpdate(state)
+//            }
+//        }
         KeyManager.getInstance()
             .listen(velocity3D, this) { _, data ->
                 data?.let {
@@ -278,16 +281,41 @@ class SimulatorModel {
                     onUpdate(state)
                 }
             }
-
-        KeyManager.getInstance().listen(
-            compassHeading,
-            this
-        ) { _, heading ->
-            heading?.let {
-                state.compassHeading = it
-                onUpdate(state)
+//
+        KeyManager.getInstance()
+            .listen(location3D, this) { _, data ->
+                data?.let {
+//                    state.latitude = it.latitude
+//                    state.longitude = it.longitude
+//                    state.altitude = it.altitude
+                    onUpdate(state)
+                    Log.d(
+                        SIMULATOR_TAG,
+                        "Location updated: lat=${it.latitude}, lng=${it.longitude}, alt=${it.altitude}"
+                    )
+                }
             }
-        }
+        KeyManager.getInstance()
+            .listen(location2D,this) {_, data ->
+                data?.let {
+                    state.latitude = it.latitude
+                    state.longitude = it.longitude
+                    onUpdate(state)
+//                    Log.d(
+//                        SIMULATOR_TAG,
+//                        "Location updated: lat=${it.latitude}, lng=${it.longitude}"
+//                    )
+                }
+            }
+//        KeyManager.getInstance().listen(
+//            compassHeading,
+//            this
+//        ) { _, heading ->
+//            heading?.let {
+//                state.compassHeading = it
+//                onUpdate(state)
+//            }
+//        }
     }
 
     /**
@@ -327,43 +355,41 @@ class SimulatorModel {
     /**
      * 드론의 위치 정보 (altitude, latitude, longitude)를 구독하여 지속적으로 업데이트하는 함수
      */
-//    fun subscribePosition(onUpdate: (Position) -> Unit) {
-//        // 초기 위치 설정
-//        var currentPosition = Position(
-//            altitude = location3D.get()?.altitude ?: 0.0,
-//            latitude = location3D.get()?.latitude ?: 0.0,
-//            longitude = location3D.get()?.longitude ?: 0.0
-//        )
-//
-//        // 위치 정보를 일정 간격으로 업데이트
-//        handler.post(object : Runnable {
-//            override fun run() {
-//                // 새로운 위치 정보를 가져옴
-//                val newAltitude = location3D.get()?.altitude ?: 0.0
-//                val newLatitude = location3D.get()?.latitude ?: 0.0
-//                val newLongitude = location3D.get()?.longitude ?: 0.0
-//                // 새로운 위치와 이전 위치 간의 거리 계산
-//                // 새로운 위치 정보로 Position 객체 생성
-//                val newPosition = Position(newAltitude, newLatitude, newLongitude)
-//
-//                val distance = calculateDistanceAndBearing(currentPosition.latitude,currentPosition.longitude
-//                    ,newPosition.latitude,newPosition.longitude)
-//                // 위치 값이 변경된 경우에만 업데이트
-//                if (currentPosition != newPosition) {
-//                    currentPosition = newPosition
-//                    onUpdate(newPosition)
-//                    Log.d(
-//                        SIMULATOR_TAG,
-//                        "Position updated: altitude = $newAltitude, latitude = $newLatitude, longitude = $newLongitude"
-//                    )
-//                }
-//
-//                // 100ms 주기로 위치 정보를 업데이트
-//                handler.postDelayed(this, 1000)
-//            }
-//        })
-//
-//    }
+    fun subscribePosition(onUpdate: (Position) -> Unit) {
+        // 초기 위치 설정
+        var currentPosition = Position(
+            altitude = location3D.get()?.altitude ?: 0.0,
+            latitude = location3D.get()?.latitude ?: 0.0,
+            longitude = location3D.get()?.longitude ?: 0.0
+        )
+
+        // 위치 정보를 일정 간격으로 업데이트
+        handler.post(object : Runnable {
+            override fun run() {
+                // 새로운 위치 정보를 가져옴
+                val newAltitude = location3D.get()?.altitude ?: 0.0
+                val newLatitude = location3D.get()?.latitude ?: 0.0
+                val newLongitude = location3D.get()?.longitude ?: 0.0
+                // 새로운 위치와 이전 위치 간의 거리 계산
+                // 새로운 위치 정보로 Position 객체 생성
+                val newPosition = Position(newAltitude, newLatitude, newLongitude)
+
+                // 위치 값이 변경된 경우에만 업데이트
+                if (currentPosition != newPosition) {
+                    currentPosition = newPosition
+                    onUpdate(newPosition)
+                    Log.d(
+                        SIMULATOR_TAG,
+                        "Position updated: altitude = $newAltitude, latitude = $newLatitude, longitude = $newLongitude"
+                    )
+                }
+
+                // 100ms 주기로 위치 정보를 업데이트
+                handler.postDelayed(this, 1000)
+            }
+        })
+
+    }
 
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
         var currentGPSLevel =
@@ -390,7 +416,6 @@ class SimulatorModel {
     }
 
 
-
     /**
      * Control 값을 설정하는 메서드
      */
@@ -404,10 +429,10 @@ class SimulatorModel {
      * 드론을 전진시키는 메서드 (Pitch 값 조정)
      */
     fun moveToForward() {
-        val pitch = 300 // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
+        val pitch = MAX_STICK_VALUE // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
         val controls = Controls(
-            leftStick = StickPosition(0, pitch),
-            rightStick = StickPosition(0, 0)
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(pitch, 0)
         )
         setDroneControlValues(controls)
         Log.d(SIMULATOR_TAG, "Moving forward with pitchAngle: $pitch")
@@ -433,7 +458,7 @@ class SimulatorModel {
         simulatorManager.disableSimulator(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 Log.d(SIMULATOR_TAG, "SimulatorMode 비 활성화 성공 ")
-
+                simulatorManager.clearAllSimulatorStateListener()
             }
 
             override fun onFailure(p0: IDJIError) {
@@ -451,8 +476,13 @@ class SimulatorModel {
      *
      */
     fun getCurrentDronePosition(): Position {
-        val locationKey = KeyTools.createKey(FlightControllerKey.KeyAircraftLocation3D)
-        val location = KeyManager.getInstance().getValue(locationKey)
+
+        val location = KeyManager.getInstance().getValue(location3D)
+
+        Log.d(
+            "LOCATION",
+            String.format("현재 위치의 lat : %.4f lng : %.4f ", location?.latitude, location?.longitude)
+        )
         return if (location != null) {
             Position(location.latitude, location.longitude, location.altitude)
         } else {
@@ -502,27 +532,39 @@ class SimulatorModel {
         val targetLng = position.longitude
         val targetAti = position.altitude
         Log.d("DISTANCE", String.format("target: %.5f, targetLng: %.5f", targetLat, targetLng))
-        // 기존 Runnable 제거
-//        currentMoveToTargetRunnable?.let {
-//            handler.removeCallbacks(it)
-//        }
-//
-        // 새로운 Runnable 생성 및 할당
 
         handler.post(object : Runnable {
             override fun run() {
-                val currentPosition = getCurrentDronePosition()
+//                val currentPosition = getCurrentDronePosition()
+                val currentPosition = getCurrentDronePositionForSimulation()
                 val currentYaw = getCurrentYaw()
-                val position = calculateDistanceAndBearing(
+                Log.d(
+                    "DEBUG", String.format(
+                        "slat : %.4f slng : %.4f tlat : %.4f tlng : %.4f ",
+                        currentPosition.latitude,
+                        currentPosition.longitude,
+                        targetLat,
+                        targetLng
+                    )
+                )
+                val result = calculateDistanceAndBearing(
                     currentPosition.latitude, currentPosition.longitude,
                     targetLat, targetLng
                 )
 
-                val targetBearing = position.second
-                val distance = position.first
+                val distance = result.first
+                val targetBearing = result.second
                 val yawDifference = calculateYawDifference(targetBearing, currentYaw)
 
-                Log.d("DISTANCE", String.format(" DISTANCE : %.2f, 런 안 target: %.4f, targetLng: %.4f", distance, targetLat, targetLng))
+                Log.d(
+                    "DISTANCE",
+                    String.format(
+                        " DISTANCE : %.4f, 런 안 target: %.4f, targetLng: %.4f",
+                        distance,
+                        targetLat,
+                        targetLng
+                    )
+                )
 
                 if (distance <= 1.0) {
                     // 목표 지점에 도달하면 정지하고 플래그 설정
@@ -531,6 +573,7 @@ class SimulatorModel {
                     // 이동 종료
                     onComplete()
                 } else {
+                    Log.d("MOVE", "yaw Diff : ${abs(yawDifference)}")
                     if (abs(yawDifference) > 5) {
                         // 드론의 방향을 조정
                         adjustYaw(yawDifference)
@@ -545,34 +588,58 @@ class SimulatorModel {
         })
     }
 
+    private fun getCurrentDronePositionForSimulation(): Position {
+        var location = location2D.get()
+        Log.d(
+            "LOCATION",
+            String.format("현재 위치의 lat : %.4f lng : %.4f ", location?.latitude, location?.longitude)
+        )
+        return if (location != null) {
+            Position(location.latitude, location.longitude, 1.2)
+        } else {
+            Position(0.0, 0.0, 0.0)
+        }
+    }
+
 
     // 7. Calculate Help
-    /**
-     * 두 지점 간의 거리와 방위각 계산
-     */
     fun calculateDistanceAndBearing(
         startLat: Double, startLng: Double,
         endLat: Double, endLng: Double
     ): Pair<Double, Double> {
+        // 위도와 경도의 차이를 구한 후 라디안으로 변환
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
+        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
 
+        // 시작 및 끝 위도도 라디안으로 변환
+        val startLatRad = Math.toRadians(startLat)
+        val endLatRad = Math.toRadians(endLat)
+
+        // Haversine 공식의 중간 계산 과정
         val a = sin(dLat / 2).pow(2.0) +
-                cos(Math.toRadians(startLat)) * cos(Math.toRadians(endLat)) *
+                cos(startLatRad) * cos(endLatRad) *
                 sin(dLng / 2).pow(2.0)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        Log.d("DEBUG", "a: $a")
 
-        val distance = EARTH_RADIUS * c // 거리 (미터 단위)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        Log.d("DEBUG", "c: $c")
+
+        // 거리 계산 (미터 단위)
+        val distance = EARTH_RADIUS * c
+        Log.d("DEBUG", "distance: $distance")
 
         // 방위각 계산
-        val y = sin(dLng) * cos(Math.toRadians(endLat))
-        val x = cos(Math.toRadians(startLat)) * sin(Math.toRadians(endLat)) -
-                sin(Math.toRadians(startLat)) * cos(Math.toRadians(endLat)) * cos(dLng)
+        val y = sin(dLng) * cos(endLatRad)
+        val x = cos(startLatRad) * sin(endLatRad) -
+                sin(startLatRad) * cos(endLatRad) * cos(dLng)
         var bearing = Math.toDegrees(atan2(y, x))
-        bearing = (bearing + MAX_DEGREE) % MAX_DEGREE // 방위각을 0~360도로 변환
+        bearing = (bearing + 360) % 360 // 방위각을 0~360도로 변환
+        Log.d("DEBUG", "bearing after normalization: $bearing")
 
         return Pair(distance, bearing)
     }
+
 
     // calculateYawDifference 함수 수정
     fun calculateYawDifference(targetBearing: Double, currentYaw: Double): Double {
@@ -596,7 +663,7 @@ class SimulatorModel {
     }
 
 
-    // 8. Control Value Settings, Print Logs
+// 8. Control Value Settings, Print Logs
     /**
      * Control 값을 설정하고 로그를 출력하는 메서드
      */
@@ -619,6 +686,4 @@ class SimulatorModel {
     private fun updateStickPositions(stickManager: IVirtualStickManager, controls: Controls) {
         applyControlValues(stickManager, controls, VIRTUAL_STICK_TAG)
     }
-
-
 }

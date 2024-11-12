@@ -510,25 +510,38 @@ class FlightControlModel {
         startLat: Double, startLng: Double,
         endLat: Double, endLng: Double
     ): Pair<Double, Double> {
+        // 위도와 경도를 라디안으로 변환
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
+        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
 
+        // Haversine 공식의 중간 계산 과정
         val a = sin(dLat / 2).pow(2.0) +
                 cos(Math.toRadians(startLat)) * cos(Math.toRadians(endLat)) *
                 sin(dLng / 2).pow(2.0)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        Log.d("DEBUG", "a: $a")
 
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        Log.d("DEBUG", "c: $c")
+
+        // 거리를 계산
         val distance = EARTH_RADIUS * c // 거리 (미터 단위)
+        Log.d("DEBUG", "distance: $distance")
 
         // 방위각 계산
         val y = sin(dLng) * cos(Math.toRadians(endLat))
         val x = cos(Math.toRadians(startLat)) * sin(Math.toRadians(endLat)) -
                 sin(Math.toRadians(startLat)) * cos(Math.toRadians(endLat)) * cos(dLng)
         var bearing = Math.toDegrees(atan2(y, x))
-        bearing = (bearing + MAX_DEGREE) % MAX_DEGREE // 방위각을 0~360도로 변환
+        Log.d("DEBUG", "bearing before normalization: $bearing")
+
+        // 방위각을 0~360도로 변환
+        bearing = (bearing + 360) % 360
+        Log.d("DEBUG", "bearing after normalization: $bearing")
 
         return Pair(distance, bearing)
     }
+
 
     // 목표 방위각과 현재 Yaw 값의 차이 계산
     fun calculateYawDifference(targetBearing: Double, currentYaw: Double): Double {

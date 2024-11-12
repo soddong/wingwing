@@ -301,8 +301,8 @@ class SimulatorVM : ViewModel() {
     }
 
     fun enableSimulatorMode() {
-        val lat = 36.4979118
-        val lng = 127.0360425
+        val lat = 37.396959
+        val lng = 127.0358512
         val simulatorGPSNum = 15
         val coordinate2D = LocationCoordinate2D(lat, lng)
         val data = InitializationSettings.createInstance(coordinate2D, simulatorGPSNum)
@@ -333,7 +333,9 @@ class SimulatorVM : ViewModel() {
             Log.d("NextTarget", "isMoving : $isMoving")
 
             val nextPosition = targetPositionQueue.poll() // 큐에서 첫 번째 위치를 가져옴
+            _targetPosition.postValue(nextPosition)
             if (nextPosition != null) {
+                Log.d("DEBUG","next Position : $nextPosition")
                 simulatorModel.moveToTarget(nextPosition) {
                     isMoving = false // 이동 완료 시 플래그 해제
                     // 이동 완료 후 큐에 남은 위치가 있으면 다음 위치로 이동

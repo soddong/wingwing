@@ -47,7 +47,7 @@ class RouteDecision:
         with open(csv_file_path, mode='r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                lat, lng = self.parse_wkt_point(row['WKT'])
+                lng, lat = self.parse_wkt_point(row['WKT'])
                 positions.append({'lat': lat, 'lng': lng})
         return positions
 
@@ -61,7 +61,7 @@ class RouteDecision:
         for position in positions:
             self.set_position(position)
             self.send_data()
-            time.sleep(1)
+            time.sleep(2)
 
 
     def receive_data(self):
