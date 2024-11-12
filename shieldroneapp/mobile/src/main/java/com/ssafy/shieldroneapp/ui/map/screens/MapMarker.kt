@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.map
+package com.ssafy.shieldroneapp.ui.map.screens
 
 /**
  * 근처 드론 정류장(출발지 후보), 출발지, 도착지를 나타내는 MapMarker 클래스.

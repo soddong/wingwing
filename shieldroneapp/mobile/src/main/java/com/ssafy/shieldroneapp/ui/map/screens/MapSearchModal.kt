@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.map
+package com.ssafy.shieldroneapp.ui.map.screens
 
 /**
  * 출발지와 도착지 검색 결과를 리스트 형태로 표시하는 모달 컴포넌트.

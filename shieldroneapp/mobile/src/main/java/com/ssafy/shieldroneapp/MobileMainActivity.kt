@@ -108,6 +108,7 @@ class MobileMainActivity : ComponentActivity() {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
                             navController.navigate(ROUTE_AUTHENTICATION) {
+                          //  navController.navigate("main_screen") {
                             // navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
