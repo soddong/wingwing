@@ -25,6 +25,9 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
 
     companion object {
         private const val TAG = "모바일: 웹소켓 메시지 센더"
+        private var lastSentDbFlag: Boolean? = null
+        private var lastSentTime: Long = 0
+        private val PERIODIC_SEND_INTERVAL = 5000L
     }
 
     fun sendWatchSensorData(data: HeartRateData) {
@@ -46,10 +49,8 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
                 Log.d(TAG, "심박수 데이터 전송 성공: $jsonData")
             } else {
                 Log.e(TAG, "데이터 전송 실패 - WebSocket 상태: ${webSocket != null}, 데이터: $jsonData")
-                // WebSocket이 존재하지만 전송에 실패한 경우
                 if (webSocket != null) {
                     Log.d(TAG, "WebSocket 상태 확인 필요")
-                    // WebSocket 상태를 체크하고 필요한 경우 재연결을 위해 예외 발생
                     throw Exception("WebSocket이 연결되어 있지만 전송에 실패했습니다")
                 }
             }
@@ -63,20 +64,28 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
         try {
             requireNotNull(webSocket) { "WebSocket이 null입니다" }
 
-            val jsonData = Gson().toJson(mapOf(
-                "type" to "sendDbFlag",
-                "time" to data.time,
-                "dbFlag" to data.dbFlag
-            ))
+            val currentTime = System.currentTimeMillis()
+            if (data.dbFlag ||
+                lastSentDbFlag != data.dbFlag ||
+                currentTime - lastSentTime >= PERIODIC_SEND_INTERVAL) {
 
-            Log.d(TAG, "음성 분석 데이터 전송: $jsonData")
-            val isSent = webSocket?.send(jsonData) ?: false
+                val jsonData = Gson().toJson(mapOf(
+                    "type" to "sendDbFlag",
+                    "time" to data.time,
+                    "dbFlag" to data.dbFlag
+                ))
 
-            if (isSent) {
-                Log.d(TAG, "음성 분석 데이터 전송 성공 - dbFlag: ${data.dbFlag}")
-            } else {
-                Log.e(TAG, "데이터 전송 실패")
-                throw Exception("음성 분석 데이터 전송 실패")
+                Log.d(TAG, "음성 분석 데이터 전송: $jsonData")
+                val isSent = webSocket?.send(jsonData) ?: false
+
+                if (isSent) {
+                    lastSentDbFlag = data.dbFlag 
+                    lastSentTime = currentTime
+                    Log.d(TAG, "음성 분석 데이터 전송 성공 - dbFlag: ${data.dbFlag}")
+                } else {
+                    Log.e(TAG, "데이터 전송 실패")
+                    throw Exception("음성 분석 데이터 전송 실패")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "음성 분석 데이터 전송 중 에러 발생", e)

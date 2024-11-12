@@ -15,22 +15,34 @@ class AudioDataRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "모바일: 오디오 데이터 레포"
+        private const val MIN_PROCESS_INTERVAL = 1000L
     }
 
+    private var lastProcessedDbFlag: Boolean? = null
+    private var lastProcessedTime: Long = 0
     private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
     private var isSending = false
 
     suspend fun processAudioData(audioData: AudioData) {
         try {
-            Log.d(TAG, "음성 분석 데이터 처리중 - 시간: ${audioData.time}, dbFlag: ${audioData.dbFlag}")
+            val currentTime = System.currentTimeMillis()
 
-            try {
-                webSocketService.sendAudioData(audioData)
-                Log.d(TAG, "웹소켓 전송 성공")
-            } catch (e: Exception) {
-                Log.e(TAG, "웹소켓 전송 실패, 로컬에 저장", e)
-                localDataSource.saveAudioData(audioData)
-                startSendingLocalAudioData()
+            if (audioData.dbFlag ||
+                lastProcessedDbFlag != audioData.dbFlag ||
+                currentTime - lastProcessedTime >= MIN_PROCESS_INTERVAL) {
+
+                Log.d(TAG, "음성 분석 데이터 처리중 - 시간: ${audioData.time}, dbFlag: ${audioData.dbFlag}")
+
+                try {
+                    webSocketService.sendAudioData(audioData)
+                    lastProcessedDbFlag = audioData.dbFlag
+                    lastProcessedTime = currentTime
+                    Log.d(TAG, "웹소켓 전송 성공")
+                } catch (e: Exception) {
+                    Log.e(TAG, "웹소켓 전송 실패, 로컬에 저장", e)
+                    localDataSource.saveAudioData(audioData)
+                    startSendingLocalAudioData()
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "음성 분석 데이터 처리 실패", e)
