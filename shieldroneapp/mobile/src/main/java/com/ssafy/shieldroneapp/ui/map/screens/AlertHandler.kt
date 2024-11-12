@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.map
+package com.ssafy.shieldroneapp.ui.map.screens
 
 /**
  * 드론 배정 및 안내 종료, 위험 감지 등 다양한 상황에 따른 알림을 관리하는 클래스.
