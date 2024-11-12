@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.request.EmergencyRequest;
 import com.ssafy.shieldron.dto.request.EndPosRequest;
 import com.ssafy.shieldron.dto.request.GetHivesInfoRequest;
 import com.ssafy.shieldron.dto.request.GuardianDeleteRequest;
@@ -78,6 +79,13 @@ public class UserSettingController {
     public ResponseEntity<?> deleteGuardian(@Valid @RequestBody GuardianDeleteRequest guardianDeleteRequest,
                                             @CurrentUser String phoneNumber) {
         userSettingService.deleteGuardian(guardianDeleteRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/emergency")
+    public ResponseEntity<?> sendEmergency(@Valid @RequestBody EmergencyRequest emergencyRequest,
+                                           @CurrentUser String phoneNumber) {
+        userSettingService.sendEmergency(emergencyRequest, phoneNumber);
         return ResponseEntity.ok().build();
     }
 
