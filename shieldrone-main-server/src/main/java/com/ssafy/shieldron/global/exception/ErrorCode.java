@@ -20,7 +20,8 @@ public enum ErrorCode {
     USER_ALREADY_HAS_DRONE("014", "이미 매칭된 유저입니다."),
     SAME_START_AND_END_LOCATION("015", "출발지와 도착지가 동일합니다."),
     ALREADY_MATCHED_HIVE("016", "이미 매칭 중인 드론 정류장입니다."),
-    ALREADY_MATCHED_DRONE("017", "이미 매칭된 드론입니다.")
+    ALREADY_MATCHED_DRONE("017", "이미 매칭된 드론입니다."),
+    NO_GUARDIAN_FOUND("018", "보호자를 찾을 수 없습니다.")
     ;
 
 

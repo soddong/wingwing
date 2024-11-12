@@ -2,6 +2,7 @@ package com.ssafy.shieldron.service;
 
 import com.ssafy.shieldron.domain.Guardian;
 import com.ssafy.shieldron.domain.User;
+import com.ssafy.shieldron.dto.request.EmergencyRequest;
 import com.ssafy.shieldron.dto.request.EndPosRequest;
 import com.ssafy.shieldron.dto.request.GuardianDeleteRequest;
 import com.ssafy.shieldron.dto.request.GuardianRequest;
@@ -9,6 +10,7 @@ import com.ssafy.shieldron.dto.request.GuardianUpdateRequest;
 import com.ssafy.shieldron.dto.response.EndPosResponse;
 import com.ssafy.shieldron.dto.response.GuardianResponse;
 import com.ssafy.shieldron.global.exception.CustomException;
+import com.ssafy.shieldron.global.util.SmsAuthUtil;
 import com.ssafy.shieldron.repository.GuardianRepository;
 import com.ssafy.shieldron.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import static com.ssafy.shieldron.global.exception.ErrorCode.GUARDIAN_ALREADY_EX
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_GUARDIAN;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_USER;
 import static com.ssafy.shieldron.global.exception.ErrorCode.MAX_GUARDIAN_REACHED;
+import static com.ssafy.shieldron.global.exception.ErrorCode.NO_GUARDIAN_FOUND;
 
 @Slf4j
 @Service
@@ -33,6 +36,7 @@ public class UserSettingService {
 
     private final UserRepository userRepository;
     private final GuardianRepository guardianRepository;
+    private final SmsAuthUtil smsAuthUtil;
 
     @Transactional
     public void updateEndPos(EndPosRequest endPosRequest, String phoneNumber) {
@@ -108,6 +112,29 @@ public class UserSettingService {
                 .orElseThrow(() -> new CustomException(INVALID_GUARDIAN));
 
         guardianRepository.delete(guardian);
+    }
+
+    @Transactional
+    public void sendEmergency(EmergencyRequest emergencyRequest, String phoneNumber) {
+        User user = getUserOrThrow(phoneNumber);
+        BigDecimal lat = emergencyRequest.lat();
+        BigDecimal lng = emergencyRequest.lng();
+        String username = user.getUsername();
+
+        List<Guardian> guardians = guardianRepository.findAllByUser(user);
+
+        if (guardians.isEmpty()) {
+            log.error("사용자 {} (전화번호: {})에게 등록된 보호자가 없습니다.", username, phoneNumber);
+            throw new CustomException(NO_GUARDIAN_FOUND);
+        }
+
+        for (Guardian guardian : guardians) {
+            try {
+                smsAuthUtil.sendEmergency(guardian.getPhoneNumber(), lat, lng, username);
+            } catch (Exception e) {
+                log.error("보호자 {} (전화번호: {})에게 긴급 메시지 전송 실패", guardian.getRelation(), guardian.getPhoneNumber(), e);
+            }
+        }
     }
 
     private User getUserOrThrow(String phoneNumber) {
