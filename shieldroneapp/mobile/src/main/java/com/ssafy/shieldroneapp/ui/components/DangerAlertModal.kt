@@ -25,7 +25,7 @@ import java.util.*
 fun DangerAlertModal(
     alertState: DangerAlertState,
     onDismiss: () -> Unit,
-    onEmergencyAlert: () -> Unit = {},
+    onEmergencyAlert: suspend () -> Boolean = { false },
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -52,8 +52,12 @@ fun DangerAlertModal(
                             delay(1000)
                             remainingSeconds--
                         }
-                        onEmergencyAlert()
-                        shouldShowToast = true
+                        val success = onEmergencyAlert()
+                        if (success) {
+                            shouldShowToast = true
+                        } else {
+                            // TODO: API 호출 실패 시 에러 메시지 띄우기
+                        }
                     } finally {
                         showModal = false
                         onDismiss()

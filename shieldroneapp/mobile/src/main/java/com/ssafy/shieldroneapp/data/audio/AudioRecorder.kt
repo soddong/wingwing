@@ -131,7 +131,7 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
-                        val dbFlag = audioAnalyzer.analyzeAudioData(buffer, readResult)
+                        val dbFlag = audioAnalyzer.analyzeAudioData(buffer)
                         val audioData = AudioData(
                             time = System.currentTimeMillis(),
                             dbFlag = dbFlag
@@ -139,7 +139,6 @@ class AudioRecorder @Inject constructor(
                         Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $dbFlag")
 
                         try {
-                            // WebSocketService 대신 Repository를 통해 데이터 전송
                             audioDataRepository.processAudioData(audioData)
                         } catch (e: Exception) {
                             Log.e(TAG, "오디오 데이터 처리 실패", e)

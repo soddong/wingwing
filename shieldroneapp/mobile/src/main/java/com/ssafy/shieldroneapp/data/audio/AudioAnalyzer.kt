@@ -24,7 +24,7 @@ class AudioAnalyzer @Inject constructor() {
         private const val FEMALE_SCREAM_FREQ_MAX = 3000.0
     }
 
-    fun analyzeAudioData(buffer: ByteArray, size: Int): Boolean {
+    fun analyzeAudioData(buffer: ByteArray): Boolean {
         val decibel = calculateDecibel(buffer)
         val frequency = calculateFrequency(buffer)
 

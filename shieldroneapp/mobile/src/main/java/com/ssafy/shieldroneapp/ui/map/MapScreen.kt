@@ -26,6 +26,8 @@ import com.ssafy.shieldroneapp.ui.components.DangerAlertModal
 import com.ssafy.shieldroneapp.ui.components.DangerAlertState
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * 사용자의 현재 위치와 드론 경로 안내를 제공하는 메인 Map 화면.
@@ -41,7 +43,8 @@ import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 fun MapScreen(
     isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
-    mapViewModel: MapViewModel = hiltViewModel()
+    mapViewModel: MapViewModel = hiltViewModel(),
+    coroutineScope: CoroutineScope = rememberCoroutineScope()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -49,19 +52,16 @@ fun MapScreen(
     val connectionState by viewModel.watchConnectionState.collectAsState()
     val alertState by mapViewModel.alertState.collectAsState()
 
-    // TODO: 실제 위험 알림 상태 관리
-//    val alertState by mapViewModel.alertState.collectAsState()
-
-// TODO: 임시
-    var dangerAlertState by remember {
-        mutableStateOf(
-            DangerAlertState(
-                isVisible = true,  // 모달 표시
-                level = 3,         // 위험 정도, 현재는 3만 적용
-                timestamp = System.currentTimeMillis()  // 현재 시간
+    /*// TODO: 임시
+        var dangerAlertState by remember {
+            mutableStateOf(
+                DangerAlertState(
+                    isVisible = true,  // 모달 표시
+                    level = 3,         // 위험 정도, 현재는 3만 적용
+                    timestamp = System.currentTimeMillis()  // 현재 시간
+                )
             )
-        )
-    }
+        }*/
 
     // 워치 연결 관리
     WatchConnectionManager(
@@ -119,21 +119,28 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-/*
-        // TODO: 실제: 위험 알림 모달
         DangerAlertModal(
             alertState = alertState,
-            onDismiss = mapViewModel::dismissAlert
+            onDismiss = mapViewModel::dismissAlert,
+            onEmergencyAlert = {
+                coroutineScope.launch {
+                    val success = mapViewModel.sendEmergencyAlert()
+                    if (success) {
+                        mapViewModel.showToast()
+                    } else {
+                        // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
+                    }
+                }
+                true
+            }
         )
-*/
-
-        // TODO: 임시 코드 사용 중
-        DangerAlertModal(
-            alertState = dangerAlertState,
-            onDismiss = {
-                dangerAlertState = dangerAlertState.copy(isVisible = false)
-            },
-        )
+        /* // TODO: 임시 코드 사용 중
+         DangerAlertModal(
+             alertState = dangerAlertState,
+             onDismiss = {
+                 dangerAlertState = dangerAlertState.copy(isVisible = false)
+             },
+         )*/
 
         ConnectionStatusSnackbar(
             connectionState = connectionState,

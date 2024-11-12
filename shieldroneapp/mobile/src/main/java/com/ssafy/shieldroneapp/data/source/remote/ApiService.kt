@@ -14,6 +14,7 @@ package com.ssafy.shieldroneapp.data.source.remote
 
 import com.ssafy.shieldroneapp.data.model.Guardian
 import com.ssafy.shieldroneapp.data.model.request.CodeVerificationRequest
+import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
 import com.ssafy.shieldroneapp.data.model.request.PhoneNumberRequest
 import com.ssafy.shieldroneapp.data.model.request.TokenRequest
 import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
@@ -24,7 +25,6 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Query
-import java.math.BigDecimal
 
 interface ApiService {
     @POST("users/send")
@@ -55,8 +55,5 @@ interface ApiService {
     suspend fun addGuardian(@Body guardian: Guardian)
 
     @POST("settings/emergency")
-    suspend fun setEmergency(
-        @Query("lat") lat: BigDecimal,
-        @Query("lng") lng: BigDecimal
-    ): Response<Unit>
+    suspend fun setEmergency(@Body request: EmergencyRequest): Response<Unit>
 }
