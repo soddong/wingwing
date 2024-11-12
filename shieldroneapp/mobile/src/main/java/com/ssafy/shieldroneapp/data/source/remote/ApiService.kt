@@ -24,6 +24,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Query
+import java.math.BigDecimal
 
 interface ApiService {
     @POST("users/send")
@@ -50,6 +51,12 @@ interface ApiService {
         @Query("lng") lng: Double
     )
 
-    @POST("/settings/guardian")
+    @POST("settings/guardian")
     suspend fun addGuardian(@Body guardian: Guardian)
+
+    @POST("settings/emergency")
+    suspend fun setEmergency(
+        @Query("lat") lat: BigDecimal,
+        @Query("lng") lng: BigDecimal
+    ): Response<Unit>
 }

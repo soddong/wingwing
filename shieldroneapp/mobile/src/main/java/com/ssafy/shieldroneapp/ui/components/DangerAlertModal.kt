@@ -25,12 +25,14 @@ import java.util.*
 fun DangerAlertModal(
     alertState: DangerAlertState,
     onDismiss: () -> Unit,
+    onEmergencyAlert: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     var showModal by remember { mutableStateOf(false) }
     var remainingSeconds by remember { mutableStateOf(5) }
     var shouldShowToast by remember { mutableStateOf(false) }
+    var timerJob by remember { mutableStateOf<Job?>(null) }
 
     SentMessageToast(
         showToast = shouldShowToast,
@@ -44,20 +46,23 @@ fun DangerAlertModal(
 
             // Level 3일 경우 5초 후 API 호출
             if (alertState.level == 3) {
-                scope.launch {
-                    while (remainingSeconds > 0) {
-                        delay(1000)
-                        remainingSeconds--
+                timerJob = scope.launch {
+                    try {
+                        while (remainingSeconds > 0) {
+                            delay(1000)
+                            remainingSeconds--
+                        }
+                        onEmergencyAlert()
+                        shouldShowToast = true
+                    } finally {
+                        showModal = false
+                        onDismiss()
                     }
-                    // TODO: 긴급 알림 API 호출
-                    showModal = false
-                    onDismiss()
-                    shouldShowToast = true
                 }
             }
             // Level 1, 2는 이전과 동일하게 5초 후 자동으로 닫힘
             else {
-                scope.launch {
+                timerJob = scope.launch {
                     while (remainingSeconds > 0) {
                         delay(1000)
                         remainingSeconds--
@@ -163,6 +168,7 @@ fun DangerAlertModal(
                                     shape = RoundedCornerShape(12.dp)
                                 )
                                 .clickable {
+                                    timerJob?.cancel()
                                     showModal = false
                                     onDismiss()
                                 }

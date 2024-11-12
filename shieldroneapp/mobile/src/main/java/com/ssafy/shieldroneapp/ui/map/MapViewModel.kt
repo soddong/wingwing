@@ -1,13 +1,17 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
+import com.ssafy.shieldroneapp.data.source.remote.ApiService
 import com.ssafy.shieldroneapp.ui.components.DangerAlertState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import javax.inject.Inject
 
 /**
@@ -25,8 +29,13 @@ import javax.inject.Inject
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val alertRepository: AlertRepository,
-    private val alertHandler: AlertHandler
+    private val alertHandler: AlertHandler,
+    private val apiService: ApiService
 ) : ViewModel() {
+    companion object {
+        private const val TAG = "모바일: 맵 뷰모델"
+    }
+
     val alertState = alertRepository.alertState
         .map { alertData ->
             alertData?.let {
@@ -46,5 +55,22 @@ class MapViewModel @Inject constructor(
     fun dismissAlert() {
         alertRepository.clearAlert()
         alertHandler.dismissAlert()
+    }
+
+    fun sendEmergencyAlert() {
+        viewModelScope.launch {
+            try {
+                apiService.setEmergency(
+                    lat = BigDecimal("37.123"),
+                    lng = BigDecimal("127.456")
+                )
+                Log.d(TAG, "긴급 알림 전송 성공")
+            } catch (e: Exception) {
+                Log.e(TAG, "긴급 알림 전송 실패", e)
+                Log.e(TAG, "에러 메시지: ${e.message}")
+                Log.e(TAG, "에러 원인: ${e.cause}")
+                e.printStackTrace()
+            }
+        }
     }
 }
