@@ -54,6 +54,7 @@ class WearConnectionManager @Inject constructor(
         private const val PATH_MOBILE_STATUS = "/mobile_status"
         private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
         private const val PATH_DANGER_ALERT = "/danger_alert"
+        private const val PATH_OBJECT_ALERT = "/object_alert"
     }
 
     interface MonitoringCallback {
@@ -103,6 +104,13 @@ class WearConnectionManager @Inject constructor(
                         val alertJson = String(it)
                         Log.d(TAG, "위험 알림 수신: $alertJson")
                         alertHandler.handleDangerAlert(alertJson)
+                    }
+                }
+                PATH_OBJECT_ALERT -> {
+                    messageEvent.data?.let {
+                        val alertJson = String(it)
+                        Log.d(TAG, "물체 감지 알림 수신: $alertJson")
+                        alertHandler.handleObjectAlert(alertJson)
                     }
                 }
             }

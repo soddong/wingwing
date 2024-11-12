@@ -39,4 +39,21 @@ class AlertHandler @Inject constructor(
             e.printStackTrace()
         }
     }
+    fun handleObjectAlert(alertJson: String) {
+        try {
+            val alertData = gson.fromJson(alertJson, AlertData::class.java)
+            Log.d(TAG, "위험 알림 수신 및 변환 성공 - time: ${alertData.time}, object: ${alertData.objectFlag}")
+
+            scope.launch {
+                if (alertData.objectFlag) {
+                    alertRepository.processObjectAlert(alertData)
+                } else {
+                    alertRepository.clearAlert()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "위험 알림 처리 실패", e)
+            e.printStackTrace()
+        }
+    }
 }

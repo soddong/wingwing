@@ -34,6 +34,12 @@ class AlertRepository @Inject constructor(
         sendDangerFlag(true)
     }
 
+    suspend fun processObjectAlert(alertData: AlertData) {
+        Log.d(TAG, "⚠️ 물체 감지 알림 활성화 - time: ${alertData.time}")
+        _currentAlert.value = alertData
+        sendObjectFlag(true)
+    }
+
     suspend fun clearAlert() {
         Log.d(TAG, "위험 알림 해제")
         _currentAlert.value = null
@@ -52,6 +58,21 @@ class AlertRepository @Inject constructor(
             Log.d(TAG, "위험 알림 플래그 전송 성공: $flag")
         } catch (e: Exception) {
             Log.e(TAG, "위험 알림 플래그 전송 실패", e)
+        }
+    }
+
+    private suspend fun sendObjectFlag(flag: Boolean) {
+        try {
+            val request = PutDataMapRequest.create("/objectAlert").apply {
+                dataMap.putBoolean("objectFlag", flag)
+            }
+            val putDataReq = request.asPutDataRequest()
+            putDataReq.setUrgent()
+
+            Wearable.getDataClient(context).putDataItem(putDataReq).await(5000)
+            Log.d(TAG, "물체 감지 알림 플래그 전송 성공: $flag")
+        } catch (e: Exception) {
+            Log.e(TAG, "물체 감지 플래그 전송 실패", e)
         }
     }
 }
