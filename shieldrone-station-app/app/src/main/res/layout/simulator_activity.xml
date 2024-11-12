@@ -4,37 +4,54 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp">
-    <!-- 시뮬레이터 상태를 표시하는 TextView -->
     <TextView
-        android:id="@+id/txt_simulator_state"
+        android:id="@+id/txtSimulatorState"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="상태"
         android:textSize="12sp"
         android:padding="6dp" />
-    <!-- 시뮬레이터 연결 상태를 표시하는 TextView -->
     <TextView
-        android:id="@+id/txt_simulator_position"
+        android:id="@+id/txtSimulatorPosition"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="위치"
         android:textSize="12sp"
         android:padding="6dp" />
-
     <TextView
-        android:id="@+id/txt_simulator_controls"
+        android:id="@+id/txtSimulatorControls"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="컨트롤"
         android:textSize="12sp"
         android:padding="6dp" />
-    <!-- 메시지 표시 -->
     <TextView
-        android:id="@+id/txtMessage"
+        android:id="@+id/txtSimulatorGpsLevel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="GPS 레벨"
+        android:textSize="12sp"
+        android:padding="6dp" />
+    <TextView
+        android:id="@+id/txtSimulatorLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="사용자 위치"
+        android:textSize="12sp"
+        android:padding="6dp" />
+    <TextView
+        android:id="@+id/txtSimulatorTargetLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="목표위치 및 거리"
+        android:textSize="12sp"
+        android:padding="6dp" />
+    <TextView
+        android:id="@+id/txtSimulatorMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="메시지"
-        android:textSize="14sp"
+        android:textSize="12sp"
         android:padding="6dp" />
 
     <!-- 버튼들 (4개씩 한 줄에 배치) -->
@@ -45,14 +62,14 @@
         android:weightSum="4">
 
         <Button
-            android:id="@+id/btnTakeOff"
+            android:id="@+id/btnSimulatorTakeOff"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="이륙" />
 
         <Button
-            android:id="@+id/btnLand"
+            android:id="@+id/btnSimulatorLand"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -81,27 +98,27 @@
         android:weightSum="4">
 
         <Button
-            android:id="@+id/btnMoveLeft"
+            android:id="@+id/btnSimulatorMoveLeft"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/ic_move_left" />
 
         <Button
-            android:id="@+id/btnMoveUp"
+            android:id="@+id/btnSimulatorMoveUp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/ic_move_up" />
         <Button
-            android:id="@+id/btnMoveRight"
+            android:id="@+id/btnSimulatorMoveRight"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/ic_move_right" />
 
         <Button
-            android:id="@+id/btnMoveDown"
+            android:id="@+id/btnSimulatorMoveDown"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -116,27 +133,27 @@
 
 
         <Button
-            android:id="@+id/btnRotateLeft"
+            android:id="@+id/btnSimulatorRotateLeft"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/ic_rotate_left" />
 
         <Button
-            android:id="@+id/btnRotateRight"
+            android:id="@+id/btnSimulatorRotateRight"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/ic_rotate_right" />
         <Button
-            android:id="@+id/btnEnableVirtualStick"
+            android:id="@+id/btnSimulatorEnableVirtualStick"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="가상스틱 활성화" />
 
         <Button
-            android:id="@+id/btnDisableVirtualStick"
+            android:id="@+id/btnSimulatorDisableVirtualStick"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -146,24 +163,31 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="3">
-    <Button
-        android:id="@+id/btnInitValue"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="값 초기화" />
-    <Button
-        android:id="@+id/btnMoveToTarget"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="목표 이동" />
-    <Button
-        android:id="@+id/btnAdjustYaw"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="요 조정" />
+        android:weightSum="4">
+
+        <Button
+            android:id="@+id/btnSimulatorMoveToTarget"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="목표 이동" />
+        <Button
+            android:id="@+id/btnSimulatorGetTargetLocation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="값 받기" />
+        <Button
+            android:id="@+id/btnSimulatorStopMove"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="멈추기 " />
+        <Button
+            android:id="@+id/btnSimulatorInitValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="초기화 " />
     </LinearLayout>
 </LinearLayout>

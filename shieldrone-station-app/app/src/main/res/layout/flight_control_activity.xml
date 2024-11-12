@@ -6,13 +6,12 @@
     android:orientation="vertical"
     android:padding="16dp">
     <TextView
-        android:id="@+id/txtDroneStatus"
+        android:id="@+id/txtDroneState"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="상태"
         android:textSize="12sp"
         android:padding="6dp" />
-    <!-- 시뮬레이터 연결 상태를 표시하는 TextView -->
     <TextView
         android:id="@+id/txtDronePosition"
         android:layout_width="wrap_content"
@@ -20,8 +19,6 @@
         android:text="위치"
         android:textSize="12sp"
         android:padding="6dp" />
-    <!-- 드론 상태 표시 -->
-
     <TextView
         android:id="@+id/txtDroneControls"
         android:layout_width="wrap_content"
@@ -44,14 +41,6 @@
         android:text="사용자 위치"
         android:textSize="12sp"
         android:padding="6dp" />
-    <!-- 메시지 표시 -->
-    <TextView
-        android:id="@+id/txtMessage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="메시지"
-        android:textSize="12sp"
-        android:padding="6dp" />
     <TextView
         android:id="@+id/txtTargetLocation"
         android:layout_width="match_parent"
@@ -59,7 +48,16 @@
         android:text="목표위치 및 거리"
         android:textSize="12sp"
         android:padding="6dp" />
+    <!-- 메시지 표시 -->
+    <TextView
+        android:id="@+id/txtDroneMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="메시지"
+        android:textSize="12sp"
+        android:padding="6dp" />
     <!-- 버튼들 (4개씩 한 줄에 배치) -->
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -94,16 +92,6 @@
             android:layout_weight="1"
             android:text="후진" />
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="2">
-
-
-    </LinearLayout>
-
     <!-- 이동 및 회전 버튼들 -->
     <LinearLayout
         android:layout_width="match_parent"
