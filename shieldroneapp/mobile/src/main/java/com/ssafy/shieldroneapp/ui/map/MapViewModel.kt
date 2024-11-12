@@ -3,11 +3,16 @@ package com.ssafy.shieldroneapp.ui.map
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
 import com.ssafy.shieldroneapp.ui.components.DangerAlertState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +41,9 @@ class MapViewModel @Inject constructor(
         private const val TAG = "모바일: 맵 뷰모델"
     }
 
+    private val _showToast = MutableStateFlow(false)
+    val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
+
     val alertState = alertRepository.alertState
         .map { alertData ->
             alertData?.let {
@@ -57,20 +65,36 @@ class MapViewModel @Inject constructor(
         alertHandler.dismissAlert()
     }
 
-    fun sendEmergencyAlert() {
-        viewModelScope.launch {
-            try {
-                apiService.setEmergency(
-                    lat = BigDecimal("37.123"),
-                    lng = BigDecimal("127.456")
-                )
-                Log.d(TAG, "긴급 알림 전송 성공")
-            } catch (e: Exception) {
-                Log.e(TAG, "긴급 알림 전송 실패", e)
-                Log.e(TAG, "에러 메시지: ${e.message}")
-                Log.e(TAG, "에러 원인: ${e.cause}")
-                e.printStackTrace()
+    suspend fun sendEmergencyAlert(): Boolean {
+        return try {
+            val request = EmergencyRequest(
+                // TODO: 임시로 좌표 고정
+                lat = BigDecimal("37.123"),
+                lng = BigDecimal("127.456")
+            )
+            Log.d(TAG, "전송 요청: ${Gson().toJson(request)}")
+            val response = apiService.setEmergency(request)
+            if (response.isSuccessful) {
+                Log.d(TAG, "긴급 알림 전송 성공 - 위치: $request")
+                true
+            } else {
+                Log.e(TAG, "긴급 알림 전송 실패 - 상태 코드: ${response.code()}")
+                false
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "긴급 알림 전송 실패", e)
+            Log.e(TAG, "에러 메시지: ${e.message}")
+            Log.e(TAG, "에러 원인: ${e.cause}")
+            e.printStackTrace()
+            false
         }
+    }
+
+    fun showToast() {
+        _showToast.value = true
+    }
+
+    fun hideToast() {
+        _showToast.value = false
     }
 }
