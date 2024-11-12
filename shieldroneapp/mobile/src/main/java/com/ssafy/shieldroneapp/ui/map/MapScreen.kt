@@ -1,15 +1,26 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import android.Manifest
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -24,6 +35,16 @@ import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.camera.CameraUpdateFactory
+import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
+import com.ssafy.shieldroneapp.ui.components.DangerAlertModal
+import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
+import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
+import com.ssafy.shieldroneapp.utils.setupMap
+import com.ssafy.shieldroneapp.utils.updateCurrentLocationMarker
+import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * 사용자의 현재 위치와 드론 경로 안내를 제공하는 메인 Map 화면.
@@ -42,13 +63,16 @@ fun MapScreen(
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope()
 ) {
-    val state = viewModel.state.collectAsStateWithLifecycle().value
+
+    val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
-    var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
+//    var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
+    var kakaoMap: KakaoMap? = null // mutableStateOf 대신 일반 변수로 선언
     val lifecycleOwner = LocalLifecycleOwner.current
-    val heartRateState by viewModel.heartRateData.collectAsState()
-    val connectionState by viewModel.watchConnectionState.collectAsState()
-    val alertState by mapViewModel.alertState.collectAsState()
+
+    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
+    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
     /*// TODO: 임시
         var dangerAlertState by remember {
@@ -62,7 +86,7 @@ fun MapScreen(
         }*/
 
     // 워치 연결 관리
-    WatchConnectionManager(
+    WatchConnectionManager (
         onConnectionStatusDetermined = { isConnected ->
             viewModel.updateWatchConnectionState(
                 if (isConnected) WatchConnectionState.Connected
@@ -78,10 +102,10 @@ fun MapScreen(
     ) { permissions ->
         val locationGranted = permissions.entries.all { it.value }
         if (locationGranted) {
-            viewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
         }
     }
-    LaunchedEffect(Unit) {
+    LaunchedEffect (Unit) {
         locationPermissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -99,7 +123,6 @@ fun MapScreen(
             state.currentLocation?.let { setupMap(map, state) }
         }
     }
-
      Box(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -124,7 +147,7 @@ fun MapScreen(
                                     Log.d("MapScreen", "Map ready")
                                     kakaoMap = map
                                     // 초기 위치 로드 및 주변 정류장(출발지) 조회 이벤트 호출
-                                    viewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+                                    mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
                                     setupMap(map, state) // 카메라 초기 위치 설정
                                 }
                             }
@@ -149,17 +172,17 @@ fun MapScreen(
             Column(
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
-                SearchInputFields(
+                SearchInputFields (
                     startText = state.startSearchText,
                     endText = state.endSearchText,
-                    onStartTextChange = { viewModel.updateStartLocationText(it) },
-                    onEndTextChange = { viewModel.updateEndLocationText(it) }
+                    onStartTextChange = { mapViewModel.updateStartLocationText(it) },
+                    onEndTextChange = { mapViewModel.updateEndLocationText(it) }
                 )
             }
 
             // 하단 버튼
-            Button(
-                onClick = { viewModel.handleEvent(MapEvent.RequestDroneAssignment) },
+            Button (
+                onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
                 modifier = Modifier.fillMaxWidth()
                     .height(56.dp)
                     .align(Alignment.BottomCenter),
@@ -171,7 +194,7 @@ fun MapScreen(
                 )
             }
 
-               DangerAlertModal(
+            DangerAlertModal(
             alertState = alertState,
             onDismiss = mapViewModel::dismissAlert,
             onEmergencyAlert = {
@@ -184,8 +207,8 @@ fun MapScreen(
                     }
                 }
                 true
-            }
-        )
+                }
+            )
         /* // TODO: 임시 코드 사용 중
          DangerAlertModal(
              alertState = dangerAlertState,

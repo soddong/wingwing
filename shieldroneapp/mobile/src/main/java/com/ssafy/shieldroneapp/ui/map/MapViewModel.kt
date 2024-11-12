@@ -1,5 +1,29 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.LatLng
+import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
+import com.ssafy.shieldroneapp.data.repository.AlertRepository
+import com.ssafy.shieldroneapp.data.repository.DroneRepository
+import com.ssafy.shieldroneapp.data.repository.MapRepository
+import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.ui.components.DangerAlertState
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import javax.inject.Inject
+
 /**
  * Map 화면의 상태와 로직을 관리하는 ViewModel 클래스.
  *
@@ -177,6 +201,4 @@ class MapViewModel @Inject constructor(
     fun hideToast() {
         _showToast.value = false
     }
-}
-
 }
