@@ -21,6 +21,19 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
+import com.ssafy.shieldroneapp.data.model.Guardian
+import com.ssafy.shieldroneapp.data.model.request.CodeVerificationRequest
+import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
+import com.ssafy.shieldroneapp.data.model.request.PhoneNumberRequest
+import com.ssafy.shieldroneapp.data.model.request.TokenRequest
+import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
+import com.ssafy.shieldroneapp.data.model.request.VerificationCodeRequest
+import com.ssafy.shieldroneapp.data.model.response.TokenResponse
+import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.POST
+import retrofit2.http.Query
 
 /**
  * 서버와의 HTTP 통신을 담당하는 Retrofit 인터페이스.
@@ -112,6 +125,10 @@ interface ApiService {
     @GET("settings/end-pos")
     suspend fun getHomeLocation(@Query("lat") lat: Double, @Query("lng") lng: Double): Response<HomeLocationResponse>
 
+    3) 보호자 등록
+    @POST("settings/guardian")
+    suspend fun addGuardian(@Body guardian: Guardian)
+
 
 
     // 3. 지도 관련 API
@@ -170,5 +187,11 @@ interface ApiService {
      */
     @POST("drones/match")
     suspend fun matchDrone(@Body requestBody: DroneMatchRequest): Response<DroneMatchResponse>
+
+
+    
+    // 5. 위험 상황 관련 API
+    @POST("settings/emergency")
+    suspend fun setEmergency(@Body request: EmergencyRequest): Response<Unit>
 
 }

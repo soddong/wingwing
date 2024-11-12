@@ -30,6 +30,9 @@ public class Drone extends BaseEntity {
     @OneToOne(mappedBy = "drone", fetch = FetchType.LAZY)
     private Hive hive;
 
+    @Column(name = "droneCode", nullable = false)
+    private Integer droneCode;
+
     public void updateActive(boolean flag) {
         this.isActive = flag;
     }

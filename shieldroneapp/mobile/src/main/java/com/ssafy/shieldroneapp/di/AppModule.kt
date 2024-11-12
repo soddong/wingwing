@@ -5,6 +5,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.ssafy.shieldroneapp.data.audio.AudioAnalyzer
 import com.ssafy.shieldroneapp.data.audio.AudioRecorder
+import com.ssafy.shieldroneapp.data.repository.AudioDataRepository
 import com.ssafy.shieldroneapp.data.repository.HeartRateDataRepository
 import com.ssafy.shieldroneapp.data.source.local.AudioDataLocalSource
 import com.ssafy.shieldroneapp.data.source.local.HeartRateLocalDataSource
@@ -12,6 +13,7 @@ import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketErrorHandler
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.permissions.PermissionManager
 import com.ssafy.shieldroneapp.services.connection.MobileConnectionManager
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
@@ -60,12 +62,14 @@ object AppModule {
     fun provideWebSocketConnectionManager(
         webSocketService: WebSocketService,
         webSocketMessageSender: WebSocketMessageSender,
-        errorHandler: WebSocketErrorHandler
+        errorHandler: WebSocketErrorHandler,
+        webSocketSubscriptions: WebSocketSubscriptions
     ): WebSocketConnectionManager {
         return WebSocketConnectionManager(
-            webSocketService = webSocketService,
-            webSocketMessageSender = webSocketMessageSender,
-            errorHandler = errorHandler
+            webSocketService,
+            webSocketMessageSender,
+            errorHandler,
+            webSocketSubscriptions
         )
     }
 
@@ -74,13 +78,15 @@ object AppModule {
     fun provideWebSocketService(
         context: Context,
         webSocketMessageSender: WebSocketMessageSender,
-        audioDataLocalSource: AudioDataLocalSource
+        audioDataLocalSource: AudioDataLocalSource,
+        webSocketSubscriptions: WebSocketSubscriptions
     ): WebSocketService {
         val service = WebSocketService(context, webSocketMessageSender, audioDataLocalSource)
         val connectionManager = provideWebSocketConnectionManager(
             service,
             webSocketMessageSender,
-            provideWebSocketErrorHandler(context)
+            provideWebSocketErrorHandler(context),
+            webSocketSubscriptions
         )
         service.setConnectionManager(connectionManager)
         return service
@@ -96,10 +102,16 @@ object AppModule {
     @Singleton
     fun provideAudioRecorder(
         @ApplicationContext context: Context,
+        audioDataRepository: AudioDataRepository,
         webSocketService: WebSocketService,
         audioAnalyzer: AudioAnalyzer
     ): AudioRecorder {
-        return AudioRecorder(context, webSocketService, audioAnalyzer)
+        return AudioRecorder(
+            context,
+            audioDataRepository,
+            webSocketService,
+            audioAnalyzer
+        )
     }
 
     @Provides
@@ -108,6 +120,15 @@ object AppModule {
         @ApplicationContext context: Context
     ): AudioDataLocalSource {
         return AudioDataLocalSource(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioDataRepository(
+        webSocketService: WebSocketService,
+        audioDataLocalSource: AudioDataLocalSource
+    ): AudioDataRepository {
+        return AudioDataRepository(webSocketService, audioDataLocalSource)
     }
 
     @Provides
@@ -126,7 +147,6 @@ object AppModule {
     }
 
     @Provides
-    @Singleton
     fun provideHeartRateViewModel(
         connectionManager: MobileConnectionManager
     ): HeartRateViewModel {

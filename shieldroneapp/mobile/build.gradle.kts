@@ -94,7 +94,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("com.google.dagger:hilt-android:2.48")
-    implementation ("com.google.code.gson:gson:2.8.9")
     kapt("com.google.dagger:hilt-android-compiler:2.48")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

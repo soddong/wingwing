@@ -67,7 +67,8 @@ dependencies {
     implementation(libs.horologist.compose.tools)
     implementation(libs.horologist.tiles)
     implementation(libs.androidx.watchface.complications.data.source.ktx)
-    
+    implementation ("com.google.code.gson:gson:2.8.9")
+
     implementation("androidx.wear.compose:compose-material:1.2.1")
     implementation("androidx.wear.compose:compose-foundation:1.2.1")
     implementation("androidx.wear.compose:compose-navigation:1.2.1")
@@ -82,7 +83,8 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     implementation ("androidx.navigation:navigation-compose:2.5.3")
-   // Hilt dependency injection
+    
+    // Hilt dependency injection
     implementation("com.google.dagger:hilt-android:${rootProject.extra["hiltVersion"]}")
     implementation(libs.androidx.constraintlayout)
     kapt("com.google.dagger:hilt-android-compiler:${rootProject.extra["hiltVersion"]}")
@@ -90,12 +92,19 @@ dependencies {
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 
 
- // Wear
+    // Wear
     implementation("androidx.wear:wear:1.3.0")
 
     // Health Services
     implementation("androidx.health:health-services-client:1.1.0-alpha03")
 
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
+
+    // Hilt Navigation Compose
+    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
 
     // Used to bridge between Futures and coroutines
     implementation("com.google.guava:guava:33.3.1-android")
@@ -104,6 +113,7 @@ dependencies {
    // Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
 
     // 테스트 관련 의존성
     androidTestImplementation(platform(libs.androidx.compose.bom))

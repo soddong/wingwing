@@ -22,6 +22,9 @@ class AudioDataLocalSource @Inject constructor(
         private const val TAG = "모바일: 오디오 데이터 로컬"
         private const val MAX_DATA_AGE_MS = 5000L // 5초
         private const val CLEANUP_INTERVAL_MS = 1000L // 1초마다 정리
+        private const val MIN_STORE_INTERVAL = 1000L // 최소 저장 간격 1초
+        private var lastStoredDbFlag: Boolean? = null
+        private var lastStoredTime: Long = 0
     }
 
     private val audioDirectory: File by lazy {
@@ -37,25 +40,34 @@ class AudioDataLocalSource @Inject constructor(
     // 오디오 데이터 저장
     suspend fun saveAudioData(audioData: AudioData) = withContext(Dispatchers.IO) {
         try {
-            val fileName = "${audioData.time}.audio"
-            val file = File(audioDirectory, fileName)
-
-            FileOutputStream(file).use { outputStream ->
-                val jsonData = Gson().toJson(
-                    mapOf(
-                        "time" to audioData.time,
-                        "dbFlag" to audioData.dbFlag
-                    )
-                )
-                outputStream.write(jsonData.toByteArray())
-            }
-            Log.d(TAG, "음성 분석 데이터 저장 성공: $fileName (dbFlag: ${audioData.dbFlag})")
-
-            // 주기적으로 오래된 데이터 정리
             val currentTime = System.currentTimeMillis()
-            if (currentTime - lastCleanupTime > CLEANUP_INTERVAL_MS) {
-                cleanupOldData()
-                lastCleanupTime = currentTime
+
+            if (audioData.dbFlag ||
+                lastStoredDbFlag != audioData.dbFlag ||
+                currentTime - lastStoredTime >= MIN_STORE_INTERVAL) {
+
+                val fileName = "${audioData.time}.audio"
+                val file = File(audioDirectory, fileName)
+
+                FileOutputStream(file).use { outputStream ->
+                    val jsonData = Gson().toJson(
+                        mapOf(
+                            "time" to audioData.time,
+                            "dbFlag" to audioData.dbFlag
+                        )
+                    )
+                    outputStream.write(jsonData.toByteArray())
+                }
+
+                lastStoredDbFlag = audioData.dbFlag
+                lastStoredTime = currentTime
+                Log.d(TAG, "음성 분석 데이터 저장 성공: $fileName (dbFlag: ${audioData.dbFlag})")
+
+                // 주기적으로 오래된 데이터 정리
+                if (currentTime - lastCleanupTime > CLEANUP_INTERVAL_MS) {
+                    cleanupOldData()
+                    lastCleanupTime = currentTime
+                }
             }
         } catch (e: IOException) {
             Log.e(TAG, "음성 분석 데이터 저장 에러", e)

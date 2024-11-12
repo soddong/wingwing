@@ -1,19 +1,5 @@
 package com.ssafy.shieldroneapp.ui.map
 
-import android.util.Log
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.ssafy.shieldroneapp.data.model.LatLng
-import com.ssafy.shieldroneapp.data.repository.DroneRepository
-import com.ssafy.shieldroneapp.data.repository.MapRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 /**
  * Map 화면의 상태와 로직을 관리하는 ViewModel 클래스.
  *
@@ -29,7 +15,16 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val droneRepository: DroneRepository,
+     private val alertRepository: AlertRepository,
+    private val alertHandler: AlertHandler,
+    private val apiService: ApiService,
 ) : ViewModel() {
+     companion object {
+        private const val TAG = "모바일: 맵 뷰모델"
+    }
+
+        private val _showToast = MutableStateFlow(false)
+    val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
 
     private val _state = MutableStateFlow(MapState())
     val state: StateFlow<MapState> = _state.asStateFlow()
@@ -128,5 +123,60 @@ class MapViewModel @Inject constructor(
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }
     }
+
+    val alertState = alertRepository.alertState
+        .map { alertData ->
+            alertData?.let {
+                DangerAlertState(
+                    isVisible = true,
+                    level = 3, // 현재는 Level 3만 구현
+                    timestamp = it.timestamp
+                )
+            } ?: DangerAlertState()
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = DangerAlertState()
+        )
+
+    fun dismissAlert() {
+        alertRepository.clearAlert()
+        alertHandler.dismissAlert()
+    }
+
+    suspend fun sendEmergencyAlert(): Boolean {
+        return try {
+            val request = EmergencyRequest(
+                // TODO: 임시로 좌표 고정
+                lat = BigDecimal("37.123"),
+                lng = BigDecimal("127.456")
+            )
+            Log.d(TAG, "전송 요청: ${Gson().toJson(request)}")
+            val response = apiService.setEmergency(request)
+            if (response.isSuccessful) {
+                Log.d(TAG, "긴급 알림 전송 성공 - 위치: $request")
+                true
+            } else {
+                Log.e(TAG, "긴급 알림 전송 실패 - 상태 코드: ${response.code()}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "긴급 알림 전송 실패", e)
+            Log.e(TAG, "에러 메시지: ${e.message}")
+            Log.e(TAG, "에러 원인: ${e.cause}")
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun showToast() {
+        _showToast.value = true
+    }
+
+    fun hideToast() {
+        _showToast.value = false
+    }
+}
 
 }

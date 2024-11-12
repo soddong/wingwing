@@ -7,6 +7,7 @@ import net.nurigo.sdk.message.service.DefaultMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Random;
 
 @Slf4j
@@ -44,6 +45,23 @@ public class SmsAuthUtil {
             throw new Exception("SMS 전송 실패", e);
         }
         return code;
+    }
+
+    public void sendEmergency(String to, BigDecimal lat, BigDecimal lng, String username) throws Exception {
+        String googleMapsUrl = "https://www.google.com/maps?q=" + lat + "," + lng;
+        String sb = "Shieldrone 긴급 메시지입니다.\n" +
+                "사용자: " + username + "\n" +
+                "사용자의 위치입니다: " + googleMapsUrl;
+        Message message = new Message();
+        message.setFrom(fromPhoneNumber);
+        message.setTo(to);
+        message.setText(sb);
+        try {
+            messageService.send(message);
+        } catch (Exception e) {
+            log.error("인증 문자 전송 실패 : {}", to);
+            throw new Exception("SMS 전송 실패", e);
+        }
     }
 
     private String generateCode() {
