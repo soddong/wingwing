@@ -41,6 +41,11 @@ class WebSocketService @Inject constructor(
     private val webSocketMessageSender: WebSocketMessageSender,
     private val audioDataLocalSource: AudioDataLocalSource
 ) {
+    companion object {
+        private const val TAG = "모바일: 웹소켓 서비스"
+        private const val MIN_AUDIO_PROCESS_INTERVAL = 1000L
+        private var lastProcessedAudioTime: Long = 0
+    }
     private var webSocketConnectionManager: WebSocketConnectionManager? = null
     private var isConnected = false
     private val errorHandler = WebSocketErrorHandler(context)
@@ -61,10 +66,6 @@ class WebSocketService @Inject constructor(
 
     private val _connectionState = MutableStateFlow<WebSocketState>(WebSocketState.Disconnected)
     val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
-
-    private companion object {
-        const val TAG = "모바일: 웹소켓 서비스"
-    }
 
     fun setConnectionManager(manager: WebSocketConnectionManager) {
         webSocketConnectionManager = manager
@@ -153,6 +154,14 @@ class WebSocketService @Inject constructor(
     }
 
     fun sendAudioData(audioData: AudioData) {
+        val currentTime = System.currentTimeMillis()
+
+        // 최소 처리 간격이 지나지 않았고 dbFlag가 false인 경우 스킵
+        if (currentTime - lastProcessedAudioTime < MIN_AUDIO_PROCESS_INTERVAL && !audioData.dbFlag) {
+            Log.d(TAG, "최소 처리 간격이 지나지 않았고 dbFlag가 false여서 스킵")
+            return
+        }
+
         // 수신한 데이터를 먼저 로컬에 저장
         recordingScope.launch {
             try {
@@ -171,6 +180,7 @@ class WebSocketService @Inject constructor(
         try {
             Log.d(TAG, "음성 분석 데이터 전송 시도 - dbFlag: ${audioData.dbFlag}")
             webSocketMessageSender.sendAudioData(audioData)
+            lastProcessedAudioTime = currentTime  // 성공적으로 처리된 경우에만 시간 업데이트
             Log.d(TAG, "음성 분석 데이터 전송 성공")
         } catch (e: Exception) {
             Log.e(TAG, "음성 분석 데이터 전송 실패", e)
@@ -209,12 +219,18 @@ class WebSocketService @Inject constructor(
                         val storedData = audioDataLocalSource.getStoredAudioData()
                         Log.d(TAG, "저장된 데이터 복구 시도: ${storedData.size}개")
 
+                        var currentTime = System.currentTimeMillis()
                         storedData.forEach { data ->
-                            try {
-                                webSocketMessageSender.sendAudioData(data)
-                                Log.d(TAG, "복구된 데이터 전송 성공 - time: ${data.time}")
-                            } catch (e: Exception) {
-                                Log.e(TAG, "복구된 데이터 전송 실패 - time: ${data.time}", e)
+                            // 최소 처리 간격과 dbFlag 확인
+                            if (data.dbFlag || currentTime - lastProcessedAudioTime >= MIN_AUDIO_PROCESS_INTERVAL) {
+                                try {
+                                    webSocketMessageSender.sendAudioData(data)
+                                    lastProcessedAudioTime = currentTime
+                                    Log.d(TAG, "복구된 데이터 전송 성공 - time: ${data.time}")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "복구된 데이터 전송 실패 - time: ${data.time}", e)
+                                }
+                                currentTime = System.currentTimeMillis()
                             }
                         }
                     } catch (e: Exception) {
