@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -26,13 +27,13 @@ import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
 import com.ssafy.shieldroneapp.ui.map.MapScreen
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -44,6 +45,9 @@ class MobileMainActivity : ComponentActivity() {
 
     @Inject
     lateinit var connectionManager: MobileConnectionManager
+
+    @Inject
+    lateinit var alertHandler: AlertHandler
 
     private val _isAppActive = mutableStateOf(false)
     val isAppActive: State<Boolean> = _isAppActive
@@ -81,6 +85,7 @@ class MobileMainActivity : ComponentActivity() {
 
         setContent {
             val navController = rememberNavController()
+            val coroutineScope = rememberCoroutineScope()
 
             // 토큰이 있는지 확인하여 초기 화면 결정
             val startDestination = if (userLocalDataSource.getTokensSync() != null) {
@@ -126,7 +131,11 @@ class MobileMainActivity : ComponentActivity() {
                         )
                     }
                     composable(ROUTE_MAP) {
-                        MapScreen(isAppActive = isAppActive.value)
+                        MapScreen(
+                            isAppActive = isAppActive.value,
+                            alertHandler = alertHandler,
+                            coroutineScope = coroutineScope
+                        )
                     }
                 }
             }

@@ -10,8 +10,9 @@ import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
-import com.ssafy.shieldroneapp.ui.components.DangerAlertState
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import com.ssafy.shieldroneapp.ui.components.AlertState
+import com.ssafy.shieldroneapp.ui.components.AlertType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,19 +36,20 @@ import javax.inject.Inject
  * @property droneRepository 드론 배정 및 매칭 관련 데이터를 관리하는 리포지토리 객체
  * @property alertRepository 위험 상황 알림 데이터를 관리하는 리포지토리 객체
  */
+
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val droneRepository: DroneRepository,
-     private val alertRepository: AlertRepository,
+    private val alertRepository: AlertRepository,
     private val alertHandler: AlertHandler,
     private val apiService: ApiService,
 ) : ViewModel() {
-     companion object {
+    companion object {
         private const val TAG = "모바일: 맵 뷰모델"
     }
 
-        private val _showToast = MutableStateFlow(false)
+    private val _showToast = MutableStateFlow(false)
     val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
 
     private val _state = MutableStateFlow(MapState())
@@ -55,7 +57,7 @@ class MapViewModel @Inject constructor(
 
     fun handleEvent(event: MapEvent) {
         when (event) {
-            is MapEvent.LoadCurrentLocationAndFetchHives  -> fetchCurrentLocationAndNearbyHives()
+            is MapEvent.LoadCurrentLocationAndFetchHives -> fetchCurrentLocationAndNearbyHives()
             is MapEvent.RequestDroneAssignment -> TODO()
             is MapEvent.StartLocationSelected -> TODO()
             is MapEvent.EndLocationSelected -> TODO()
@@ -151,22 +153,29 @@ class MapViewModel @Inject constructor(
     val alertState = alertRepository.alertState
         .map { alertData ->
             alertData?.let {
-                DangerAlertState(
+                AlertState(
                     isVisible = true,
-                    level = 3, // 현재는 Level 3만 구현
+                    alertType = when {
+                        it.warningFlag -> AlertType.WARNING
+                        it.objectFlag -> AlertType.OBJECT
+                        else -> AlertType.WARNING
+                    },
                     timestamp = it.timestamp
                 )
-            } ?: DangerAlertState()
+            } ?: AlertState()
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = DangerAlertState()
+            initialValue = AlertState()
         )
 
     fun dismissAlert() {
         alertRepository.clearAlert()
-        alertHandler.dismissAlert()
+        when (alertState.value.alertType) {
+            AlertType.WARNING -> alertHandler.dismissAlert()
+            AlertType.OBJECT -> alertHandler.dismissObjectAlert()
+        }
     }
 
     suspend fun sendEmergencyAlert(): Boolean {

@@ -16,61 +16,74 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ssafy.shieldroneapp.R
+import com.ssafy.shieldroneapp.ui.map.AlertHandler
 import com.ssafy.shieldroneapp.ui.theme.Pretendard
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+data class AlertState(
+    val isVisible: Boolean = false,
+    val alertType: AlertType = AlertType.WARNING,
+    val timestamp: Long = 0L
+)
+
+enum class AlertType {
+    WARNING, // 위험 신호 감지 (5초 타이머 + 버튼)
+    OBJECT   // 타인 감지 (3초 자동 닫힘)
+}
+
 @Composable
-fun DangerAlertModal(
-    alertState: DangerAlertState,
+fun AlertModal(
+    alertState: AlertState,
     onDismiss: () -> Unit,
-    onEmergencyAlert: suspend () -> Boolean = { false },
+    onEmergencyAlert: (suspend () -> Boolean)? = null,
+    alertHandler: AlertHandler,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     var showModal by remember { mutableStateOf(false) }
-    var remainingSeconds by remember { mutableStateOf(5) }
+    var remainingSeconds by remember { mutableStateOf(0) }
     var shouldShowToast by remember { mutableStateOf(false) }
     var timerJob by remember { mutableStateOf<Job?>(null) }
 
-    SentMessageToast(
-        showToast = shouldShowToast,
-        onToastShown = { shouldShowToast = false }
-    )
+    // 토스트 메시지 (긴급 알림 전송 성공 시에만 사용)
+    if (alertState.alertType == AlertType.WARNING) {
+        SentMessageToast(
+            showToast = shouldShowToast,
+            onToastShown = { shouldShowToast = false }
+        )
+    }
 
     LaunchedEffect(alertState.isVisible) {
         if (alertState.isVisible) {
             showModal = true
-            remainingSeconds = 5
-
-            // Level 3일 경우 5초 후 API 호출
-            if (alertState.level == 3) {
-                timerJob = scope.launch {
-                    try {
-                        while (remainingSeconds > 0) {
-                            delay(1000)
-                            remainingSeconds--
-                        }
-                        val success = onEmergencyAlert()
-                        if (success) {
-                            shouldShowToast = true
-                        } else {
-                            // TODO: API 호출 실패 시 에러 메시지 띄우기
-                        }
-                    } finally {
-                        showModal = false
-                        onDismiss()
-                    }
-                }
+            remainingSeconds = when (alertState.alertType) {
+                AlertType.WARNING -> 5
+                AlertType.OBJECT -> 3
             }
-            // Level 1, 2는 이전과 동일하게 5초 후 자동으로 닫힘
-            else {
-                timerJob = scope.launch {
+
+            timerJob = scope.launch {
+                try {
                     while (remainingSeconds > 0) {
                         delay(1000)
                         remainingSeconds--
                     }
+
+                    when (alertState.alertType) {
+                        AlertType.WARNING -> {
+                            onEmergencyAlert?.let { emergencyAlert ->
+                                val success = emergencyAlert()
+                                if (success) {
+                                    shouldShowToast = true
+                                }
+                            }
+                        }
+                        AlertType.OBJECT -> {
+                            alertHandler.dismissObjectAlert()
+                        }
+                    }
+                } finally {
                     showModal = false
                     onDismiss()
                 }
@@ -101,8 +114,7 @@ fun DangerAlertModal(
                 elevation = 8.dp
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
                         modifier = Modifier
@@ -129,17 +141,10 @@ fun DangerAlertModal(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = "[위험 Level ${alertState.level}]",
-                                        style = MaterialTheme.typography.h5.copy(
-                                            fontFamily = Pretendard,
-                                            color = Color(0xFFDC3545)
-                                        )
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Text(
-                                        text = "위험 신호가 감지되었습니다. ${remainingSeconds}초 후 긴급 알림을 전송합니다.",
+                                        text = when (alertState.alertType) {
+                                            AlertType.WARNING -> "위험 신호가 감지되었습니다. ${remainingSeconds}초 후 긴급 알림을 전송합니다."
+                                            AlertType.OBJECT -> "주변에 타인이 감지되었습니다."
+                                        },
                                         style = MaterialTheme.typography.body2.copy(
                                             fontFamily = Pretendard
                                         ),
@@ -150,42 +155,53 @@ fun DangerAlertModal(
                                 Spacer(modifier = Modifier.width(16.dp))
 
                                 Image(
-                                    painter = painterResource(id = R.drawable.alert_level3),
-                                    contentDescription = "드론 경고",
+                                    painter = painterResource(
+                                        id = when (alertState.alertType) {
+                                            AlertType.WARNING -> R.drawable.alert_level3
+                                            AlertType.OBJECT -> R.drawable.alert_level2
+                                        }
+                                    ),
+                                    contentDescription = when (alertState.alertType) {
+                                        AlertType.WARNING -> "드론 경고"
+                                        AlertType.OBJECT -> "타인 감지"
+                                    },
                                     modifier = Modifier.size(72.dp)
                                 )
                             }
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 16.dp)
-                    ) {
+                    // 위험 알림일 때만 버튼 표시
+                    if (alertState.alertType == AlertType.WARNING) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(
-                                    color = Color.Black,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .clickable {
-                                    timerJob?.cancel()
-                                    showModal = false
-                                    onDismiss()
-                                }
-                                .padding(vertical = 8.dp),
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 16.dp)
                         ) {
-                            Text(
-                                text = "괜찮습니다. 알림을 전송하지 않습니다.",
-                                style = MaterialTheme.typography.body2.copy(
-                                    fontFamily = Pretendard
-                                ),
-                                color = Color.White,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = Color.Black,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable {
+                                        timerJob?.cancel()
+                                        showModal = false
+                                        onDismiss()
+                                    }
+                                    .padding(vertical = 8.dp),
+                            ) {
+                                Text(
+                                    text = "괜찮습니다. 알림을 전송하지 않습니다.",
+                                    style = MaterialTheme.typography.body2.copy(
+                                        fontFamily = Pretendard
+                                    ),
+                                    color = Color.White,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
                         }
                     }
                 }
@@ -198,9 +214,3 @@ private fun formatTimestamp(timestamp: Long): String {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     return dateFormat.format(Date(timestamp))
 }
-
-data class DangerAlertState(
-    val isVisible: Boolean = false,
-    val level: Int = 0,
-    val timestamp: Long = 0L
-)

@@ -1,14 +1,6 @@
 package com.ssafy.shieldroneapp.data.repository
 
-/**
- * 알람 데이터를 관리하는 리포지토리 클래스.
- *
- * 서버와의 WebSocket 통신을 통해 실시간으로 알람 데이터를 수신하고,
- * 수신된 알람 데이터를 처리하여 화면에 표시하거나 경고음을 발생시킨다.
- *
- * @property webSocketService 서버와의 실시간 통신을 위한 WebSocket 서비스 객체
- */
-
+import android.util.Log
 import com.ssafy.shieldroneapp.data.model.AlertData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +12,30 @@ class AlertRepository @Inject constructor() {
     private val _alertState = MutableStateFlow<AlertData?>(null)
     val alertState: StateFlow<AlertData?> = _alertState
 
-    fun updateAlertState(warningFlag: Boolean) {
+    companion object {
+        private const val TAG = "모바일: 알림 레포지토리"
+    }
+
+    fun updateWarningAlert() {
+        Log.d(TAG, "경고 알림 상태 업데이트")
         _alertState.value = AlertData(
-            warningFlag = warningFlag,
+            warningFlag = true,
+            objectFlag = false,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun updateObjectAlert() {
+        Log.d(TAG, "물체 감지 알림 상태 업데이트")
+        _alertState.value = AlertData(
+            warningFlag = false,
+            objectFlag = true,
             timestamp = System.currentTimeMillis()
         )
     }
 
     fun clearAlert() {
+        Log.d(TAG, "Alert state 초기화")
         _alertState.value = null
     }
 }
