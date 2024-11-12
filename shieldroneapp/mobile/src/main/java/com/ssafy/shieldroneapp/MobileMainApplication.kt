@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.kakao.vectormap.KakaoMapPhase
 import com.kakao.vectormap.KakaoMapSdk
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
@@ -30,6 +31,10 @@ class MobileMainApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 개발 중에는 모든 키 해시 허용, 출시할 때는 false로 변경
+        val mapPhase = if (BuildConfig.DEBUG) KakaoMapPhase.valueOf("ALPHA") else KakaoMapPhase.valueOf("REAL")
+        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY, mapPhase)
 
         // 앱 시작시 필요한 초기화 작업
         // - SharedPreferences 초기화

@@ -14,7 +14,7 @@ package com.ssafy.shieldroneapp.data.source.remote
  */
 
 import com.google.gson.Gson
-import com.ssafy.shieldroneapp.data.model.response.AuthenticationErrorResponse
+import com.ssafy.shieldroneapp.data.model.response.ErrorResponse
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -58,7 +58,7 @@ class ApiInterceptor @Inject constructor(
         if (response.code == 400) {
             // response.peekBody를 사용하여 okhttp3.Response에서 응답 본문을 읽기
             val errorResponse = response.peekBody(Long.MAX_VALUE).string().let { responseBody ->
-                gson.fromJson(responseBody, AuthenticationErrorResponse::class.java)
+                gson.fromJson(responseBody, ErrorResponse::class.java)
             }
 
             when (errorResponse?.code) {
