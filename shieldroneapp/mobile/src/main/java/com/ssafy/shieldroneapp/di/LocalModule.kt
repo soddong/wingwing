@@ -2,6 +2,8 @@ package com.ssafy.shieldroneapp.di
 
 import com.ssafy.shieldroneapp.data.source.local.DroneLocalDataSource
 import com.ssafy.shieldroneapp.data.source.local.DroneLocalDataSourceImpl
+import com.ssafy.shieldroneapp.data.source.local.MapLocalDataSource
+import com.ssafy.shieldroneapp.data.source.local.MapLocalDataSourceImpl
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSource
 import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import dagger.Binds
@@ -31,6 +33,12 @@ abstract class LocalModule {
     abstract fun bindUserLocalDataSource(
         userLocalDataSourceImpl: UserLocalDataSourceImpl
     ): UserLocalDataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindMapLocalDataSource(
+        mapLocalDataSourceImpl: MapLocalDataSourceImpl
+    ): MapLocalDataSource
 
     @Binds
     @Singleton

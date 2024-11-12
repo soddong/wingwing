@@ -2,6 +2,8 @@ package com.ssafy.shieldroneapp.di
 
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepositoryImpl
+import com.ssafy.shieldroneapp.data.repository.MapRepository
+import com.ssafy.shieldroneapp.data.repository.MapRepositoryImpl
 import com.ssafy.shieldroneapp.data.repository.UserRepository
 import com.ssafy.shieldroneapp.data.repository.UserRepositoryImpl
 import dagger.Binds
@@ -31,6 +33,12 @@ abstract class RepositoryModule {
     abstract fun bindUserRepository(
         userRepositoryImpl: UserRepositoryImpl
     ): UserRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMapRepository(
+        mapRepositoryImpl: MapRepositoryImpl
+    ): MapRepository
 
     @Binds
     @Singleton
