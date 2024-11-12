@@ -29,17 +29,19 @@ class Server:
         ZeroMQ 소켓을 설정하고 TCP 주소와 타임아웃을 5초로 지정.
         """
         self.context = zmq.Context()
-        self.socket_danger = self.context.socket(zmq.PUSH)
-        self.socket_route = self.context.socket(zmq.PUSH)
-        self.socket_flag = self.context.socket(zmq.PULL) 
+        self.socket_danger = self.context.socket(zmq.PUB)
+        self.socket_route = self.context.socket(zmq.PUB)
+        self.socket_flag = self.context.socket(zmq.SUB) 
 
         self.socket_danger.bind("tcp://127.0.0.1:5560") 
         self.socket_route.bind("tcp://127.0.0.1:5570")
-        self.socket_flag.bind("tcp://127.0.0.1:5590") 
+        self.socket_flag.connect("tcp://127.0.0.1:5590") 
 
-        self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
-        self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
-        self.socket_route.setsockopt(zmq.RCVTIMEO, 5000)
+        self.socket_flag.setsockopt_string(zmq.SUBSCRIBE, "")
+
+        # self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
+        # self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
+        # self.socket_flag.setsockopt(zmq.RCVTIMEO, 5000)
 
         threading.Thread(target=self.receive_flag_data, daemon=True).start()
 
@@ -104,12 +106,16 @@ class Server:
                 message = self.socket_flag.recv_string()
                 data = json.loads(message)
                 time = data.get("time", datetime.now().isoformat())
-                warningFlag = data.get("warningFlag", False)
-                print(f"[triggerWarningBeep] {data}")
-                
+
                 # 위험 상황 판단 및 경고음 전송
-                if data.get("type") == "triggerWarningBeep" and warningFlag == True:
+                if data.get("type") == "sendWarningFlag":
                     self.trigger_warning_beep()
+                    print(f"[sendWarningFlag] {data}")
+
+                # 위험 상황 판단 및 경고음 전송
+                if data.get("type") == "sendObjectFlag":
+                    self.trigger_warning_object()
+                    print(f"[sendObjectFlag] {data}")
 
             except zmq.ZMQError as e:
                 print(f"ZeroMQ 에러 발생: {e}")
@@ -180,12 +186,24 @@ class Server:
         경고음 전송 메시지를 모든 연결된 WebSocket 클라이언트에 전송.
         """
         time = datetime.now().isoformat()
-        message = json.dumps({"type": "triggerWarningBeep", "time": time, "warningFlag": True})
-
+        message = json.dumps({"type": "sendWarningFlag", "time": time, "warningFlag": True})
         for client in self.ws_clients:
             try:
                 await client.send(message)
                 print(f"[경고음 전송] 시간: {time}, WarningFlag: True")
+            except websockets.ConnectionClosed:
+                print("클라이언트가 예상치 않게 연결 해제됨.")
+
+    async def send_object_flag(self):
+        """
+        send_object_flag WebSocket 클라이언트에 전송.
+        """
+        time = datetime.now().isoformat()
+        message = json.dumps({"type": "sendObjectFlag", "time": time, "objectFlag": True})
+        for client in self.ws_clients:
+            try:
+                await client.send(message)
+                print(f"[객체 감지] 시간: {time}, objectFlag: True")
             except websockets.ConnectionClosed:
                 print("클라이언트가 예상치 않게 연결 해제됨.")
 
@@ -194,6 +212,12 @@ class Server:
         경고음을 WebSocket 클라이언트에 비동기적으로 전송함.
         """
         asyncio.run(self.send_warning_beep())
+    
+    def trigger_warning_object(self):
+        """
+        경고음을 WebSocket 클라이언트에 비동기적으로 전송함.
+        """
+        asyncio.run(self.send_object_flag())
 
     def run_flask(self):
         self.app.run(host="0.0.0.0", port=5000)
