@@ -16,8 +16,6 @@ package com.ssafy.shieldroneapp.data.source.remote
  * 이 클래스는 WebSocketService에 의해 import되어 사용됩니다.
  * 또한 WebSocketMessageParser를 import하여 수신한 메시지를 파싱합니다.
  */
-
-
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.wearable.Wearable
@@ -25,7 +23,7 @@ import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.AlertData
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.services.alert.AlertService
-import com.ssafy.shieldroneapp.ui.map.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
