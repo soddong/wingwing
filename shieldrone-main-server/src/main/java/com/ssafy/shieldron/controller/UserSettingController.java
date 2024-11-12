@@ -1,6 +1,8 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.request.EmergencyRequest;
 import com.ssafy.shieldron.dto.request.EndPosRequest;
+import com.ssafy.shieldron.dto.request.GetHivesInfoRequest;
 import com.ssafy.shieldron.dto.request.GuardianDeleteRequest;
 import com.ssafy.shieldron.dto.request.GuardianRequest;
 import com.ssafy.shieldron.dto.request.GuardianUpdateRequest;
@@ -33,15 +35,16 @@ public class UserSettingController {
     private final UserSettingService userSettingService;
 
     @PatchMapping("/end-pos")
-    public ResponseEntity<?> updateEndPos(@Valid  @RequestBody EndPosRequest endPosRequest,
+    public ResponseEntity<?> updateEndPos(@Valid @RequestBody EndPosRequest endPosRequest,
                                           @CurrentUser String phoneNumber) {
         userSettingService.updateEndPos(endPosRequest, phoneNumber);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/end-pos")
-    public ResponseEntity<?> getEndPos(@CurrentUser String phoneNumber) {
-        EndPosResponse endPosResponse = userSettingService.getEndPos(phoneNumber);
+    public ResponseEntity<?> getEndPos(@Valid @RequestBody GetHivesInfoRequest getHivesInfoRequest,
+                                       @CurrentUser String phoneNumber) {
+        EndPosResponse endPosResponse = userSettingService.getEndPos(getHivesInfoRequest, phoneNumber);
         return ResponseEntity.ok().body(endPosResponse);
     }
 
@@ -76,6 +79,13 @@ public class UserSettingController {
     public ResponseEntity<?> deleteGuardian(@Valid @RequestBody GuardianDeleteRequest guardianDeleteRequest,
                                             @CurrentUser String phoneNumber) {
         userSettingService.deleteGuardian(guardianDeleteRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/emergency")
+    public ResponseEntity<?> sendEmergency(@Valid @RequestBody EmergencyRequest emergencyRequest,
+                                           @CurrentUser String phoneNumber) {
+        userSettingService.sendEmergency(emergencyRequest, phoneNumber);
         return ResponseEntity.ok().build();
     }
 
