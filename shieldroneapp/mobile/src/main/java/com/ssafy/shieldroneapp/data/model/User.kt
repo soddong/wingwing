@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.data.model
 
+import com.ssafy.shieldroneapp.data.model.response.HomeLocationResponse
 import com.ssafy.shieldroneapp.utils.Constants
 
 /**
@@ -12,19 +13,15 @@ import com.ssafy.shieldroneapp.utils.Constants
  * @property username 사용자 이름
  * @property birthday 생년월일 (YYYY-MM-DD 형식)
  * @property phoneNumber 핸드폰 번호
- * @property homeAddress 등록된 기본 도착지 (집) 정보
- * @property lat 집 주소의 위도
- * @property lng 집 주소의 경도
- * @property guardians 등록된 보호자 정보 리스트 (최대 3인 / Guardian 모델 참조)
+ * @property homeLocation 등록된 기본 도착지 (집) 정보
+ * @property guardians 등록된 보호자 정보 리스트 (최대 3인)
  */
 data class User(
     val userId: String = "",
     val username: String,
     val birthday: String, // 생년월일 (YYYY-MM-DD 형식)
     val phoneNumber: String,
-    val homeAddress: String = "",
-    val lat: Double = 0.0,
-    val lng: Double = 0.0,
+    val homeLocation: HomeLocationResponse? = null,
     val guardians: List<Guardian> = emptyList()
 ) {
     /**

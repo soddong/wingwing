@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.map
+package com.ssafy.shieldroneapp.ui.map.screens
 
 /**
  * MapMarker에 대한 상세 정보를 표시하는 모달 컴포넌트.

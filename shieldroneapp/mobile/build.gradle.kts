@@ -114,6 +114,9 @@ dependencies {
     // KAKAO MAP SDK
     implementation("com.kakao.maps.open:android:2.12.8")
 
+    // Google Play Services Location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
     // Jetpack Compose
     implementation(libs.androidx.activity.compose)
     implementation(platform("androidx.compose:compose-bom:2024.01.00")) // BOM(Bill of Materials): Compose 버전 통합 관리

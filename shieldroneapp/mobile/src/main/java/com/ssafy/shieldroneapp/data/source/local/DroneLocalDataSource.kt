@@ -1,10 +1,22 @@
 package com.ssafy.shieldroneapp.data.source.local
 
+import com.ssafy.shieldroneapp.data.model.DroneState
+
 /**
- * 드론 배정 및 매칭 관련 데이터를 로컬에서 관리하는 클래스.
+ * 드론 배정/매칭 및 상태 정보를 로컬에 저장하고 조회하는 기능을 제공합니다.
  *
- * 서버와의 매칭 상태나 배정된 드론 정보를 간단한 로컬 데이터 소스에 임시 저장하고,
- * 드론의 배정 상태가 변경될 때 로컬에서 이를 업데이트한다.
- *
- * @property dataSource 로컬 데이터 소스 객체
+ * [주요 기능]
+ * - 드론 상태 저장/조회/삭제 기능을 통해 드론 배정/매칭 상태를 로컬에서 관리합니다.
+ * - 배정 시작 시간을 기준으로 10분이 경과했는지를 확인하여 배정 만료 여부를 반환합니다.
  */
+interface DroneLocalDataSource {
+    // 드론 상태 관리
+    suspend fun saveDroneState(state: DroneState) // 저장
+    suspend fun getDroneState(): DroneState? // 조회
+    suspend fun updateDroneState(newState: DroneState) // 업데이트
+    suspend fun clearDroneState() // 삭제
+
+    // 드론 배정 후 매칭 타이머 관련
+    suspend fun startAssignmentTimer()
+    suspend fun checkAssignmentExpiration(): Boolean
+}

@@ -56,6 +56,10 @@ class MobileMainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // 개발 중에는 모든 키 해시 허용, 출시할 때는 false로 변경
+        val mapPhase = if (BuildConfig.DEBUG) KakaoMapPhase.valueOf("ALPHA") else KakaoMapPhase.valueOf("REAL")
+        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY, mapPhase)
+
         // 앱 시작시 필요한 초기화 작업
         // - SharedPreferences 초기화
         // - 네트워크 설정
@@ -64,10 +68,6 @@ class MobileMainApplication : Application() {
         setupLogging() // 로깅 설정
         createNotificationChannels() // 워치 연결 상태 알림 채널 생성
         KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY) // Kakao Maps SDK 초기화
-
-        // 개발 중에는 모든 키 해시 허용, 출시할 때는 false로 변경
-        val mapPhase = if (BuildConfig.DEBUG) KakaoMapPhase.valueOf("ALPHA") else KakaoMapPhase.valueOf("REAL")
-        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY, mapPhase)
 
         initializeWebSocket()
         startService(Intent(this, WearableDataListenerService::class.java)) // 서비스 자동 시작
