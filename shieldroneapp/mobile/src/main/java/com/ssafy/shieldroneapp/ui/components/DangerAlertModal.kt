@@ -30,6 +30,12 @@ fun DangerAlertModal(
     val scope = rememberCoroutineScope()
     var showModal by remember { mutableStateOf(false) }
     var remainingSeconds by remember { mutableStateOf(5) }
+    var shouldShowToast by remember { mutableStateOf(false) }
+
+    SentMessageToast(
+        showToast = shouldShowToast,
+        onToastShown = { shouldShowToast = false }
+    )
 
     LaunchedEffect(alertState.isVisible) {
         if (alertState.isVisible) {
@@ -44,6 +50,9 @@ fun DangerAlertModal(
                         remainingSeconds--
                     }
                     // TODO: 긴급 알림 API 호출
+                    showModal = false
+                    onDismiss()
+                    shouldShowToast = true
                 }
             }
             // Level 1, 2는 이전과 동일하게 5초 후 자동으로 닫힘
