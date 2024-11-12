@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public record EndPosResponse(
         String detail,
         BigDecimal lat,
-        BigDecimal lng
+        BigDecimal lng,
+        int distance
 ) {
 }
