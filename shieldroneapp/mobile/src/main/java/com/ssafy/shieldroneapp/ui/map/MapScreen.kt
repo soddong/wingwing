@@ -38,6 +38,7 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
@@ -46,6 +47,7 @@ import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
+import com.ssafy.shieldroneapp.ui.map.screens.SearchResultsModal
 import com.ssafy.shieldroneapp.utils.setupMap
 import com.ssafy.shieldroneapp.utils.updateAllMarkers
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
@@ -213,8 +215,8 @@ fun MapScreen(
                     SearchInputFields (
                         startText = state.startSearchText,
                         endText = state.endSearchText,
-                        onStartTextChange = { mapViewModel.updateStartLocationText(it) },
-                        onEndTextChange = { mapViewModel.updateEndLocationText(it) }
+                        onStartTextChange = { mapViewModel.handleEvent(MapEvent.UpdateStartLocationText(it)) },
+                        onEndTextChange = { mapViewModel.handleEvent(MapEvent.UpdateEndLocationText(it))  }
                     )
                 }
 
@@ -225,7 +227,8 @@ fun MapScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable(onClick = { mapViewModel.handleEvent(MapEvent.DismissStartMarkerModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
+                            // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
+                            .clickable(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Box(
@@ -240,6 +243,26 @@ fun MapScreen(
                         }
                     }
                 }
+
+                // 검색 결과 모달 표시
+                if (state.showSearchModal) {
+                    SearchResultsModal(
+                        searchType = state.searchType,
+                        searchResults = state.searchResults,
+                        onItemSelected = { selectedLocation ->
+                            mapViewModel.handleEvent(
+                                if (state.searchType == LocationType.START) {
+                                    MapEvent.StartLocationSelected(selectedLocation)
+                                } else {
+                                    MapEvent.EndLocationSelected(selectedLocation)
+                                }
+                            )
+                            mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                        },
+                        onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
+                    )
+                }
+
             }
 
             // 하단 버튼
