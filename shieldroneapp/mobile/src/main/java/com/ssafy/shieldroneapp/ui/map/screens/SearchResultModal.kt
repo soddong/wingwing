@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.ui.map.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
@@ -51,11 +53,25 @@ fun SearchResultsModal(
         ) {
             Text(text = if (searchType == LocationType.START) "출발지 검색 결과" else "도착지 검색 결과")
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(searchResults) { location ->
-                    SearchResultItem(
-                        location = location,
-                        onClick = { onItemSelected(location) }
-                    )
+                if (searchResults.isEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.padding(top = 48.dp))
+                        Text(
+                            text = "검색 결과가 없습니다.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            textAlign = TextAlign.Center,
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    items(searchResults) { location ->
+                        SearchResultItem(
+                            location = location,
+                            onClick = { onItemSelected(location) }
+                        )
+                    }
                 }
             }
         }
