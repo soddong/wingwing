@@ -1,6 +1,7 @@
 package com.ssafy.shieldron.service;
 
 import com.ssafy.shieldron.domain.Drone;
+import com.ssafy.shieldron.domain.DroneStatus;
 import com.ssafy.shieldron.domain.DroneUser;
 import com.ssafy.shieldron.domain.DroneUserStatus;
 import com.ssafy.shieldron.domain.Hive;
@@ -48,29 +49,32 @@ public class DroneService {
 
     @Transactional
     public DroneAssignmentResponse droneAssignment(DroneAssignmentRequest droneAssignmentRequest, String phoneNumber) {
-        Integer hiveId = droneAssignmentRequest.startLocation().hiveId();
-
+        Integer droneId = droneAssignmentRequest.droneId();
         User user = getUserOrThrow(phoneNumber);
-        Hive hive = getHiveOrThrow(hiveId);
+
+        Drone drone = getDroneOrThrow(droneId);
+        Hive hive = drone.getHive();
 
         Optional<DroneUser> existingDroneUser = droneUserRepository.findByUser(user);
         if (existingDroneUser.isPresent()) {
             throw new CustomException(USER_ALREADY_HAS_DRONE);
         }
 
-        if (hive.getHiveLat().equals(droneAssignmentRequest.endLocation().lat()) &&
-                hive.getHiveLng().equals(droneAssignmentRequest.endLocation().lng())) {
-            throw new CustomException(SAME_START_AND_END_LOCATION);
-        }
-
 
         double distanceInMeters = calculateDistanceBetweenHiveAndEndLocation(hive, droneAssignmentRequest);
         Integer requiredBattery = calculateRequiredBattery(distanceInMeters);
 
-        Drone drone = findAvailableDrone(requiredBattery);
-        drone.updateActive(true);
+        if (drone.getBattery() < requiredBattery) {
+            throw new CustomException(DRONE_NOT_AVAILABLE);
+        }
 
-        createDroneUser(drone, user, hive, droneAssignmentRequest.endLocation());
+        if (!drone.getStatus().equals(DroneStatus.AVAILABLE)) {
+            throw new CustomException(DRONE_NOT_AVAILABLE);
+        }
+
+        drone.updateStatus(DroneStatus.RESERVED);
+
+        createDroneUser(drone, user);
 
         return createAssignmentResponse(drone, distanceInMeters);
     }
@@ -81,7 +85,7 @@ public class DroneService {
         User user = getUserOrThrow(phoneNumber);
         Drone drone = getDroneOrThrow(droneId);
 
-        drone.updateActive(false);
+        drone.updateStatus(DroneStatus.AVAILABLE);
 
         DroneUser droneUser = droneUserRepository.findByUserAndDrone(user, drone)
                 .orElseThrow(() -> new CustomException(INVALID_DRONE));
@@ -93,16 +97,17 @@ public class DroneService {
     public DroneMatchResponse droneMatch(DroneMatchRequest droneMatchRequest, String phoneNumber) {
         Integer droneId = droneMatchRequest.droneId();
         Integer droneCode = droneMatchRequest.droneCode();
+
         User user = getUserOrThrow(phoneNumber);
         Drone drone = getDroneOrThrow(droneId);
 
-        DroneUser droneUser = droneUserRepository.findByUserAndDrone(user, drone)
-                .orElseThrow(() -> new CustomException(INVALID_DRONE));
-        if (droneUser.getStatus() != DroneUserStatus.TEMPORARY) {
-            throw new CustomException(ALREADY_MATCHED_DRONE);
+        if (drone.getStatus() != DroneStatus.RESERVED) {
+            throw new CustomException(INVALID_DRONE);
         }
 
-        droneUser.updateStatus(DroneUserStatus.TEMPORARY);
+        droneUserRepository.findByUserAndDrone(user, drone)
+                .orElseThrow(() -> new CustomException(INVALID_DRONE));
+
 
         Hive hive = drone.getHive();
         if (hive == null) {
@@ -113,8 +118,29 @@ public class DroneService {
             throw new CustomException(INVALID_DRONE);
         }
 
+        drone.updateStatus(DroneStatus.IN_USE);
+
         String hiveIp = hive.getHiveIp();
         return new DroneMatchResponse(droneId, hiveIp);
+    }
+
+    @Transactional
+    public void droneEnd(DroneCancelRequest droneCancelRequest, String phoneNumber) {
+        Integer droneId = droneCancelRequest.droneId();
+
+        User user = getUserOrThrow(phoneNumber);
+        Drone drone = getDroneOrThrow(droneId);
+
+        Optional<DroneUser> userDrone = droneUserRepository.findByUserAndDrone(user, drone);
+
+        if (userDrone.isEmpty()) {
+            throw new CustomException(INVALID_DRONE);
+        }
+
+        drone.updateStatus(DroneStatus.AVAILABLE);
+
+        DroneUser droneUser = userDrone.get();
+        droneUserRepository.delete(droneUser);
     }
 
     private DroneAssignmentResponse createAssignmentResponse(Drone drone, double distanceInMeters) {
@@ -128,17 +154,11 @@ public class DroneService {
         );
     }
 
-    private void createDroneUser(Drone drone, User user, Hive startHive, LocationRequest endLocation) {
-
+    private void createDroneUser(Drone drone, User user) {
         DroneUser droneUser = DroneUser.builder()
                 .drone(drone)
                 .user(user)
-                .startLat(startHive.getHiveLat())
-                .startLng(startHive.getHiveLng())
-                .endLat(endLocation.lat())
-                .endLng(endLocation.lng())
                 .build();
-
         droneUserRepository.save(droneUser);
     }
 
@@ -179,17 +199,6 @@ public class DroneService {
     private Drone findAvailableDrone(Integer requiredBattery) {
         return droneRepository.findFirstAvailableDroneWithLock(requiredBattery)
                 .orElseThrow(() -> new CustomException(DRONE_NOT_AVAILABLE));
-    }
-
-    private Hive getHiveOrThrow(Integer hiveId) {
-        Hive hive = hiveRepository.findById(hiveId)
-                .orElseThrow(() -> new CustomException(INVALID_HIVE));
-
-        if (hive.getDrone().isActive()) {
-            throw new CustomException(ALREADY_MATCHED_HIVE);
-        }
-
-        return hive;
     }
 
     private Drone getDroneOrThrow(Integer droneId) {

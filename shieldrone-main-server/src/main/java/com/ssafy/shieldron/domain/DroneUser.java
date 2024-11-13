@@ -33,35 +33,12 @@ public class DroneUser {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "start_lat", precision = 9, scale = 6)
-    private BigDecimal startLat;
-
-    @Column(name = "start_lng", precision = 9, scale = 6)
-    private BigDecimal startLng;
-
-    @Column(name = "end_lat", precision = 9, scale = 6)
-    private BigDecimal endLat;
-
-    @Column(name = "end_lng", precision = 9, scale = 6)
-    private BigDecimal endLng;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private DroneUserStatus status;
 
     @Builder
     public DroneUser(Drone drone, User user, BigDecimal startLat, BigDecimal startLng,
                      BigDecimal endLat, BigDecimal endLng) {
         this.drone = drone;
         this.user = user;
-        this.startLat = startLat;
-        this.startLng = startLng;
-        this.endLat = endLat;
-        this.endLng = endLng;
-        this.status = DroneUserStatus.TEMPORARY;
     }
 
-    public void updateStatus(DroneUserStatus droneUserStatus) {
-        this.status = droneUserStatus;
-    }
 }

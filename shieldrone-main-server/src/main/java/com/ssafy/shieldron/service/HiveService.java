@@ -53,7 +53,7 @@ public class HiveService {
         String keyword = keywordRequest.keyword();
 
         return hiveRepository.searchByKeyword(keyword).stream()
-                .map(HiveSearchResponse::toResponse)
+                .map(hive -> HiveSearchResponse.toResponse(hive, hive.getDrones()))
                 .collect(Collectors.toList());
     }
 
