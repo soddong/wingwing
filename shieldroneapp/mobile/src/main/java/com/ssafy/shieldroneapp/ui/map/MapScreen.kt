@@ -41,6 +41,7 @@ import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.utils.setupMap
+import com.ssafy.shieldroneapp.utils.updateAllMarkers
 import com.ssafy.shieldroneapp.utils.updateCurrentLocationMarker
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -64,7 +65,7 @@ fun MapScreen(
     viewModel: HeartRateViewModel = hiltViewModel(),
     alertHandler: AlertHandler,
     mapViewModel: MapViewModel = hiltViewModel(),
-    coroutineScope: CoroutineScope = rememberCoroutineScope()
+    coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -104,13 +105,19 @@ fun MapScreen(
     }
 
     // 위치 갱신 시, 지도 초기화 (카메라 및 마커 위치 설정)
-    LaunchedEffect(state.currentLocation, state.isTrackingLocation) {
+    LaunchedEffect(state.currentLocation, state.isTrackingLocation, state.nearbyHives) {
         kakaoMap.value?.let { map ->
+            // 실시간 경로 추적
             if (state.isTrackingLocation) {
                 updateCurrentLocationMarker(map, state.currentLocation)
             }
-            Log.d("MapScreen", "Updating Map with Current Location: ${state.currentLocation}")
-            state.currentLocation?.let { setupMap(map, state) }
+            
+            // 마커 업데이트
+            if (state.currentLocation != null) {
+//                setupMap(map, mapViewModel)
+                updateAllMarkers(map, state) // 초기 설정이나 위치 변경 시에만 updateAllMarkers 호출
+                Log.d("MapScreen", "지도 업데이트 - 현재 위치: ${state.currentLocation}")
+            }
         }
     }
 
@@ -136,10 +143,7 @@ fun MapScreen(
                                 override fun onMapReady(map: KakaoMap) {
                                     Log.d("MapScreen", "Map ready")
                                     kakaoMap.value = map
-
-                                    // 초기 위치 로드 및 주변 정류장(출발지) 조회 이벤트 호출
-                                    mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
-                                    setupMap(map, state) // 카메라 초기 위치 설정
+                                    setupMap(map, mapViewModel)
                                 }
                             }
                         )
