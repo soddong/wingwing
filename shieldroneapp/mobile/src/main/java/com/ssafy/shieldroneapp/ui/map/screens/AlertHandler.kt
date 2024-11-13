@@ -13,27 +13,63 @@ package com.ssafy.shieldroneapp.ui.map.screens
  * @property context 애플리케이션 컨텍스트 (알림을 표시하거나 시스템 리소스를 사용할 때 필요)
  */
 
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
+import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.components.AlertState
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AlertHandler @Inject constructor(
-    private val alertRepository: AlertRepository
+    private val alertRepository: AlertRepository,
 ) {
     var alertState by mutableStateOf(AlertState())
         private set
 
+    private val _isSafeConfirmed = mutableStateOf(false)
+    val isSafeConfirmed: State<Boolean> = _isSafeConfirmed
+
     private val scope = CoroutineScope(Dispatchers.Main)
     private var alertJob: Job? = null
+
+    private val _watchConfirmed = mutableStateOf(false)
+    val watchConfirmed: State<Boolean> = _watchConfirmed
+
+    fun handleWatchSafeConfirmation() {
+        _watchConfirmed.value = true
+        dismissAlert() 
+        _isSafeConfirmed.value = true 
+        alertRepository.updateSafeConfirmation(true) 
+    }
+
+    fun resetWatchConfirmation() {
+        _watchConfirmed.value = false
+    }
+
+    fun isWatchConfirmed(): Boolean = _watchConfirmed.value
+
+    fun dismissAlert() {
+        alertState = alertState.copy(isVisible = false) 
+        alertJob?.cancel()
+        alertRepository.clearAlert() 
+
+        if (_isSafeConfirmed.value) {
+            resetSafeConfirmation()
+        }
+        if (_watchConfirmed.value) {
+            resetWatchConfirmation()
+        }
+    }
 
     fun showDangerAlert() {
         alertState = AlertState(
@@ -51,21 +87,15 @@ class AlertHandler @Inject constructor(
         )
     }
 
-    fun dismissAlert() {
-        alertState = alertState.copy(isVisible = false)
-        alertJob?.cancel()
-        alertRepository.clearAlert()
-    }
-
     fun dismissObjectAlert() {
         alertState = alertState.copy(isVisible = false)
         alertRepository.clearAlert()
     }
 
     fun handleWarningBeep(warningFlag: Boolean) {
-        if (warningFlag) {
+        if (warningFlag && !_isSafeConfirmed.value && !_watchConfirmed.value) {
             showDangerAlert()
-            alertRepository.updateWarningAlert() 
+            alertRepository.updateWarningAlert()
         } else {
             dismissAlert()
         }
@@ -78,5 +108,20 @@ class AlertHandler @Inject constructor(
         } else {
             dismissObjectAlert()
         }
+    }
+
+    fun setSafeConfirmation(isConfirmed: Boolean) {
+        _isSafeConfirmed.value = isConfirmed
+        if (isConfirmed) {
+            dismissAlert()
+        }
+    }
+
+    fun resetSafeConfirmation() {
+        _isSafeConfirmed.value = false
+    }
+
+    fun getSafeConfirmationStatus(): Boolean {
+        return _isSafeConfirmed.value
     }
 }
