@@ -60,6 +60,7 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnRotateLeft.setOnClickListener { flightControlVM.rotateLeft() }
         binding.btnRotateRight.setOnClickListener { flightControlVM.rotateRight() }
         binding.btnInitValue.setOnClickListener { flightControlVM.initVirtualStickValue() }
+        binding.btnGoToHome.setOnClickListener{ flightControlVM.startReturnToHome() }
     }
 
     @SuppressLint("SetTextI18n")
@@ -102,6 +103,10 @@ class FlightControlActivity : AppCompatActivity() {
         }
         flightControlVM.targetPosition.observe(this) {
             updateTargetLocation()
+        }
+
+        flightControlVM.goHomeState.observe(this) { message ->
+            binding.txtGoHomeMessage.text = message.toString()
         }
 
     }

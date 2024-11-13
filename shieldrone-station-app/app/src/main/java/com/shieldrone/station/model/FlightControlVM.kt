@@ -15,6 +15,7 @@ import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
+import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import java.util.LinkedList
@@ -45,6 +46,9 @@ class FlightControlVM : ViewModel() {
     private val _targetPosition = MutableLiveData<Position>()
     val targetPosition: LiveData<Position> get() = _targetPosition
 
+    private val _goHomeState = MutableLiveData<FCGoHomeState>()
+    val goHomeState: LiveData<FCGoHomeState> get() = _goHomeState
+
 
     // 2. 필요한 초기화
     init {
@@ -59,6 +63,11 @@ class FlightControlVM : ViewModel() {
         flightControlModel.subscribeControlValues { controls ->
             _droneControls.postValue(controls)
         }
+
+        flightControlModel.subscribeGoHomeState { state ->
+            _goHomeState.postValue(state)
+        }
+
 
     }
 
@@ -111,6 +120,22 @@ class FlightControlVM : ViewModel() {
             }
         })
     }
+
+    /**
+     * Go Home
+     */
+    fun startReturnToHome() {
+        flightControlModel.startReturnToHome(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                _message.postValue("복귀가 시작되었습니다.")
+            }
+
+            override fun onFailure(error: IDJIError) {
+                _message.postValue("복귀 실패: ${error.description()}")
+            }
+        })
+    }
+
     // 5. 드론 버튼 클릭해서 움직이는 메서드
 
     /**

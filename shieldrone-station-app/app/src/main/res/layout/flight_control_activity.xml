@@ -56,6 +56,13 @@
         android:text="메시지"
         android:textSize="12sp"
         android:padding="6dp" />
+    <TextView
+        android:id="@+id/txtGoHomeMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="복귀상태"
+        android:textSize="12sp"
+        android:padding="6dp" />
     <!-- 버튼들 (4개씩 한 줄에 배치) -->
 
     <LinearLayout
@@ -77,6 +84,12 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="착륙" />
+        <Button
+            android:id="@+id/btnGoToHome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="복귀" />
 
         <Button
             android:id="@+id/btnMoveForward"

@@ -17,12 +17,16 @@ import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
+import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
 import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
 import dji.v5.manager.KeyManager
+import dji.v5.manager.aircraft.flightrecord.FlightLogManager
+import dji.sdk.keyvalue.value.flightcontroller.GoHomePathMode
+
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.interfaces.IVirtualStickManager
 import kotlin.math.abs
@@ -49,6 +53,10 @@ class FlightControlModel {
         val compassHeading by lazy { KeyTools.createKey(FlightControllerKey.KeyCompassHeading) }
         val keyGPSSignalLevel by lazy { KeyTools.createKey(FlightControllerKey.KeyGPSSignalLevel) }
         val attitude by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftAttitude) }
+
+        val goToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStartGoHome) }
+        val stopToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStopGoHome) }
+        val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
     }
 
     // Virtual Stick 입력 값을 초기화하는 메서드
@@ -294,6 +302,16 @@ class FlightControlModel {
         })
     }
 
+    fun subscribeGoHomeState(onUpdate: (FCGoHomeState) -> Unit) {
+        // KeyManager를 통해 GoHome 상태를 구독
+        KeyManager.getInstance().listen(homeState, this) { _, data ->
+            data?.let { goHomeState ->
+                Log.d(FLIGHT_CONTROL_TAG, "GoHome 상태 업데이트: $goHomeState")
+                onUpdate(goHomeState)
+            } ?: Log.e(FLIGHT_CONTROL_TAG, "GoHome 상태를 가져오지 못했습니다.")
+        }
+    }
+
     /**
      * Control 값을 설정하는 메서드
      */
@@ -482,6 +500,41 @@ class FlightControlModel {
         setDroneControlValues(controls)
         Log.d(SIMULATOR_TAG, "Adjusting yaw with yawRate: $yawRate")
     }
+
+    /**
+     * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home)
+     */
+    fun startReturnToHome(callback: CommonCallbacks.CompletionCallback) {
+        KeyManager.getInstance().run {
+            goToHome
+                .action({
+                    onDestroy()
+                    callback.onSuccess()
+                }, { e: IDJIError ->
+                    callback.onFailure(e)
+                })
+        }
+    }
+
+    /**
+     * Return to Home 중지
+     */
+//    fun stopReturnToHome(callback: CommonCallbacks.CompletionCallback) {
+//        KeyManager.getInstance().performAction(stopToHome, object : CommonCallbacks.CompletionCallback {
+//            override fun onSuccess() {
+//                Log.d(FLIGHT_CONTROL_TAG, "Return to Home 중지됨")
+//                callback.onSuccess()
+//            }
+//
+//            override fun onFailure(error: IDJIError) {
+//                Log.e(FLIGHT_CONTROL_TAG, "Return to Home 중지 실패: ${error.description()}")
+//                callback.onFailure(error)
+//            }
+//        })
+//    }
+
+
+
 
     // 8. Control Value Settings, Print Logs
     /**
