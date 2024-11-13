@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
+import com.shieldrone.station.model.BatteryModel
+import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
 import com.shieldrone.station.service.route.RouteAdapter
@@ -88,6 +90,7 @@ class DJIMainActivity : AppCompatActivity() {
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
     private var isOpenCVInitialized = false
+    private lateinit var batteryViewModel: BatteryViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +101,9 @@ class DJIMainActivity : AppCompatActivity() {
             return
 
         }
+//        val batteryModel = BatteryModel()
+//        batteryViewModel = BatteryViewModel(batteryModel)
+//        batteryViewModel.startSendingBatteryStatus()
 //        setContent {
 //            com.shieldrone.station.ui.theme.ShieldronStationTheme {
 //                CameraPermissionScreen(
@@ -128,6 +134,8 @@ class DJIMainActivity : AppCompatActivity() {
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
+//        batteryViewModel.stopSendingBatteryStatus()
+
     }
 
     private fun checkAndRequestPermissions() {

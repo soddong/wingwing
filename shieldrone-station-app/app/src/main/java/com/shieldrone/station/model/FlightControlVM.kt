@@ -26,7 +26,6 @@ class FlightControlVM : ViewModel() {
     // 1. 라이브데이터 및 필요한 필드
     private val flightControlModel = FlightControlModel()
     private val handler = Handler(Looper.getMainLooper())
-    private val targetPositionQueue: Queue<Position> = LinkedList()
 
     private var isMoving = false
 
@@ -46,6 +45,8 @@ class FlightControlVM : ViewModel() {
     private val _targetPosition = MutableLiveData<Position>()
     val targetPosition: LiveData<Position> get() = _targetPosition
 
+    private val _targetUser = MutableLiveData<TrackingData>()
+    val targetUser: LiveData<TrackingData> get() = _targetUser
     private val _goHomeState = MutableLiveData<FCGoHomeState>()
     val goHomeState: LiveData<FCGoHomeState> get() = _goHomeState
 
@@ -319,36 +320,11 @@ class FlightControlVM : ViewModel() {
         return flightControlModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
     }
 
-    @SuppressLint("DefaultLocale")
-    fun addTargetPosition(position: Position) {
-        // 목표 위치를 큐에 추가
-        targetPositionQueue.add(position)
-        _message.postValue("새로운 목표 위치가 큐에 추가되었습니다. 현재 큐 크기: ${targetPositionQueue.size}")
-        Log.d("QueueInfo", "새 목표 위치: 위도=${position.latitude}, 경도=${position.longitude}")
+    fun subscribeTargetPosition(position: Position) {
+        _targetPosition.postValue(position)
+    }
+    fun subscribeTargetUser() {
 
-        // 이동 중이 아니라면 새 위치로 이동 시작
-        if (!isMoving) {
-            startNextTarget()
-
-        }
     }
 
-    // 큐의 다음 위치로 이동하는 메서드
-    private fun startNextTarget() {
-        if (targetPositionQueue.isNotEmpty()) {
-            isMoving = true // 이동 시작
-            Log.d("NextTarget", "isMoving : $isMoving")
-
-            val nextPosition = targetPositionQueue.poll() // 큐에서 첫 번째 위치를 가져옴
-            _targetPosition.postValue(nextPosition)
-            if (nextPosition != null) {
-                Log.d("DEBUG", "next Position : $nextPosition")
-                flightControlModel.moveToTarget(nextPosition) {
-                    isMoving = false // 이동 완료 시 플래그 해제
-                    // 이동 완료 후 큐에 남은 위치가 있으면 다음 위치로 이동
-                    startNextTarget()
-                }
-            }
-        }
-    }
 }

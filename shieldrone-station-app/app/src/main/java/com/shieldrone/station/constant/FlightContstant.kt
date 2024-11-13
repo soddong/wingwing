@@ -12,6 +12,7 @@ class FlightContstant {
         const val EARTH_RADIUS = 6371000.0
         const val LANDING_DELAY_MILLISECONDS = 2000
         const val BTN_DELAY = 1000L
+        const val FORWARD_DELAY_MILLISECONDS = 100L
         const val ANGLE_THRESHOLD = 0.01  // Roll, Pitch, Yaw의 오차 허용 범위 (도 단위)
         const val VELOCITY_THRESHOLD = 0.01  // 속도의 오차 허용 범위 (m/s 단위)
         const val DISTANCE_THRESHOLD = 0.00001 // 거리 오차 허용 범위 (= 0.1mm)

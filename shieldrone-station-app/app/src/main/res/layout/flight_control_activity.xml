@@ -92,117 +92,18 @@
             android:text="복귀" />
 
         <Button
-            android:id="@+id/btnMoveForward"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="전진" />
-
-        <Button
-            android:id="@+id/btnMoveBackward"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="후진" />
-    </LinearLayout>
-    <!-- 이동 및 회전 버튼들 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="4">
-
-        <Button
-            android:id="@+id/btnMoveLeft"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_move_left" />
-
-        <Button
-            android:id="@+id/btnMoveUp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_move_up" />
-        <Button
-            android:id="@+id/btnMoveRight"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_move_right" />
-
-        <Button
-            android:id="@+id/btnMoveDown"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_move_down" />
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="4">
-
-
-        <Button
-            android:id="@+id/btnRotateLeft"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_rotate_left" />
-
-        <Button
-            android:id="@+id/btnRotateRight"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@drawable/ic_rotate_right" />
-        <Button
             android:id="@+id/btnEnableVirtualStick"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="가상스틱 활성화" />
+            android:text="활성화" />
 
         <Button
             android:id="@+id/btnDisableVirtualStick"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="가상스틱 비활성화" />
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="4">
-
-        <Button
-            android:id="@+id/btnMoveToTarget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="목표 이동" />
-        <Button
-            android:id="@+id/btnGetTargetLocation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="값 받기" />
-        <Button
-            android:id="@+id/btnStopMove"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="멈추기 " />
-        <Button
-            android:id="@+id/btnInitValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="초기화 " />
+            android:text="비활성화" />
     </LinearLayout>
 
 </LinearLayout>

@@ -30,10 +30,11 @@ class FlightControlActivity : AppCompatActivity() {
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
                 val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
-                flightControlVM.addTargetPosition(position)
                 Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
+                binding.txtTargetLocation.text = "사용자 위도: ${position.latitude}, 경도: ${position.longitude}"
             }
         }
+
         routeAdapter = RouteAdapter(routeListener)
         routeController = RouteController(routeAdapter)
         routeController.startReceivingLocation()
@@ -51,15 +52,6 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnLand.setOnClickListener { flightControlVM.startLanding() }
         binding.btnEnableVirtualStick.setOnClickListener { flightControlVM.enableVirtualStickMode() }
         binding.btnDisableVirtualStick.setOnClickListener { flightControlVM.disableVirtualStickMode() }
-        binding.btnMoveForward.setOnClickListener { flightControlVM.moveForward() }
-        binding.btnMoveBackward.setOnClickListener { flightControlVM.moveBackward() }
-        binding.btnMoveUp.setOnClickListener { flightControlVM.moveUp() }
-        binding.btnMoveDown.setOnClickListener { flightControlVM.moveDown() }
-        binding.btnMoveLeft.setOnClickListener { flightControlVM.moveLeft() }
-        binding.btnMoveRight.setOnClickListener { flightControlVM.moveRight() }
-        binding.btnRotateLeft.setOnClickListener { flightControlVM.rotateLeft() }
-        binding.btnRotateRight.setOnClickListener { flightControlVM.rotateRight() }
-        binding.btnInitValue.setOnClickListener { flightControlVM.initVirtualStickValue() }
         binding.btnGoToHome.setOnClickListener{ flightControlVM.startReturnToHome() }
     }
 
@@ -101,9 +93,6 @@ class FlightControlActivity : AppCompatActivity() {
         flightControlVM.gpsSignalLevel.observe(this) { gpsLevel ->
             binding.txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
         }
-        flightControlVM.targetPosition.observe(this) {
-            updateTargetLocation()
-        }
 
         flightControlVM.goHomeState.observe(this) { message ->
             binding.txtGoHomeMessage.text = message.toString()
@@ -111,33 +100,4 @@ class FlightControlActivity : AppCompatActivity() {
 
     }
 
-    @SuppressLint("DefaultLocale")
-    private fun updateTargetLocation() {
-        val currentLat = flightControlVM.droneState.value?.latitude
-        val currentLng = flightControlVM.droneState.value?.longitude
-        val targetPosition = flightControlVM.targetPosition.value
-        val targetLat = targetPosition?.latitude
-        val targetLng = targetPosition?.longitude
-
-        if (currentLat != null && currentLng != null && targetLat != null && targetLng != null) {
-            val distance = flightControlVM.calculateDistanceAndBearing(
-                currentLat,
-                currentLng,
-                targetLat,
-                targetLng
-            ).first
-            val targetLocationText = """
-            목표 위도: $targetLat
-            목표 경도: $targetLng
-            거리: ${String.format("%.2f", distance)} 
-        """.trimIndent()
-            binding.txtTargetLocation.text = targetLocationText
-        } else if (targetLat != null && targetLng != null) {
-            val targetLocationText = """
-            목표 위도: $targetLat
-            목표 경도: $targetLng
-        """.trimIndent()
-            binding.txtTargetLocation.text = targetLocationText
-        }
-    }
 }

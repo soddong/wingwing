@@ -6,6 +6,8 @@ import android.util.Log
 import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
 import com.shieldrone.station.constant.FlightContstant.Companion.EARTH_RADIUS
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
+import com.shieldrone.station.constant.FlightContstant.Companion.FORWARD_DELAY_MILLISECONDS
+import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
 import com.shieldrone.station.constant.FlightContstant.Companion.LANDING_DELAY_MILLISECONDS
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_DEGREE
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
@@ -13,6 +15,7 @@ import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.VIRTUAL_STICK_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
+import com.shieldrone.station.data.RightStick
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
@@ -27,9 +30,9 @@ import dji.v5.manager.KeyManager
 import dji.v5.manager.aircraft.flightrecord.FlightLogManager
 import dji.sdk.keyvalue.value.flightcontroller.GoHomePathMode
 
+import dji.v5.manager.aircraft.virtualstick.IStick
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.interfaces.IVirtualStickManager
-import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -40,6 +43,7 @@ class FlightControlModel {
 
     // 1. field, companion object
     var isVirtualStickEnabled = false
+    var isStarted = false
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
@@ -193,6 +197,7 @@ class FlightControlModel {
                     callback.onFailure(e)
                 })
         }
+
     }
 
     /**
@@ -323,19 +328,30 @@ class FlightControlModel {
 
     /**
      * 드론을 전진시키는 메서드 (Pitch 값 조정)
+     * rightStick만 제어하기
      */
     fun moveToForward() {
-        val pitch = MAX_STICK_VALUE // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(pitch, 0)
-        )
-        setDroneControlValues(controls)
+        // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
+        // 13m/s 가정하면 42 -> 약 0.8m, 10m/s -> 약 54
+        val pitch = INPUT_VELOCITY
+        val rightStick = RightStick().apply {
+            verticalPosition = pitch
+            horizontalPosition = 0
+        }
+        setRightStick(rightStick)
+    }
+
+    private fun setRightStick(rightStick: IStick) {
+        virtualStickManager.rightStick.verticalPosition = rightStick.verticalPosition
+        virtualStickManager.rightStick.horizontalPosition = rightStick.horizontalPosition
+
+        Log.d(VIRTUAL_STICK_TAG, "Control values set: ${virtualStickManager.rightStick}")
+
     }
 
     // 목표 위치로 이동
     fun moveToTarget(position: Position, onComplete: () -> Unit) {
-        val checkInterval = BTN_DELAY // 1초마다 위치 확인
+        val checkInterval = FORWARD_DELAY_MILLISECONDS // 0.1초마다 이동
 
         val targetLat = position.latitude
         val targetLng = position.longitude
@@ -344,23 +360,16 @@ class FlightControlModel {
         handler.post(object : Runnable {
             override fun run() {
                 val currentPosition = getCurrentDronePosition()
-                val currentYaw = getCurrentYaw()
-                val (distance, targetBearing) = calculateDistanceAndBearing(
+                val distance = calculateDistanceAndBearing(
                     currentPosition.latitude, currentPosition.longitude,
                     targetLat, targetLng
-                )
-                val yawDifference = calculateYawDifference(targetBearing, currentYaw)
+                ).first
 
                 if (distance <= 1.0) {
                     initVirtualStickValue()
                     onComplete()
                 } else {
-                    if (abs(yawDifference) > 5) {
-                        adjustYaw(yawDifference)
-                    } else {
-                        moveToForward()
-                    }
-
+                    moveToForward()
                     // 다음 체크를 위해 다시 호출
                     handler.postDelayed(this, checkInterval)
                 }
@@ -549,7 +558,6 @@ class FlightControlModel {
         stickManager.leftStick.horizontalPosition = controls.leftStick.horizontalPosition
         stickManager.rightStick.verticalPosition = controls.rightStick.verticalPosition
         stickManager.rightStick.horizontalPosition = controls.rightStick.horizontalPosition
-
         Log.d(logTag, "Control values set: $controls")
     }
 
