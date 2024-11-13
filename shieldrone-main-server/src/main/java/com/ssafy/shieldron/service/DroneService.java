@@ -124,6 +124,25 @@ public class DroneService {
         return new DroneMatchResponse(droneId, hiveIp);
     }
 
+    @Transactional
+    public void droneEnd(DroneCancelRequest droneCancelRequest, String phoneNumber) {
+        Integer droneId = droneCancelRequest.droneId();
+
+        User user = getUserOrThrow(phoneNumber);
+        Drone drone = getDroneOrThrow(droneId);
+
+        Optional<DroneUser> userDrone = droneUserRepository.findByUserAndDrone(user, drone);
+
+        if (userDrone.isEmpty()) {
+            throw new CustomException(INVALID_DRONE);
+        }
+
+        drone.updateStatus(DroneStatus.AVAILABLE);
+
+        DroneUser droneUser = userDrone.get();
+        droneUserRepository.delete(droneUser);
+    }
+
     private DroneAssignmentResponse createAssignmentResponse(Drone drone, double distanceInMeters) {
         int estimatedMinutes = (int) Math.ceil(distanceInMeters / SPEED_METERS_PER_MINUTE);
         String formattedDistance = String.format("%.0fm", distanceInMeters);
