@@ -196,10 +196,6 @@ public class DroneService {
         return (int) Math.ceil(battery);
     }
 
-    private Drone findAvailableDrone(Integer requiredBattery) {
-        return droneRepository.findFirstAvailableDroneWithLock(requiredBattery)
-                .orElseThrow(() -> new CustomException(DRONE_NOT_AVAILABLE));
-    }
 
     private Drone getDroneOrThrow(Integer droneId) {
         return droneRepository.findById(droneId)
