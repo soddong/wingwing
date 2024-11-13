@@ -16,6 +16,9 @@ class AlertRepository @Inject constructor() {
         private const val TAG = "모바일: 알림 레포지토리"
     }
 
+    private val _isSafeConfirmed = MutableStateFlow(false)
+    val isSafeConfirmed: StateFlow<Boolean> = _isSafeConfirmed
+
     fun updateWarningAlert() {
         Log.d(TAG, "경고 알림 상태 업데이트")
         _alertState.value = AlertData(
@@ -34,8 +37,16 @@ class AlertRepository @Inject constructor() {
         )
     }
 
+    fun updateSafeConfirmation(isConfirmed: Boolean) {
+        _isSafeConfirmed.value = isConfirmed
+        if (isConfirmed) {
+            clearAlert()
+        }
+    }
+
     fun clearAlert() {
-        Log.d(TAG, "Alert state 초기화")
         _alertState.value = null
+        Log.d(TAG, "알림 활성화 취소")
+        _isSafeConfirmed.value = true
     }
 }
