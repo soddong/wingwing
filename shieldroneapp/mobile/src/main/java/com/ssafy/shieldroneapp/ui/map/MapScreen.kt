@@ -4,12 +4,16 @@ import android.Manifest
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -40,6 +44,7 @@ import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.utils.setupMap
 import com.ssafy.shieldroneapp.utils.updateAllMarkers
@@ -142,7 +147,7 @@ fun MapScreen(
 
      Box(
             modifier = Modifier.fillMaxWidth()
-        ) {
+     ) {
             // 지도 영역
             val mapView = remember { MapView(context) } // 기존 MapView
 
@@ -197,21 +202,50 @@ fun MapScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            // 상단 검색 필드
+            // 검색 필드, 마커 정보 모달
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                SearchInputFields (
-                    startText = state.startSearchText,
-                    endText = state.endSearchText,
-                    onStartTextChange = { mapViewModel.updateStartLocationText(it) },
-                    onEndTextChange = { mapViewModel.updateEndLocationText(it) }
-                )
+                // 상단 검색 필드
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                ) {
+                    SearchInputFields (
+                        startText = state.startSearchText,
+                        endText = state.endSearchText,
+                        onStartTextChange = { mapViewModel.updateStartLocationText(it) },
+                        onEndTextChange = { mapViewModel.updateEndLocationText(it) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp)) // 여유 공간 추가
+
+                // 마커 정보 모달 표시 - 출발지
+                if (state.showStartMarkerModal) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(onClick = { mapViewModel.handleEvent(MapEvent.DismissStartMarkerModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { // 모달 안쪽은 클릭해도 안 닫히도록
+                                }
+                        ) {
+                            MapMarkerInfoModal(
+                                routeLocation = state.selectedStartMarker!!,
+                                onSelect = { Log.d("MapScreen", "출발지로 선택 버튼 누르는 경우의 로직") },
+                            )
+                        }
+                    }
+                }
             }
 
             // 하단 버튼
             Button (
                 onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
+                shape = RoundedCornerShape(0.dp),
                 modifier = Modifier.fillMaxWidth()
                     .height(56.dp)
                     .align(Alignment.BottomCenter),

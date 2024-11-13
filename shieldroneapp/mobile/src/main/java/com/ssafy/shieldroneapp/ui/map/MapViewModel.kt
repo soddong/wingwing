@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.LatLng
+import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
@@ -59,33 +60,19 @@ class MapViewModel @Inject constructor(
     fun handleEvent(event: MapEvent) {
         when (event) {
             is MapEvent.LoadCurrentLocationAndFetchHives -> fetchCurrentLocationAndNearbyHives()
-            is MapEvent.RequestDroneAssignment -> TODO()
-            is MapEvent.StartLocationSelected -> TODO()
-            is MapEvent.EndLocationSelected -> TODO()
             is MapEvent.SearchHivesByKeyword -> searchHivesByKeyword(event.keyword)
             is MapEvent.SearchDestination -> TODO()
+
+            is MapEvent.StartLocationSelected -> selectStartLocation(event.location) // 출발지 마커 선택
+            is MapEvent.EndLocationSelected -> TODO()
+            is MapEvent.DismissStartMarkerModal -> dismissStartMarkerModal() // 모달 닫기
+
+            is MapEvent.RequestDroneAssignment -> TODO()
             is MapEvent.BackPressed -> TODO()
+
             is MapEvent.StartLocationTracking -> startTrackingLocation()
             is MapEvent.StopLocationTracking -> stopTrackingLocation()
         }
-    }
-
-    // 실시간 위치 추적을 시작하는 함수
-    private fun startTrackingLocation() {
-        _state.update { it.copy(isTrackingLocation = true) }
-        viewModelScope.launch {
-            mapRepository.getLocationUpdates().collect { newLocation ->
-                _state.update { it.copy(currentLocation = newLocation) }
-                Log.d("MapViewModel", "현재 위치 갱신됨: $newLocation")  // 위치 갱신 확인 로그
-
-                // TODO: 웹소켓으로 위치 전송
-            }
-        }
-    }
-
-    // TODO: 위치 추적을 중지하는 코드 (필요 시)
-    private fun stopTrackingLocation() {
-        _state.update { it.copy(isTrackingLocation = false) }
     }
 
     // 1. 현재 위치(GPS)를 불러오고, 그 위치를 기반으로 근처 출발지(드론 정류장) 조회
@@ -139,6 +126,41 @@ class MapViewModel @Inject constructor(
                     setError("출발지(드론 정류장) 검색 중 오류가 발생했습니다: ${error.message}")
                 }
         }
+    }
+
+    // 4. 출발지 마커 - 선택
+    private fun selectStartLocation(location: RouteLocation) {
+        _state.update {
+            it.copy(
+                selectedStartMarker = location,
+                showStartMarkerModal = true
+            )
+        }
+        Log.d(TAG, "MapViewModel - 출발지 마커 모달 표시됨: ${location}")
+
+    }
+
+    // 5. 출발지 마커 - 정보 모달 닫기
+    private fun dismissStartMarkerModal() {
+        _state.update { it.copy(showStartMarkerModal = false, selectedStartMarker = null) }
+    }
+
+    // 6. 실시간 위치 추적을 시작하는 함수
+    private fun startTrackingLocation() {
+        _state.update { it.copy(isTrackingLocation = true) }
+        viewModelScope.launch {
+            mapRepository.getLocationUpdates().collect { newLocation ->
+                _state.update { it.copy(currentLocation = newLocation) }
+                Log.d("MapViewModel", "현재 위치 갱신됨: $newLocation")  // 위치 갱신 확인 로그
+
+                // TODO: 웹소켓으로 위치 전송
+            }
+        }
+    }
+
+    // TODO: (확인 필요) 위치 추적을 중지하는 코드 (필요 시)
+    private fun stopTrackingLocation() {
+        _state.update { it.copy(isTrackingLocation = false) }
     }
 
     // TODO: (확인 필요) 출발지 설정 관련 업데이트
