@@ -22,7 +22,9 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
 import com.ssafy.shieldroneapp.data.model.Guardian
+import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
+import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 
 
 /**
@@ -128,23 +130,22 @@ interface ApiService {
     /**
      * 1) 현재 위치 기반 근처 드론 정류장 조회
      * 현재 GPS 위치를 기반으로 근처 드론 정류장 목록을 서버에서 조회
-     *
-     * @param lat 현재 위치의 위도 값
-     * @param lng 현재 위치의 경도 값
+     * 
+     * @param requestBody 현재 위치의 위도, 경도 값
      * @return 서버에서 받은 근처 정류장 목록
      */
-    @GET("hives")
-    suspend fun getNearbyHives(@Query("lat") lat: Double, @Query("lng") lng: Double): Response<List<HiveResponse>>
+    @POST("hives")
+    suspend fun getNearbyHives(@Body requestBody: LatLng): Response<List<HiveResponse>>
 
     /**
      * 2) 출발지 검색
      * 사용자가 입력한 키워드를 기반으로 드론 정류장을 검색하는 API
      *
-     * @param keyword 검색 키워드
+     * @param requestBody 검색 키워드
      * @return 검색 결과 정류장 리스트
      */
-    @GET("hives/by-keyword")
-    suspend fun searchHivesByKeyword(@Query("keyword") keyword: String): Response<List<HiveResponse>>
+    @POST("hives/search")
+    suspend fun searchHivesByKeyword(@Body requestBody: HiveSearchRequest): Response<List<HiveResponse>>
 
 
 

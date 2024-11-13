@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ssafy.shieldroneapp.R
-import com.ssafy.shieldroneapp.ui.map.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.theme.Pretendard
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
