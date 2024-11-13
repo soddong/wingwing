@@ -25,7 +25,6 @@ class FlightControlVM : ViewModel() {
     // 1. 라이브데이터 및 필요한 필드
     private val flightControlModel = FlightControlModel()
     private val handler = Handler(Looper.getMainLooper())
-    private val targetPositionQueue: Queue<Position> = LinkedList()
 
     private var isMoving = false
 
@@ -45,6 +44,8 @@ class FlightControlVM : ViewModel() {
     private val _targetPosition = MutableLiveData<Position>()
     val targetPosition: LiveData<Position> get() = _targetPosition
 
+    private val _targetUser = MutableLiveData<TrackingData>()
+    val targetUser: LiveData<TrackingData> get() = _targetUser
 
     // 2. 필요한 초기화
     init {
@@ -111,129 +112,6 @@ class FlightControlVM : ViewModel() {
             }
         })
     }
-    // 5. 드론 버튼 클릭해서 움직이는 메서드
-
-    /**
-     * 드론을 앞으로 이동
-     */
-    fun moveForward() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(INPUT_VELOCITY, 0)
-        )
-        setDroneControlValues(controls)
-
-        // 일정 시간 후에 값을 초기화하여 정지
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY) // BTN_DELAYms 후 초기화 (시간 조정 가능)
-    }
-
-    /**
-     *  드론을 뒤로 이동
-     */
-    fun moveBackward() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(-INPUT_VELOCITY, 0)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     *  드론을 왼쪽으로 이동
-     */
-    fun moveLeft() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(0, -INPUT_VELOCITY)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     * 드론을 오른쪽으로 이동
-     */
-    fun moveRight() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(0, INPUT_VELOCITY)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     * 드론을 위로 상승
-     */
-    fun moveUp() {
-        val controls = Controls(
-            leftStick = StickPosition(INPUT_VELOCITY, 0),
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     * 드론을 아래로 하강
-     */
-    fun moveDown() {
-        val controls = Controls(
-            leftStick = StickPosition(-INPUT_VELOCITY, 0),
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     * 드론을 왼쪽으로 회전
-     */
-    fun rotateLeft() {
-        val controls = Controls(
-            leftStick = StickPosition(0, -INPUT_DEGREE),
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
-    /**
-     * 드론을 오른쪽으로 회전
-     */
-    fun rotateRight() {
-        val controls = Controls(
-            leftStick = StickPosition(0, INPUT_DEGREE),
-            rightStick = StickPosition(0, 0)
-        )
-        setDroneControlValues(controls)
-
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY)
-    }
-
     /**
      * 드론 제어값 설정
      */
@@ -294,36 +172,11 @@ class FlightControlVM : ViewModel() {
         return flightControlModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
     }
 
-    @SuppressLint("DefaultLocale")
-    fun addTargetPosition(position: Position) {
-        // 목표 위치를 큐에 추가
-        targetPositionQueue.add(position)
-        _message.postValue("새로운 목표 위치가 큐에 추가되었습니다. 현재 큐 크기: ${targetPositionQueue.size}")
-        Log.d("QueueInfo", "새 목표 위치: 위도=${position.latitude}, 경도=${position.longitude}")
+    fun subscribeTargetPosition(position: Position) {
+        _targetPosition.postValue(position)
+    }
+    fun subscribeTargetUser() {
 
-        // 이동 중이 아니라면 새 위치로 이동 시작
-        if (!isMoving) {
-            startNextTarget()
-
-        }
     }
 
-    // 큐의 다음 위치로 이동하는 메서드
-    private fun startNextTarget() {
-        if (targetPositionQueue.isNotEmpty()) {
-            isMoving = true // 이동 시작
-            Log.d("NextTarget", "isMoving : $isMoving")
-
-            val nextPosition = targetPositionQueue.poll() // 큐에서 첫 번째 위치를 가져옴
-            _targetPosition.postValue(nextPosition)
-            if (nextPosition != null) {
-                Log.d("DEBUG", "next Position : $nextPosition")
-                flightControlModel.moveToTarget(nextPosition) {
-                    isMoving = false // 이동 완료 시 플래그 해제
-                    // 이동 완료 후 큐에 남은 위치가 있으면 다음 위치로 이동
-                    startNextTarget()
-                }
-            }
-        }
-    }
 }
