@@ -27,9 +27,6 @@ import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
 import dji.v5.manager.KeyManager
-import dji.v5.manager.aircraft.flightrecord.FlightLogManager
-import dji.sdk.keyvalue.value.flightcontroller.GoHomePathMode
-
 import dji.v5.manager.aircraft.virtualstick.IStick
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.interfaces.IVirtualStickManager
@@ -61,6 +58,12 @@ class FlightControlModel {
         val goToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStartGoHome) }
         val stopToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStopGoHome) }
         val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
+        val keyIsHomeLocationSet by lazy { KeyTools.createKey(FlightControllerKey.KeyIsHomeLocationSet) }
+        val keyHomeLocationUsingCurrentAircraftLocation by lazy {
+            KeyTools.createKey(
+                FlightControllerKey.KeyHomeLocationUsingCurrentAircraftLocation
+            )
+        }
     }
 
     // Virtual Stick 입력 값을 초기화하는 메서드
@@ -89,6 +92,7 @@ class FlightControlModel {
         KeyManager.getInstance().cancelListen(compassHeading)
         KeyManager.getInstance().cancelListen(keyGPSSignalLevel)
         KeyManager.getInstance().cancelListen(attitude)
+        KeyManager.getInstance().cancelListen(keyIsHomeLocationSet)
         // Virtual Stick 모드가 활성화되어 있다면 비활성화
         if (isVirtualStickEnabled) {
             disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
@@ -163,10 +167,10 @@ class FlightControlModel {
         KeyManager.getInstance().run {
             keyStartTakeoff.action({
                 // 이륙 성공 시 Yaw 조정
-                adjustYawToNorth(callback)
-            }, { e: IDJIError ->
-                callback.onFailure(e)
-            })
+            },
+                { e: IDJIError ->
+                    callback.onFailure(e)
+                })
         }
     }
 
@@ -317,6 +321,7 @@ class FlightControlModel {
         }
     }
 
+
     /**
      * Control 값을 설정하는 메서드
      */
@@ -449,7 +454,7 @@ class FlightControlModel {
     }
 
 
-    // 7. Calculate Help
+// 7. Calculate Help
     /**
      * 두 지점 간의 거리와 방위각 계산
      */
@@ -460,7 +465,6 @@ class FlightControlModel {
         // 위도와 경도를 라디안으로 변환
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
-        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
         // 시작 및 끝 위도도 라디안으로 변환
         val startLatRad = Math.toRadians(startLat)
         val endLatRad = Math.toRadians(endLat)
@@ -468,14 +472,11 @@ class FlightControlModel {
         val a = sin(dLat / 2).pow(2.0) +
                 cos(startLatRad) * cos(endLatRad) *
                 sin(dLng / 2).pow(2.0)
-        Log.d("DEBUG", "a: $a")
 
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        Log.d("DEBUG", "c: $c")
 
         // 거리를 계산
         val distance = EARTH_RADIUS * c // 거리 (미터 단위)
-        Log.d("DEBUG", "distance: $distance")
 
         // 방위각 계산
         val y = sin(dLng) * cos(endLatRad)
@@ -483,7 +484,6 @@ class FlightControlModel {
                 sin(startLatRad) * cos(endLatRad) * cos(dLng)
         var bearing = Math.toDegrees(atan2(y, x))
         bearing = (bearing + 360) % 360 // 방위각을 0~360도로 변환
-        Log.d("DEBUG", "bearing after normalization: $bearing")
 
         return Pair(distance, bearing)
     }
@@ -514,14 +514,34 @@ class FlightControlModel {
      * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home)
      */
     fun startReturnToHome(callback: CommonCallbacks.CompletionCallback) {
+
+        KeyManager.getInstance().listen(keyIsHomeLocationSet, this) { _, isSet ->
+            if (isSet == true) {
+                Log.d(FLIGHT_CONTROL_TAG, "Drone Home is Setting")
+                KeyManager.getInstance().run {
+                    goToHome
+                        .action({
+//                    onDestroy()
+                            callback.onSuccess()
+                        }, { e: IDJIError ->
+                            callback.onFailure(e)
+                        })
+                }
+            } else {
+                Log.d(
+                    FLIGHT_CONTROL_TAG,
+                    "Drone Home is Nothing"
+                )
+            }
+        }
+    }
+
+    fun setReturnToHome(callback: CommonCallbacks.CompletionCallback) {
         KeyManager.getInstance().run {
-            goToHome
-                .action({
-                    onDestroy()
-                    callback.onSuccess()
-                }, { e: IDJIError ->
-                    callback.onFailure(e)
-                })
+            keyHomeLocationUsingCurrentAircraftLocation.action({
+                callback.onSuccess()
+            }, { e: IDJIError ->
+            })
         }
     }
 
@@ -543,9 +563,7 @@ class FlightControlModel {
 //    }
 
 
-
-
-    // 8. Control Value Settings, Print Logs
+// 8. Control Value Settings, Print Logs
     /**
      * Control 값을 설정하고 로그를 출력하는 메서드
      */
@@ -567,4 +585,5 @@ class FlightControlModel {
     private fun updateStickPositions(stickManager: IVirtualStickManager, controls: Controls) {
         applyControlValues(stickManager, controls, VIRTUAL_STICK_TAG)
     }
+
 }

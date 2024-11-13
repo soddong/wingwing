@@ -1,6 +1,5 @@
 package com.shieldrone.station.model
 
-import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -18,8 +17,6 @@ import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
-import java.util.LinkedList
-import java.util.Queue
 
 class FlightControlVM : ViewModel() {
 
@@ -129,6 +126,18 @@ class FlightControlVM : ViewModel() {
         flightControlModel.startReturnToHome(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 _message.postValue("복귀가 시작되었습니다.")
+            }
+
+            override fun onFailure(error: IDJIError) {
+                _message.postValue("복귀 실패: ${error.description()}")
+            }
+        })
+    }
+
+    fun setReturnToHome() {
+        flightControlModel.setReturnToHome(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                _message.postValue("집설정이 완료되었습니다.")
             }
 
             override fun onFailure(error: IDJIError) {
@@ -322,9 +331,11 @@ class FlightControlVM : ViewModel() {
 
     fun subscribeTargetPosition(position: Position) {
         _targetPosition.postValue(position)
-    }
-    fun subscribeTargetUser() {
 
+    }
+
+    fun subscribeTargetUser(trackingData: TrackingData) {
+        _targetUser.postValue(trackingData)
     }
 
 }

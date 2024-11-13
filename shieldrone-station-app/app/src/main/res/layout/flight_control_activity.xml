@@ -85,25 +85,37 @@
             android:layout_weight="1"
             android:text="착륙" />
         <Button
+            android:id="@+id/btnSetHome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="집설정" />
+        <Button
             android:id="@+id/btnGoToHome"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="복귀" />
 
-        <Button
-            android:id="@+id/btnEnableVirtualStick"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="활성화" />
-
-        <Button
-            android:id="@+id/btnDisableVirtualStick"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="비활성화" />
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="4">
+    <Button
+        android:id="@+id/btnEnableVirtualStick"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="활성화" />
 
+    <Button
+        android:id="@+id/btnDisableVirtualStick"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="비활성화" />
+    </LinearLayout>
+    
 </LinearLayout>

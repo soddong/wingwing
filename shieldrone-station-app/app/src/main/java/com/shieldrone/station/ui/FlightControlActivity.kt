@@ -27,11 +27,14 @@ class FlightControlActivity : AppCompatActivity() {
         binding = FlightControlActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+//        position 구독
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
                 val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
                 Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
-                binding.txtTargetLocation.text = "사용자 위도: ${position.latitude}, 경도: ${position.longitude}"
+                binding.txtTargetLocation.text =
+                    "사용자 위도: ${position.latitude}, 경도: ${position.longitude}"
+
             }
         }
 
@@ -52,8 +55,11 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnLand.setOnClickListener { flightControlVM.startLanding() }
         binding.btnEnableVirtualStick.setOnClickListener { flightControlVM.enableVirtualStickMode() }
         binding.btnDisableVirtualStick.setOnClickListener { flightControlVM.disableVirtualStickMode() }
-        binding.btnGoToHome.setOnClickListener{ flightControlVM.startReturnToHome() }
+        binding.btnGoToHome.setOnClickListener { flightControlVM.startReturnToHome() }
+        binding.btnSetHome.setOnClickListener { flightControlVM.setReturnToHome() }
+
     }
+
 
     @SuppressLint("SetTextI18n")
     private fun observeData() {
