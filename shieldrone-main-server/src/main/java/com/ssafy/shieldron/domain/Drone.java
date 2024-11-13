@@ -46,4 +46,8 @@ public class Drone extends BaseEntity {
     public void updateStatus(DroneStatus droneStatus) {
         this.status = droneStatus;
     }
+
+    public void updateBattery(Integer battery) {
+        this.battery = battery;
+    }
 }

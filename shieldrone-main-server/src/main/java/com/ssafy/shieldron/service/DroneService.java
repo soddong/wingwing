@@ -3,13 +3,12 @@ package com.ssafy.shieldron.service;
 import com.ssafy.shieldron.domain.Drone;
 import com.ssafy.shieldron.domain.DroneStatus;
 import com.ssafy.shieldron.domain.DroneUser;
-import com.ssafy.shieldron.domain.DroneUserStatus;
 import com.ssafy.shieldron.domain.Hive;
 import com.ssafy.shieldron.domain.User;
+import com.ssafy.shieldron.dto.request.BatteryUpdateRequest;
 import com.ssafy.shieldron.dto.request.DroneAssignmentRequest;
 import com.ssafy.shieldron.dto.request.DroneCancelRequest;
 import com.ssafy.shieldron.dto.request.DroneMatchRequest;
-import com.ssafy.shieldron.dto.request.LocationRequest;
 import com.ssafy.shieldron.dto.response.DroneAssignmentResponse;
 import com.ssafy.shieldron.dto.response.DroneMatchResponse;
 import com.ssafy.shieldron.global.exception.CustomException;
@@ -17,8 +16,8 @@ import com.ssafy.shieldron.repository.DroneRepository;
 import com.ssafy.shieldron.repository.DroneUserRepository;
 import com.ssafy.shieldron.repository.HiveRepository;
 import com.ssafy.shieldron.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,13 +25,10 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.ssafy.shieldron.global.exception.ErrorCode.ALREADY_MATCHED_DRONE;
-import static com.ssafy.shieldron.global.exception.ErrorCode.ALREADY_MATCHED_HIVE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.DRONE_NOT_AVAILABLE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_DRONE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_HIVE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_USER;
-import static com.ssafy.shieldron.global.exception.ErrorCode.SAME_START_AND_END_LOCATION;
 import static com.ssafy.shieldron.global.exception.ErrorCode.USER_ALREADY_HAS_DRONE;
 
 @Service
@@ -141,6 +137,15 @@ public class DroneService {
 
         DroneUser droneUser = userDrone.get();
         droneUserRepository.delete(droneUser);
+    }
+
+    @Transactional
+    public void batteryUpdate(BatteryUpdateRequest batteryUpdateRequest) {
+        Integer droneId = batteryUpdateRequest.droneId();
+        Integer battery = batteryUpdateRequest.battery();
+
+        Drone drone = getDroneOrThrow(droneId);
+        drone.updateBattery(battery);
     }
 
     private DroneAssignmentResponse createAssignmentResponse(Drone drone, double distanceInMeters) {
