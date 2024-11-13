@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -7,12 +8,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -23,9 +27,8 @@ public class Hive extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "drone_id")
-    private Drone drone;
+    @OneToMany(mappedBy = "hive", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Drone> drones = new ArrayList<>();
 
     @Column(name = "hive_name", nullable = false)
     private String hiveName;
@@ -45,5 +48,9 @@ public class Hive extends BaseEntity {
     @Column(name = "hive_ip", length = 15, nullable = false)
     private String hiveIp;
 
+    public void addDrone(Drone drone) {
+        drones.add(drone);
+        drone.assignHive(this);
+    }
 
 }

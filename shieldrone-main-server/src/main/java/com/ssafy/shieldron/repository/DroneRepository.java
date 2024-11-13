@@ -15,7 +15,7 @@ public interface DroneRepository extends JpaRepository<Drone, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     SELECT d FROM Drone d
-    WHERE d.isActive = false 
+    WHERE d.status = (뭐넣을지 모름)
     AND d.battery >= :requiredBattery
     ORDER BY d.battery DESC
 """)
