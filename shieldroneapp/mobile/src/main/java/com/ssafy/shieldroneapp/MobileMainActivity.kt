@@ -19,6 +19,8 @@ import com.ssafy.shieldroneapp.data.source.local.UserLocalDataSourceImpl
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.services.connection.MobileConnectionManager
 import com.ssafy.shieldroneapp.ui.authentication.AuthenticationScreen
 import com.ssafy.shieldroneapp.ui.landing.LandingScreen
@@ -48,6 +50,12 @@ class MobileMainActivity : ComponentActivity() {
 
     @Inject
     lateinit var alertHandler: AlertHandler
+
+    @Inject
+    lateinit var webSocketSubscriptions: WebSocketSubscriptions
+
+    @Inject
+    lateinit var safetyMessageSender: SafetyMessageSender
 
     private val _isAppActive = mutableStateOf(false)
     val isAppActive: State<Boolean> = _isAppActive
@@ -112,9 +120,9 @@ class MobileMainActivity : ComponentActivity() {
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
-                            navController.navigate(ROUTE_AUTHENTICATION) {
-                          //  navController.navigate("main_screen") {
-                            // navController.navigate(ROUTE_MAP) {
+//                            navController.navigate(ROUTE_AUTHENTICATION) {
+                            //  navController.navigate("main_screen") {
+                            navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
@@ -134,6 +142,7 @@ class MobileMainActivity : ComponentActivity() {
                         MapScreen(
                             isAppActive = isAppActive.value,
                             alertHandler = alertHandler,
+                            safetyMessageSender = safetyMessageSender,
                             coroutineScope = coroutineScope
                         )
                     }

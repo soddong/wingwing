@@ -31,23 +31,57 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Singleton
 
+interface SafetyMessageSender {
+    suspend fun sendSafeConfirmationToWatch()
+    suspend fun sendSafeConfirmationToMobile()
+}
+
+@Singleton
 class WebSocketSubscriptions @Inject constructor(
     private val messageParser: WebSocketMessageParser,
     private val alertRepository: AlertRepository,
     private val alertHandler: AlertHandler,
     private val alertService: AlertService,
-    @ApplicationContext private val context: Context
-) {
+    @ApplicationContext private val context: Context,
+) : SafetyMessageSender {
     companion object {
         private const val TAG = "모바일: 웹소켓 구독"
         private const val PATH_DANGER_ALERT = "/danger_alert"
         private const val PATH_OBJECT_ALERT = "/object_alert"
+        private const val PATH_SAFE_CONFIRMATION = "/safe_confirm"
+        private const val PATH_WATCH_SAFE_CONFIRMATION = "/safe_confirmation"
     }
 
     private val messageClient = Wearable.getMessageClient(context)
     private val subscriptionScope = CoroutineScope(Dispatchers.IO)
     private val gson = Gson()
+
+
+    fun setupWatchMessageListener() {
+        Wearable.getMessageClient(context).addListener { messageEvent ->
+            when (messageEvent.path) {
+                PATH_SAFE_CONFIRMATION -> {
+                    val message = String(messageEvent.data)
+                    try {
+                        val confirmationData = gson.fromJson(message, Map::class.java)
+                        val type = confirmationData["type"] as? String
+
+                        if (type == "WATCH_ACKNOWLEDGED_SAFE") {
+                            alertHandler.handleWatchSafeConfirmation() 
+                            alertService.showSafeConfirmationNotification(
+                                "안전 확인",
+                                "워치에서 '안전' 확인이 되어 알림이 중지됩니다."
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "워치 안전 확인 메시지 처리 실패", e)
+                    }
+                }
+            }
+        }
+    }
 
     fun handleIncomingMessage(message: String) {
         subscriptionScope.launch {
@@ -61,7 +95,9 @@ class WebSocketSubscriptions @Inject constructor(
                         val warningData = messageParser.parseWarningMessage(message)
                         if (warningData != null) {
                             Log.d(TAG, "위험 감지 메시지 파싱 성공 - warningFlag: ${warningData.warningFlag}")
-                            handleWarningAlert(warningData.warningFlag)
+                            val isSafeConfirmed =
+                                alertHandler.getSafeConfirmationStatus()
+                            handleWarningAlert(warningData.warningFlag, isSafeConfirmed)
                         } else {
                             Log.e(TAG, "위험 감지 메시지 파싱 실패")
                         }
@@ -78,19 +114,23 @@ class WebSocketSubscriptions @Inject constructor(
                         }
                     }
 
-                    null -> Log.e(TAG, "메시지 타입을 찾을 수 없음")
-                    else -> Log.d(TAG, "처리되지 않은 메시지 타입: $messageType")
+                    PATH_SAFE_CONFIRMATION -> {
+                        val confirmationData = Gson().fromJson(message, Map::class.java)
+                        if (confirmationData["type"] == "WATCH_ACKNOWLEDGED_SAFE") {
+                            handleDetailedWatchSafeConfirmation(confirmationData)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "메시지 처리 중 오류 발생", e)
-                Log.e(TAG, "에러 메시지: ${e.message}")
-                Log.e(TAG, "에러 원인: ${e.cause}")
-                e.printStackTrace()
             }
         }
     }
 
-    private suspend fun handleWarningAlert(warningFlag: Boolean) {
+    private suspend fun handleWarningAlert(
+        warningFlag: Boolean,
+        userConfirmedSafe: Boolean = false,
+    ) {
         if (warningFlag) {
             Log.d(TAG, "위험 감지 알림 시작")
 
@@ -109,6 +149,16 @@ class WebSocketSubscriptions @Inject constructor(
             // 워치로 알림 전송
             sendDangerAlertToWatch(warningFlag)
             Log.d(TAG, "워치로 위험 감지 알림 전송 완료")
+
+            // 사용자가 안전상황 버튼을 누른 경우
+            if (userConfirmedSafe) {
+                alertHandler.dismissAlert()
+                alertService.showSafeConfirmationNotification(
+                    "안전 확인",
+                    "모바일 앱에서 '안전' 확인이 되었습니다."
+                )
+                sendSafeConfirmationToWatch()
+            }
         } else {
             Log.d(TAG, "위험 감지 알림 초기화 시작")
             alertHandler.dismissAlert()
@@ -224,6 +274,101 @@ class WebSocketSubscriptions @Inject constructor(
             Log.e(TAG, "에러 메시지: ${e.message}")
             Log.e(TAG, "에러 원인: ${e.cause}")
             e.printStackTrace()
+        }
+    }
+
+    override suspend fun sendSafeConfirmationToWatch() {
+        try {
+            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
+            if (nodes.isNotEmpty()) {
+                val confirmationData = gson.toJson(
+                    mapOf(
+                        "type" to "MOBILE_ACKNOWLEDGED_SAFE",
+                        "state" to "CONFIRMED_SAFE",
+                        "timestamp" to System.currentTimeMillis(),
+                        "shouldCancelTimer" to true,
+                        "message" to "모바일 앱에서 안전이 확인되었습니다"
+                    )
+                )
+
+                nodes.forEach { node ->
+                    try {
+                        messageClient.sendMessage(
+                            node.id,
+                            PATH_SAFE_CONFIRMATION,
+                            confirmationData.toByteArray()
+                        ).await(5000)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "워치(${node.displayName})로 안전 확인 메시지 전송 실패", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 확인 메시지 전송 중 오류 발생", e)
+        }
+    }
+
+    // 안전 확인 메시지를 워치에서 모바일로 전송
+    override suspend fun sendSafeConfirmationToMobile() {
+        try {
+            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
+            if (nodes.isNotEmpty()) {
+                val confirmationData = gson.toJson(
+                    mapOf(
+                        "type" to "WATCH_ACKNOWLEDGED_SAFE",
+                        "state" to "CONFIRMED_SAFE",
+                        "timestamp" to System.currentTimeMillis(),
+                        "shouldCancelTimer" to true,
+                        "message" to "워치에서 안전이 확인되었습니다"
+                    )
+                )
+
+                nodes.forEach { node ->
+                    try {
+                        messageClient.sendMessage(
+                            node.id,
+                            PATH_SAFE_CONFIRMATION,
+                            confirmationData.toByteArray()
+                        ).await(5000)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "모바일(${node.displayName})로 안전 확인 메시지 전송 실패", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 확인 메시지 전송 중 오류 발생", e)
+        }
+    }
+
+    // 단순 메시지
+    private fun handleSimpleWatchSafeConfirmation() {
+        try {
+            alertHandler.setSafeConfirmation(true)
+
+            alertService.showSafeConfirmationNotification(
+                "안전 확인",
+                "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "워치 안전 확인 처리 중 오류 발생", e)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun handleDetailedWatchSafeConfirmation(confirmationData: Map<*, *>) {
+        try {
+            val typedData = confirmationData as Map<String, Any>
+
+            alertHandler.dismissAlert()
+
+            alertService.showSafeConfirmationNotification(
+                "안전 확인",
+                typedData["message"] as String? ?: "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
+            )
+
+            alertHandler.setSafeConfirmation(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "워치 안전 확인 처리 중 오류 발생", e)
         }
     }
 }

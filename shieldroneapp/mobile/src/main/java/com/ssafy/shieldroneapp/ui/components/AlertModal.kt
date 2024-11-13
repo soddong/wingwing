@@ -1,11 +1,11 @@
 package com.ssafy.shieldroneapp.ui.components
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -13,19 +13,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.wearable.Wearable
+import com.google.gson.Gson
 import com.ssafy.shieldroneapp.R
+import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.theme.Pretendard
+import com.ssafy.shieldroneapp.utils.await
 import kotlinx.coroutines.*
+import retrofit2.Response
 import java.text.SimpleDateFormat
 import java.util.*
 
 data class AlertState(
     val isVisible: Boolean = false,
     val alertType: AlertType = AlertType.WARNING,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
 )
 
 enum class AlertType {
@@ -38,25 +45,36 @@ fun AlertModal(
     alertState: AlertState,
     onDismiss: () -> Unit,
     onEmergencyAlert: (suspend () -> Boolean)? = null,
+    onSafeConfirm: () -> Unit,
     alertHandler: AlertHandler,
-    modifier: Modifier = Modifier
+    safetyMessageSender: SafetyMessageSender,
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var showModal by remember { mutableStateOf(false) }
     var remainingSeconds by remember { mutableStateOf(0) }
     var shouldShowToast by remember { mutableStateOf(false) }
     var timerJob by remember { mutableStateOf<Job?>(null) }
 
-    // 토스트 메시지 (긴급 알림 전송 성공 시에만 사용)
+    var apiResponse by remember { mutableStateOf<Response<Unit>?>(null) }
+
     if (alertState.alertType == AlertType.WARNING) {
         SentMessageToast(
-            showToast = shouldShowToast,
-            onToastShown = { shouldShowToast = false }
+            apiResponse = apiResponse,
+            onToastShown = { apiResponse = null }
         )
     }
 
     LaunchedEffect(alertState.isVisible) {
         if (alertState.isVisible) {
+            if (alertHandler.isWatchConfirmed()) {
+                timerJob?.cancel()
+                showModal = false
+                onDismiss()
+                return@LaunchedEffect
+            }
+
             showModal = true
             remainingSeconds = when (alertState.alertType) {
                 AlertType.WARNING -> 5
@@ -79,6 +97,7 @@ fun AlertModal(
                                 }
                             }
                         }
+
                         AlertType.OBJECT -> {
                             alertHandler.dismissObjectAlert()
                         }
@@ -171,37 +190,35 @@ fun AlertModal(
                         }
                     }
 
-                    // 위험 알림일 때만 버튼 표시
                     if (alertState.alertType == AlertType.WARNING) {
-                        Box(
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    safetyMessageSender.sendSafeConfirmationToMobile()
+                                    onSafeConfirm()
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .padding(bottom = 16.dp)
+                                .padding(bottom = 16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = Color.Black,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = ButtonDefaults.elevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 0.dp
+                            )
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        color = Color.Black,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable {
-                                        timerJob?.cancel()
-                                        showModal = false
-                                        onDismiss()
-                                    }
-                                    .padding(vertical = 8.dp),
-                            ) {
-                                Text(
-                                    text = "괜찮습니다. 알림을 전송하지 않습니다.",
-                                    style = MaterialTheme.typography.body2.copy(
-                                        fontFamily = Pretendard
-                                    ),
-                                    color = Color.White,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                            Text(
+                                text = "괜찮습니다. 위험하지 않습니다.",
+                                style = MaterialTheme.typography.body2.copy(
+                                    fontFamily = Pretendard
+                                ),
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
                         }
                     }
                 }

@@ -39,6 +39,8 @@ import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -69,25 +71,22 @@ fun MapScreen(
     isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
     alertHandler: AlertHandler,
+    safetyMessageSender: SafetyMessageSender,
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
-    val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
+//    var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
+    var kakaoMap: KakaoMap? = null // mutableStateOf 대신 일반 변수로 선언
     val lifecycleOwner = LocalLifecycleOwner.current
-    val isMapInitialized = remember { mutableStateOf(false) }
-
-    // 화면 회전 감지를 위한 Configuration 변경 감지
-    val configuration = LocalConfiguration.current
-    val screenRotation = remember { mutableStateOf(configuration.orientation) }
-
+    val mapViewModel: MapViewModel = hiltViewModel()
     val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
     // 워치 연결 관리
-    WatchConnectionManager (
+    WatchConnectionManager(
         onConnectionStatusDetermined = { isConnected ->
             viewModel.updateWatchConnectionState(
                 if (isConnected) WatchConnectionState.Connected
@@ -96,20 +95,8 @@ fun MapScreen(
         }
     )
 
-    // 화면 회전 시 마커 재생성을 위한 Effect
-    LaunchedEffect(configuration.orientation) {
-        if (screenRotation.value != configuration.orientation) {
-            screenRotation.value = configuration.orientation
-            kakaoMap.value?.let { map ->
-                if (state.currentLocation != null) {
-                    updateAllMarkers(map, state)
-                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
-                }
-            }
-        }
-    }
-
-    // 위치 권한이 허락된 경우에만 현재 위치 로드 및 실시간 위치 추적 시작
+    
+    // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -144,10 +131,9 @@ fun MapScreen(
             }
         }
     }
-
      Box(
             modifier = Modifier.fillMaxWidth()
-     ) {
+        ) {
             // 지도 영역
             val mapView = remember { MapView(context) } // 기존 MapView
 
@@ -158,7 +144,6 @@ fun MapScreen(
                             object : MapLifeCycleCallback() {
                                 override fun onMapDestroy() {
                                     Log.d("MapScreen", "Map destroyed")
-                                    isMapInitialized.value = false
                                 }
                                 override fun onMapError(error: Exception) {
                                     Log.e("MapScreen", "Map error: ${error.message}", error)
@@ -167,85 +152,43 @@ fun MapScreen(
                             object : KakaoMapReadyCallback() {
                                 override fun onMapReady(map: KakaoMap) {
                                     Log.d("MapScreen", "Map ready")
-                                    kakaoMap.value = map
-                                    if (state.currentLocation != null) {
-                                        setupMap(map, mapViewModel)
-                                        isMapInitialized.value = true
-                                        updateAllMarkers(map, state)  // 명시적으로 마커 업데이트 호출
-                                    }
+                                    kakaoMap = map
+                                    // 초기 위치 로드 및 주변 정류장(출발지) 조회 이벤트 호출
+                                    mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+                                    setupMap(map, state) // 카메라 초기 위치 설정
                                 }
                             }
                         )
-                        Lifecycle.Event.ON_RESUME -> {
-                            // 화면이 다시 활성화될 때 마커 상태 복원
-                            kakaoMap.value?.let { map ->
-                                if (state.currentLocation != null) {
-                                    updateAllMarkers(map, state)
-                                    Log.d("MapScreen", "화면 재개로 인한 마커 재생성")
-                                }
-                            }
-                        }
                         else -> {}
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
-                    kakaoMap.value = null
-                    isMapInitialized.value = false
+                    kakaoMap = null
                 }
             }
 
-            // AndroidView로 MapView를 전체 화면에 배치
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-            )
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize(),
+        )
 
-            // 검색 필드, 마커 정보 모달
+            // 상단 검색 필드
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
-                // 상단 검색 필드
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-                ) {
-                    SearchInputFields (
-                        startText = state.startSearchText,
-                        endText = state.endSearchText,
-                        onStartTextChange = { mapViewModel.updateStartLocationText(it) },
-                        onEndTextChange = { mapViewModel.updateEndLocationText(it) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp)) // 여유 공간 추가
-
-                // 마커 정보 모달 표시 - 출발지
-                if (state.showStartMarkerModal) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(onClick = { mapViewModel.handleEvent(MapEvent.DismissStartMarkerModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
-                        contentAlignment = Alignment.TopCenter
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { // 모달 안쪽은 클릭해도 안 닫히도록
-                                }
-                        ) {
-                            MapMarkerInfoModal(
-                                routeLocation = state.selectedStartMarker!!,
-                                onSelect = { Log.d("MapScreen", "출발지로 선택 버튼 누르는 경우의 로직") },
-                            )
-                        }
-                    }
-                }
+                SearchInputFields (
+                    startText = state.startSearchText,
+                    endText = state.endSearchText,
+                    onStartTextChange = { mapViewModel.updateStartLocationText(it) },
+                    onEndTextChange = { mapViewModel.updateEndLocationText(it) }
+                )
             }
 
             // 하단 버튼
             Button (
                 onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
-                shape = RoundedCornerShape(0.dp),
                 modifier = Modifier.fillMaxWidth()
                     .height(56.dp)
                     .align(Alignment.BottomCenter),
@@ -266,19 +209,22 @@ fun MapScreen(
                         val success = mapViewModel.sendEmergencyAlert()
                         if (success) {
                             mapViewModel.showToast()
-                        } else {
-                            // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
                         }
                     }
                     true
                 }
             } else null,
-            alertHandler = alertHandler
+            onSafeConfirm = {
+                mapViewModel.handleSafeConfirmation()
+                mapViewModel.dismissAlert()
+            },
+            alertHandler = alertHandler,
+            safetyMessageSender = safetyMessageSender 
         )
 
         ConnectionStatusSnackbar(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-     }
+        }
 }

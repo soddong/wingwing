@@ -2,18 +2,20 @@ package com.ssafy.shieldroneapp.di
 
 import android.app.Application
 import android.content.Context
+import com.google.android.gms.wearable.MessageClient
+import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
-import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+object WearableModule {
     @Provides
     @Singleton
     fun provideContext(application: Application): Context {
@@ -34,5 +36,11 @@ object AppModule {
         context: Context
     ): DataRepository {
         return DataRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMessageClient(@ApplicationContext context: Context): MessageClient {
+        return Wearable.getMessageClient(context)
     }
 }

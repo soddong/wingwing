@@ -28,6 +28,7 @@ class AlertService @Inject constructor(
         private const val ALERT_CHANNEL_ID = "alert_channel"
         private const val ALERT_CHANNEL_NAME = "위험 알림"
         private const val WARNING_NOTIFICATION_ID = 2000
+        private const val SAFE_CONFIRMATION_NOTIFICATION_ID = 2001
 
         // 위험 감지용 진동 패턴 (0: 대기, 300: 진동, 150: 대기, 300: 진동)
         private val WARNING_VIBRATION_PATTERN = longArrayOf(0, 300, 150, 300)
@@ -152,12 +153,6 @@ class AlertService @Inject constructor(
         Log.d(TAG, "위험 알림 취소")
     }
 
-    fun release() {
-        stopWarningSound()
-        cancelWarningNotification()
-        stopVibration()
-    }
-
     private fun startVibration(type: VibrationType) {
         CoroutineScope(Dispatchers.Default).launch {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -197,5 +192,43 @@ class AlertService @Inject constructor(
                 }
             }
         }
+    }
+
+    fun showSafeConfirmationNotification(title: String, message: String) {
+        cancelWarningNotification()
+
+        stopWarningSound()
+        stopVibration()
+
+        val notification = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(R.drawable.alert_ic)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setAutoCancel(true)  //  탭하면 자동으로 사라짐
+            .build()
+
+        notificationManager.notify(SAFE_CONFIRMATION_NOTIFICATION_ID, notification)
+        Log.d(TAG, "안전 확인 알림 표시: $title - $message")
+    }
+
+    fun handleWarningBeep(warningFlag: Boolean, isSafeConfirmed: Boolean = false) {
+        if (warningFlag && !isSafeConfirmed) {
+            startWarningSound()
+            showWarningNotification()
+            startVibration(VibrationType.WARNING)
+        } else {
+            stopWarningSound()
+            cancelWarningNotification()
+            stopVibration()
+        }
+    }
+
+    fun release() {
+        stopWarningSound()
+        cancelWarningNotification()
+        notificationManager.cancel(SAFE_CONFIRMATION_NOTIFICATION_ID) 
+        stopVibration()
     }
 }

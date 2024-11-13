@@ -36,7 +36,10 @@ fun MainScreen(
     val isMobileConnected by remember { wearConnectionManager.isMobileActive }
 
     if (currentAlert != null) {
-        AlertScreen(viewModel = alertViewModel)
+        AlertScreen(
+            alertViewModel = alertViewModel,
+            wearConnectionManager = wearConnectionManager
+        )
         return
     }
 

@@ -13,10 +13,12 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
+import com.google.gson.Gson
 import com.ssafy.shieldroneapp.MainActivity
 import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
@@ -25,6 +27,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -33,7 +37,8 @@ import javax.inject.Singleton
 @Singleton
 class WearConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val alertHandler: AlertHandler
+    private val alertHandler: AlertHandler,
+    private val alertRepository: AlertRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
@@ -48,6 +53,9 @@ class WearConnectionManager @Inject constructor(
 
     private var monitoringCallback: MonitoringCallback? = null
 
+    private val _isSafeConfirmed = MutableStateFlow(false)
+    val isSafeConfirmed: StateFlow<Boolean> = _isSafeConfirmed
+
     companion object {
         private const val TAG = "워치: 연결 매니저"
         private const val PATH_WATCH_STATUS = "/watch_status"
@@ -55,6 +63,7 @@ class WearConnectionManager @Inject constructor(
         private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
         private const val PATH_DANGER_ALERT = "/danger_alert"
         private const val PATH_OBJECT_ALERT = "/object_alert"
+        private const val PATH_SAFE_CONFIRMATION = "/safe_confirm"
     }
 
     interface MonitoringCallback {
@@ -86,7 +95,7 @@ class WearConnectionManager @Inject constructor(
     private fun setupMessageListener() {
         messageClient.addListener { messageEvent ->
             when (messageEvent.path) {
-                PATH_WATCH_STATUS -> { 
+                PATH_WATCH_STATUS -> {
                     val isActive = messageEvent.data?.let { it[0] == 1.toByte() } ?: false
                     Log.d(TAG, "워치 상태 수신: ${if (isActive) "활성화" else "비활성화"}")
                     if (isActive) {
@@ -95,10 +104,12 @@ class WearConnectionManager @Inject constructor(
                         updateConnectionState(WatchConnectionState.Disconnected)
                     }
                 }
+
                 PATH_MOBILE_STATUS -> {
                     val isActive = messageEvent.data?.let { it[0] == 1.toByte() } ?: false
                     handleMobileStateChange(isActive)
                 }
+
                 PATH_DANGER_ALERT -> {
                     messageEvent.data?.let {
                         val alertJson = String(it)
@@ -106,11 +117,25 @@ class WearConnectionManager @Inject constructor(
                         alertHandler.handleDangerAlert(alertJson)
                     }
                 }
+
                 PATH_OBJECT_ALERT -> {
                     messageEvent.data?.let {
                         val alertJson = String(it)
                         Log.d(TAG, "물체 감지 알림 수신: $alertJson")
                         alertHandler.handleObjectAlert(alertJson)
+                    }
+                }
+
+                PATH_SAFE_CONFIRMATION -> {
+                    Log.d(TAG, "모바일 앱에서 '안전' 확인 메시지 수신")
+                    messageEvent.data?.let {
+                        val confirmationJson = String(it)
+                        try {
+                            val confirmationData = Gson().fromJson(confirmationJson, Map::class.java)
+                            handleSafeConfirmation(confirmationData as Map<String, Any>)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "안전 확인 메시지 파싱 실패", e)
+                        }
                     }
                 }
             }
@@ -206,10 +231,6 @@ class WearConnectionManager @Inject constructor(
         }
     }
 
-    private suspend fun getConnectedNodes(): List<Node> = withContext(Dispatchers.IO) {
-        Wearable.getNodeClient(context).connectedNodes.await(5000)
-    }
-
     fun onAppStateChange(isActive: Boolean) {
         scope.launch {
             try {
@@ -218,7 +239,7 @@ class WearConnectionManager @Inject constructor(
                     try {
                         messageClient.sendMessage(
                             node.id,
-                            PATH_WATCH_STATUS, 
+                            PATH_WATCH_STATUS,
                             if (isActive) byteArrayOf(1) else byteArrayOf(0)
                         ).await(5000)
                         Log.d(TAG, "워치 상태 전송: ${if (isActive) "활성화" else "비활성화"}")
@@ -229,6 +250,91 @@ class WearConnectionManager @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "워치 상태 변경 실패", e)
             }
+        }
+    }
+
+    private fun handleSafeConfirmation(confirmationData: Map<String, Any>) {
+        try {
+            val messageType = confirmationData["type"] as? String
+            val shouldCancelTimer = confirmationData["shouldCancelTimer"] as? Boolean ?: false
+            val message = confirmationData["message"] as? String
+                ?: "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
+
+            if (messageType == "WATCH_ACKNOWLEDGED_SAFE" && shouldCancelTimer) {
+                alertHandler.updateSafeConfirmation(true) 
+                alertHandler.dismissAlert()
+
+                showSafeConfirmationNotification(
+                    "안전 확인",
+                    message
+                )
+
+                _isSafeConfirmed.value = true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 확인 처리 중 오류 발생", e)
+        }
+    }
+
+    private fun showSafeConfirmationNotification(title: String, message: String) {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Notification Channel 생성 (Android 8.0 이상)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "safe_confirmation_channel",
+                "Safe Confirmation",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "안전 확인 알림"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(context, "safe_confirmation_channel")
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(R.drawable.shieldrone_ic)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(1002, notification)
+    }
+
+    private suspend fun getConnectedNodes(): List<Node> = withContext(Dispatchers.IO) {
+        Wearable.getNodeClient(context).connectedNodes.await(5000)
+    }
+
+    suspend fun sendSafeConfirmationToMobile() {
+        try {
+            val nodes = getConnectedNodes()
+            if (nodes.isNotEmpty()) {
+                alertRepository.updateSafeConfirmation(true) 
+
+                val confirmationData = mapOf(
+                    "type" to "WATCH_ACKNOWLEDGED_SAFE",
+                    "state" to "CONFIRMED_SAFE",
+                    "timestamp" to System.currentTimeMillis(),
+                    "shouldCancelTimer" to true,
+                    "message" to "워치에서 안전이 확인되었습니다",
+                    "source" to "WATCH" 
+                )
+
+                val confirmationJson = Gson().toJson(confirmationData)
+
+                nodes.forEach { node ->
+                    messageClient.sendMessage(
+                        node.id,
+                        PATH_SAFE_CONFIRMATION,
+                        confirmationJson.toByteArray()
+                    ).await(5000)
+                }
+                Log.d(TAG, "안전 확인 메시지 모바일로 전송 성공")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "안전 확인 메시지 전송 실패", e)
         }
     }
 }
