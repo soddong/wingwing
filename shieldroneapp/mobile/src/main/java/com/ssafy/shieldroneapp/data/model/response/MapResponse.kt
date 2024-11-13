@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.data.model.response
 
+import com.ssafy.shieldroneapp.data.model.DroneStatus
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 
@@ -19,6 +20,21 @@ data class HomeLocationResponse(
 )
 
 /**
+ * 드론 응답 데이터를 관리하는 데이터 클래스.
+ *
+ * @property droneId 드론 ID
+ * @property battery 드론 배터리 잔량 (0-100, %)
+ * @property status 드론 이용 가능 상태 (DroneStatus 사용)
+ * @property droneCode 드론 고유 코드
+ */
+data class DroneResponse(
+    val droneId: Int,
+    val battery: Int,
+    val status: DroneStatus,
+    val droneCode: Int,
+)
+
+/**
  * 출발지(드론 정류장) 정보 응답 모델
  *
  * @property hiveId 정류장 고유 ID
@@ -28,6 +44,9 @@ data class HomeLocationResponse(
  * @property distance 현재 위치로부터의 거리 (미터 단위)
  * @property lat 위도
  * @property lng 경도
+ * @property availableDrone 이용 가능 드론 수
+ * @property drones 드론 상태 목록
+ *
  */
 data class HiveResponse(
     val hiveId: Int,
@@ -37,17 +56,21 @@ data class HiveResponse(
     val distance: Int,
     val lat: Double,
     val lng: Double,
+    val availableDrone: Int,
+    val drones: List<DroneResponse>
 ) {
     fun toRouteLocation(): RouteLocation {
         return RouteLocation(
             locationType = LocationType.START,
-            hiveId = hiveId,
-            hiveName = hiveName,
-            hiveNo = hiveNo,
-            direction = direction,
+            locationName = hiveName,
             distance = distance,
             lat = lat,
-            lng = lng
+            lng = lng,
+            hiveId = hiveId,
+            hiveNo = hiveNo,
+            direction = direction,
+            availableDrone = availableDrone,
+            drones = drones,
         )
     }
 }
@@ -99,4 +122,14 @@ data class KakaoSearchResponse(
         lat = lat,
         lng = lng,
     )
+    fun toRouteLocation(): RouteLocation {
+        return RouteLocation(
+            locationType = LocationType.END,
+            locationName = placeName,
+            distance = distance,
+            lat = lat,
+            lng = lng,
+            homeAddress = roadAddressName,
+        )
+    }
 }

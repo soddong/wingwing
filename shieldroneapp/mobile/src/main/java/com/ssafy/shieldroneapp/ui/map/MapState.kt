@@ -21,7 +21,8 @@ data class MapState(
     val searchResults: List<RouteLocation> = emptyList(),
     val searchType: SearchType = SearchType.NONE,
 
-    // 모달 상태
+    // 마커 및 모달
+    val selectedStartMarker: RouteLocation? = null, // 선택된 출발지 마커
     val showStartMarkerModal: Boolean = false,
     val showEndMarkerModal: Boolean = false,
     val showSearchModal: Boolean = false,

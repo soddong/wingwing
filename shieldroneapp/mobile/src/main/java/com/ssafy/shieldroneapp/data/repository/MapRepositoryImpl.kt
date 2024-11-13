@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.data.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -10,6 +11,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
 import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.RouteLocation
+import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.model.response.HiveResponse
 import com.ssafy.shieldroneapp.data.source.local.MapLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
@@ -86,10 +88,12 @@ class MapRepositoryImpl @Inject constructor(
      *
      * 서버에 사용자의 현재 위치(위도, 경도)를 전송하여 근처 드론 정류장 목록을 요청합니다.
      */
-    override suspend fun getNearbyHives(lat: Double, lng: Double): Result<List<HiveResponse>> {
+    override suspend fun getNearbyHives(location: LatLng): Result<List<HiveResponse>> {
         return NetworkUtils.apiCallAfterNetworkCheck(context) {
-            val response = apiService.getNearbyHives(lat, lng)
+
+            val response = apiService.getNearbyHives(location)
             if (response.isSuccessful) {
+                Log.d("MapRepositoryImpl", "드론 출발지 목록 응답: ${response.body()}")
                 response.body() ?: throw Exception("드론 정류장 응답이 비어 있습니다.")
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "근처 드론 정류장 조회 실패"
@@ -103,7 +107,7 @@ class MapRepositoryImpl @Inject constructor(
      *
      * 사용자가 입력한 키워드를 서버에 전송하여 드론 정류장 검색을 요청하고, 검색 결과를 반환합니다.
      */
-    override suspend fun searchHivesByKeyword(keyword: String): Result<List<HiveResponse>> {
+    override suspend fun searchHivesByKeyword(keyword: HiveSearchRequest): Result<List<HiveResponse>> {
         return NetworkUtils.apiCallAfterNetworkCheck(context) {
             val response = apiService.searchHivesByKeyword(keyword)
             if (response.isSuccessful) {

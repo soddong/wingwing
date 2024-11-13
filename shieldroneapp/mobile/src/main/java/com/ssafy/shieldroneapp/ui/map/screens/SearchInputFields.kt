@@ -1,6 +1,5 @@
 package com.ssafy.shieldroneapp.ui.map.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +20,7 @@ fun SearchInputFields(
     onEndTextChange: (String) -> Unit
 ) {
     Column (
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colors.surface).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TextField(
