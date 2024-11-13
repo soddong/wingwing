@@ -65,7 +65,10 @@ class MapViewModel @Inject constructor(
 
             is MapEvent.StartLocationSelected -> selectStartLocation(event.location) // 출발지 마커 선택
             is MapEvent.EndLocationSelected -> TODO()
-            is MapEvent.DismissStartMarkerModal -> dismissStartMarkerModal() // 모달 닫기
+            is MapEvent.CloseModal -> dismissModal() // 모달 닫기
+
+            is MapEvent.UpdateStartLocationText -> searchStartLocation(event.text)
+            is MapEvent.UpdateEndLocationText -> searchEndLocation(event.text)
 
             is MapEvent.RequestDroneAssignment -> TODO()
             is MapEvent.BackPressed -> TODO()
@@ -120,7 +123,12 @@ class MapViewModel @Inject constructor(
                 .onSuccess { hives ->
                     // HiveResponse 목록을 RouteLocation 목록으로 변환
                     val routeLocations = hives.map { it.toRouteLocation() }
-                    _state.update { it.copy(searchResults = routeLocations, error = null) }
+                    _state.update { it.copy(
+                        searchResults = routeLocations,
+                        showSearchModal = true, // 검색 결과 모달 표시
+                        error = null
+                    ) }
+                    Log.d("MapViewModel", "출발지 검색 결과, 정류장 리스트: $routeLocations")
                 }
                 .onFailure { error ->
                     setError("출발지(드론 정류장) 검색 중 오류가 발생했습니다: ${error.message}")
@@ -140,12 +148,31 @@ class MapViewModel @Inject constructor(
 
     }
 
-    // 5. 출발지 마커 - 정보 모달 닫기
-    private fun dismissStartMarkerModal() {
-        _state.update { it.copy(showStartMarkerModal = false, selectedStartMarker = null) }
+    // 5. 모달 닫기
+    private fun dismissModal() {
+        _state.update { it.copy(
+            showStartMarkerModal = false,
+            showSearchModal = false,
+        ) }
     }
 
-    // 6. 실시간 위치 추적을 시작하는 함수
+    // 6. 출발지 검색
+    private fun searchStartLocation(text: String) {
+        Log.d("MapViewModel", "출발지 검색 입력 값: $text")
+        _state.update { it.copy(startSearchText = text) }
+        if (text.trim() == "") {
+            dismissModal()
+        } else {
+            searchHivesByKeyword(HiveSearchRequest(text))
+        }
+    }
+
+    // 7. TODO: (확인 필요) 도착지 설정 관련 업데이트
+    private fun searchEndLocation(text: String) {
+        _state.update { it.copy(endSearchText = text) }
+    }
+
+    // 8. 실시간 위치 추적을 시작하는 함수
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
         viewModelScope.launch {
@@ -161,20 +188,6 @@ class MapViewModel @Inject constructor(
     // TODO: (확인 필요) 위치 추적을 중지하는 코드 (필요 시)
     private fun stopTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = false) }
-    }
-
-    // TODO: (확인 필요) 출발지 설정 관련 업데이트
-    fun updateStartLocationText(text: String) {
-        Log.d("MapViewModel", "출발지 검색 입력 값: $text")
-        _state.update { it.copy(startSearchText = text) }
-        if (text.length >= 2) {
-            searchHivesByKeyword(HiveSearchRequest(text))
-        }
-    }
-
-    // TODO: (확인 필요) 도착지 설정 관련 업데이트
-    fun updateEndLocationText(text: String) {
-        _state.update { it.copy(endSearchText = text) }
     }
 
     // 오류 메시지 설정

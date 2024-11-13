@@ -15,7 +15,11 @@ sealed class MapEvent {
     // 출발지/도착지 마커 선택 및 모달 관리
     data class StartLocationSelected(val location: RouteLocation) : MapEvent()
     data class EndLocationSelected(val location: RouteLocation) : MapEvent()
-    object DismissStartMarkerModal : MapEvent() 
+    object CloseModal : MapEvent()
+
+    // 출발지/도착지 검색 텍스트 업데이트 이벤트 추가
+    data class UpdateStartLocationText(val text: String) : MapEvent()
+    data class UpdateEndLocationText(val text: String) : MapEvent()
 
     object RequestDroneAssignment : MapEvent() // 드론 배정 시작
     object BackPressed : MapEvent() // 뒤로 가기
