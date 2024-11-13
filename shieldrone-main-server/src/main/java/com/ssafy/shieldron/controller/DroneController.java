@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.controller;
 
+import com.ssafy.shieldron.dto.request.BatteryUpdateRequest;
 import com.ssafy.shieldron.dto.request.DroneMatchRequest;
 import com.ssafy.shieldron.dto.request.DroneAssignmentRequest;
 import com.ssafy.shieldron.dto.request.DroneCancelRequest;
@@ -50,4 +51,9 @@ public class DroneController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/battery")
+    public ResponseEntity<?> batteryUpdate(@Valid @RequestBody BatteryUpdateRequest batteryUpdateRequest) {
+        droneService.batteryUpdate(batteryUpdateRequest);
+        return ResponseEntity.ok().build();
+    }
 }
