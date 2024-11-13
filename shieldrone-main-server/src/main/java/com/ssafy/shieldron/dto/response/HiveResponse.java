@@ -14,10 +14,11 @@ public record HiveResponse(
         BigDecimal lat,
         BigDecimal lng,
         int distance,
+        int availableDrone,
         List<DroneResponse> drones
 ) {
 
-    public static HiveResponse toResponse(Hive hive, int distance) {
+    public static HiveResponse toResponse(Hive hive, int distance, int availableDrone) {
         List<DroneResponse> droneResponses = hive.getDrones().stream()
                 .map(DroneResponse::toResponse)
                 .collect(Collectors.toList());
@@ -30,7 +31,9 @@ public record HiveResponse(
                 hive.getHiveLat(),
                 hive.getHiveLng(),
                 distance,
+                availableDrone,
                 droneResponses
         );
     }
 }
+

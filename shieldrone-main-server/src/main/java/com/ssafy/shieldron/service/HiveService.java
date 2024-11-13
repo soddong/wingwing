@@ -1,5 +1,6 @@
 package com.ssafy.shieldron.service;
 
+import com.ssafy.shieldron.domain.DroneStatus;
 import com.ssafy.shieldron.domain.Hive;
 import com.ssafy.shieldron.dto.request.GetHivesInfoRequest;
 import com.ssafy.shieldron.dto.request.KeywordRequest;
@@ -41,12 +42,16 @@ public class HiveService {
 
         List<Hive> hiveInBox = hiveRepository.findHivesInBoundingBox(minLat, maxLat, minLng, maxLng);
         return hiveInBox.stream()
-                .map(hive -> HiveResponse.toResponse(hive, calculateDistance(lat, lng, hive.getHiveLat(), hive.getHiveLng())))
+                .map(hive -> HiveResponse.toResponse(
+                        hive,
+                        calculateDistance(lat, lng, hive.getHiveLat(), hive.getHiveLng()),
+                        (int) hive.getDrones().stream().filter(drone -> drone.getStatus() == DroneStatus.AVAILABLE).count() // Count available drones
+                ))
                 .filter(response -> response.distance() <= MAX_DISTANCE_METER)
                 .sorted(Comparator.comparing(HiveResponse::distance))
                 .collect(Collectors.toList());
-
     }
+
 
     @Transactional(readOnly = true)
     public List<HiveSearchResponse> getHivesInfoByKeyword(KeywordRequest keywordRequest) {
