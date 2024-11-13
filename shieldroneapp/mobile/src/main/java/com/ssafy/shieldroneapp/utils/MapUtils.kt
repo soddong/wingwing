@@ -105,7 +105,6 @@ fun updateAllMarkers(map: KakaoMap, state: MapState) {
             .setTag(hive)
 
         layer.addLabel(hiveLabel)
-        Log.d("MapUtils", "드론 정류장 마커 추가: ${hive.hiveName} (위치: $position, 거리: ${hive.distance}m)")
     }
 
     Log.d("MapUtils", "마커 업데이트 완료")

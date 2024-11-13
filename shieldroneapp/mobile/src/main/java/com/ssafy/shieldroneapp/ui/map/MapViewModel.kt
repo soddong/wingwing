@@ -136,6 +136,8 @@ class MapViewModel @Inject constructor(
                 showStartMarkerModal = true
             )
         }
+        Log.d(TAG, "MapViewModel - 출발지 마커 모달 표시됨: ${location}")
+
     }
 
     // 5. 출발지 마커 - 정보 모달 닫기
