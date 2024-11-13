@@ -37,6 +37,4 @@ public interface HiveRepository extends JpaRepository<Hive, Integer> {
         h.hiveName ASC
     """)
     List<Hive> searchByKeyword(@Param("keyword") String keyword);
-
-    Optional<Hive> findByDrone(Drone drone);
 }
