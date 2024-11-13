@@ -28,7 +28,6 @@ class FlightControlActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val routeListener = object : RouteAdapter.RouteListener {
-            @SuppressLint("SetTextI18n")
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
                 val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
                 Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
@@ -53,6 +52,7 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnLand.setOnClickListener { flightControlVM.startLanding() }
         binding.btnEnableVirtualStick.setOnClickListener { flightControlVM.enableVirtualStickMode() }
         binding.btnDisableVirtualStick.setOnClickListener { flightControlVM.disableVirtualStickMode() }
+        binding.btnGoToHome.setOnClickListener{ flightControlVM.startReturnToHome() }
     }
 
     @SuppressLint("SetTextI18n")
@@ -92,6 +92,10 @@ class FlightControlActivity : AppCompatActivity() {
         // GPS 신호 레벨 관찰
         flightControlVM.gpsSignalLevel.observe(this) { gpsLevel ->
             binding.txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
+        }
+
+        flightControlVM.goHomeState.observe(this) { message ->
+            binding.txtGoHomeMessage.text = message.toString()
         }
 
     }

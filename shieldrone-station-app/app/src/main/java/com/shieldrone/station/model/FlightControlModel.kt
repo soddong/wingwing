@@ -20,12 +20,16 @@ import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
+import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
 import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
 import dji.v5.manager.KeyManager
+import dji.v5.manager.aircraft.flightrecord.FlightLogManager
+import dji.sdk.keyvalue.value.flightcontroller.GoHomePathMode
+
 import dji.v5.manager.aircraft.virtualstick.IStick
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.interfaces.IVirtualStickManager
@@ -53,6 +57,10 @@ class FlightControlModel {
         val compassHeading by lazy { KeyTools.createKey(FlightControllerKey.KeyCompassHeading) }
         val keyGPSSignalLevel by lazy { KeyTools.createKey(FlightControllerKey.KeyGPSSignalLevel) }
         val attitude by lazy { KeyTools.createKey(FlightControllerKey.KeyAircraftAttitude) }
+
+        val goToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStartGoHome) }
+        val stopToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStopGoHome) }
+        val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
     }
 
     // Virtual Stick 입력 값을 초기화하는 메서드
@@ -279,19 +287,34 @@ class FlightControlModel {
         // 초기 control 값을 설정
         var currentControls = getCurrentStickPositions(stickManager)
 
+        // 일정 간격으로 control 값을 갱신하고 콜백 호출
         handler.post(object : Runnable {
             override fun run() {
+                // 새로운 Controls 상태를 구독
                 val newControls = getCurrentStickPositions(stickManager)
 
+                // 새로운 control 값을 onUpdate 콜백으로 전달
                 onUpdate(newControls)
 
+                // 이전 상태와 새로운 상태 비교 후 변경이 있을 때만 적용
                 if (currentControls != newControls) {
                     updateStickPositions(stickManager, newControls)
                 }
 
-                handler.postDelayed(this, BTN_DELAY) // 1초 주기로 업데이트
+                // 구독을 지속적으로 수행
+                handler.postDelayed(this, BTN_DELAY) // BTN_DELAYms 주기로 업데이트
             }
         })
+    }
+
+    fun subscribeGoHomeState(onUpdate: (FCGoHomeState) -> Unit) {
+        // KeyManager를 통해 GoHome 상태를 구독
+        KeyManager.getInstance().listen(homeState, this) { _, data ->
+            data?.let { goHomeState ->
+                Log.d(FLIGHT_CONTROL_TAG, "GoHome 상태 업데이트: $goHomeState")
+                onUpdate(goHomeState)
+            } ?: Log.e(FLIGHT_CONTROL_TAG, "GoHome 상태를 가져오지 못했습니다.")
+        }
     }
 
     /**
@@ -369,6 +392,7 @@ class FlightControlModel {
                     Log.d(FLIGHT_CONTROL_TAG, "GPS Signal Level updated: $newGPSLevel")
                 }
 
+                // BTN_DELAYms 마다 반복
                 handler.postDelayed(this, BTN_DELAY)
             }
         })
@@ -436,6 +460,7 @@ class FlightControlModel {
         // 위도와 경도를 라디안으로 변환
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
+        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
         // 시작 및 끝 위도도 라디안으로 변환
         val startLatRad = Math.toRadians(startLat)
         val endLatRad = Math.toRadians(endLat)
@@ -443,11 +468,14 @@ class FlightControlModel {
         val a = sin(dLat / 2).pow(2.0) +
                 cos(startLatRad) * cos(endLatRad) *
                 sin(dLng / 2).pow(2.0)
+        Log.d("DEBUG", "a: $a")
 
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        Log.d("DEBUG", "c: $c")
 
         // 거리를 계산
         val distance = EARTH_RADIUS * c // 거리 (미터 단위)
+        Log.d("DEBUG", "distance: $distance")
 
         // 방위각 계산
         val y = sin(dLng) * cos(endLatRad)
@@ -455,6 +483,7 @@ class FlightControlModel {
                 sin(startLatRad) * cos(endLatRad) * cos(dLng)
         var bearing = Math.toDegrees(atan2(y, x))
         bearing = (bearing + 360) % 360 // 방위각을 0~360도로 변환
+        Log.d("DEBUG", "bearing after normalization: $bearing")
 
         return Pair(distance, bearing)
     }
@@ -480,6 +509,41 @@ class FlightControlModel {
         setDroneControlValues(controls)
         Log.d(SIMULATOR_TAG, "Adjusting yaw with yawRate: $yawRate")
     }
+
+    /**
+     * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home)
+     */
+    fun startReturnToHome(callback: CommonCallbacks.CompletionCallback) {
+        KeyManager.getInstance().run {
+            goToHome
+                .action({
+                    onDestroy()
+                    callback.onSuccess()
+                }, { e: IDJIError ->
+                    callback.onFailure(e)
+                })
+        }
+    }
+
+    /**
+     * Return to Home 중지
+     */
+//    fun stopReturnToHome(callback: CommonCallbacks.CompletionCallback) {
+//        KeyManager.getInstance().performAction(stopToHome, object : CommonCallbacks.CompletionCallback {
+//            override fun onSuccess() {
+//                Log.d(FLIGHT_CONTROL_TAG, "Return to Home 중지됨")
+//                callback.onSuccess()
+//            }
+//
+//            override fun onFailure(error: IDJIError) {
+//                Log.e(FLIGHT_CONTROL_TAG, "Return to Home 중지 실패: ${error.description()}")
+//                callback.onFailure(error)
+//            }
+//        })
+//    }
+
+
+
 
     // 8. Control Value Settings, Print Logs
     /**

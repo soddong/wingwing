@@ -15,6 +15,7 @@ import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
+import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import java.util.LinkedList
@@ -46,6 +47,9 @@ class FlightControlVM : ViewModel() {
 
     private val _targetUser = MutableLiveData<TrackingData>()
     val targetUser: LiveData<TrackingData> get() = _targetUser
+    private val _goHomeState = MutableLiveData<FCGoHomeState>()
+    val goHomeState: LiveData<FCGoHomeState> get() = _goHomeState
+
 
     // 2. 필요한 초기화
     init {
@@ -60,6 +64,11 @@ class FlightControlVM : ViewModel() {
         flightControlModel.subscribeControlValues { controls ->
             _droneControls.postValue(controls)
         }
+
+        flightControlModel.subscribeGoHomeState { state ->
+            _goHomeState.postValue(state)
+        }
+
 
     }
 
@@ -112,6 +121,145 @@ class FlightControlVM : ViewModel() {
             }
         })
     }
+
+    /**
+     * Go Home
+     */
+    fun startReturnToHome() {
+        flightControlModel.startReturnToHome(object : CommonCallbacks.CompletionCallback {
+            override fun onSuccess() {
+                _message.postValue("복귀가 시작되었습니다.")
+            }
+
+            override fun onFailure(error: IDJIError) {
+                _message.postValue("복귀 실패: ${error.description()}")
+            }
+        })
+    }
+
+    // 5. 드론 버튼 클릭해서 움직이는 메서드
+
+    /**
+     * 드론을 앞으로 이동
+     */
+    fun moveForward() {
+        val controls = Controls(
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(INPUT_VELOCITY, 0)
+        )
+        setDroneControlValues(controls)
+
+        // 일정 시간 후에 값을 초기화하여 정지
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY) // BTN_DELAYms 후 초기화 (시간 조정 가능)
+    }
+
+    /**
+     *  드론을 뒤로 이동
+     */
+    fun moveBackward() {
+        val controls = Controls(
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(-INPUT_VELOCITY, 0)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     *  드론을 왼쪽으로 이동
+     */
+    fun moveLeft() {
+        val controls = Controls(
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(0, -INPUT_VELOCITY)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     * 드론을 오른쪽으로 이동
+     */
+    fun moveRight() {
+        val controls = Controls(
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(0, INPUT_VELOCITY)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     * 드론을 위로 상승
+     */
+    fun moveUp() {
+        val controls = Controls(
+            leftStick = StickPosition(INPUT_VELOCITY, 0),
+            rightStick = StickPosition(0, 0)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     * 드론을 아래로 하강
+     */
+    fun moveDown() {
+        val controls = Controls(
+            leftStick = StickPosition(-INPUT_VELOCITY, 0),
+            rightStick = StickPosition(0, 0)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     * 드론을 왼쪽으로 회전
+     */
+    fun rotateLeft() {
+        val controls = Controls(
+            leftStick = StickPosition(0, -INPUT_DEGREE),
+            rightStick = StickPosition(0, 0)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
+    /**
+     * 드론을 오른쪽으로 회전
+     */
+    fun rotateRight() {
+        val controls = Controls(
+            leftStick = StickPosition(0, INPUT_DEGREE),
+            rightStick = StickPosition(0, 0)
+        )
+        setDroneControlValues(controls)
+
+        handler.postDelayed({
+            initVirtualStickValue()
+        }, BTN_DELAY)
+    }
+
     /**
      * 드론 제어값 설정
      */
