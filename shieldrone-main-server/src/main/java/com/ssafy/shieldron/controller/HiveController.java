@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,13 +24,13 @@ public class HiveController {
 
     private final HiveService hiveService;
 
-    @GetMapping
+    @PostMapping
     public ResponseEntity<?> getHivesInfoByGPS(@Valid @RequestBody GetHivesInfoRequest getHivesInfoRequest) {
         List<HiveResponse> hivesInfo = hiveService.getHivesInfo(getHivesInfoRequest);
         return ResponseEntity.ok().body(hivesInfo);
     }
 
-    @GetMapping("/search")
+    @PostMapping("/search")
     public ResponseEntity<?> getHivesInfoByKeyword(@Valid @RequestBody KeywordRequest keywordRequest) {
         List<HiveSearchResponse> hivesInfo = hiveService.getHivesInfoByKeyword(keywordRequest);
         return ResponseEntity.ok().body(hivesInfo);
