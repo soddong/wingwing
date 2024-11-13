@@ -30,7 +30,7 @@ public class HiveController {
         return ResponseEntity.ok().body(hivesInfo);
     }
 
-    @GetMapping("/search")
+    @PostMapping("/search")
     public ResponseEntity<?> getHivesInfoByKeyword(@Valid @RequestBody KeywordRequest keywordRequest) {
         List<HiveSearchResponse> hivesInfo = hiveService.getHivesInfoByKeyword(keywordRequest);
         return ResponseEntity.ok().body(hivesInfo);
