@@ -42,16 +42,13 @@ class SimulatorVM : ViewModel() {
     private val _droneControls = MutableLiveData<Controls>()
     val droneControls: LiveData<Controls> get() = _droneControls
 
-    private val _dronePosition = MutableLiveData<Position>()
-    val dronePosition: LiveData<Position> get() = _dronePosition
-
     private val _gpsSignalLevel = MutableLiveData<Int>()
     val gpsSignalLevel: LiveData<Int> get() = _gpsSignalLevel
 
     private val _targetPosition = MutableLiveData<Position>()
     val targetPosition: LiveData<Position> get() = _targetPosition
-
-
+    private val _targetDistance = MutableLiveData<Double>()
+    val targetDistance: LiveData<Double> get() = _targetDistance
 
     init {
         // targetPosition의 변경을 관찰
@@ -67,11 +64,6 @@ class SimulatorVM : ViewModel() {
         simulatorModel.subscribeControlValues { controls ->
             _droneControls.postValue(controls)
         }
-
-//        simulatorModel.subscribePosition { position ->
-//            _dronePosition.postValue(position)
-//        }
-
     }
 
     fun initVirtualStickValue() {
@@ -297,11 +289,13 @@ class SimulatorVM : ViewModel() {
         startLat: Double, startLng: Double,
         endLat: Double, endLng: Double
     ): Pair<Double, Double> {
-        return simulatorModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
+        val pair = simulatorModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
+        _targetDistance.postValue(pair.first)
+        return pair
     }
 
     fun enableSimulatorMode() {
-        val lat = 37.396959
+        val lat = 37.495959
         val lng = 127.0358512
         val simulatorGPSNum = 15
         val coordinate2D = LocationCoordinate2D(lat, lng)
@@ -326,6 +320,7 @@ class SimulatorVM : ViewModel() {
 
         }
     }
+
     // 큐의 다음 위치로 이동하는 메서드
     private fun startNextTarget() {
         if (targetPositionQueue.isNotEmpty()) {
@@ -335,7 +330,7 @@ class SimulatorVM : ViewModel() {
             val nextPosition = targetPositionQueue.poll() // 큐에서 첫 번째 위치를 가져옴
             _targetPosition.postValue(nextPosition)
             if (nextPosition != null) {
-                Log.d("DEBUG","next Position : $nextPosition")
+                Log.d("DEBUG", "next Position : $nextPosition")
                 simulatorModel.moveToTarget(nextPosition) {
                     isMoving = false // 이동 완료 시 플래그 해제
                     // 이동 완료 후 큐에 남은 위치가 있으면 다음 위치로 이동

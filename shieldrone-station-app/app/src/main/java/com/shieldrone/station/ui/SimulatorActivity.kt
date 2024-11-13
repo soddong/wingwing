@@ -31,7 +31,7 @@ class SimulatorActivity : AppCompatActivity() {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
                 val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
                 simulatorVM.addTargetPosition(position)
-                Log.d(SIMULATOR_TAG, "Updated Route to: $latitude, $longitude, altitude: 1.2")
+//                Log.d(SIMULATOR_TAG, "Updated Route to: $latitude, $longitude, altitude: 1.2")
             }
         }
         routeAdapter = RouteAdapter(routeListener)
@@ -67,6 +67,7 @@ class SimulatorActivity : AppCompatActivity() {
     private fun observeData() {
         // 드론 상태 관찰
         simulatorVM.droneState.observe(this, Observer { state ->
+
             val statusText = """
                 롤: ${state.roll}
                 요: ${state.yaw}
@@ -74,7 +75,6 @@ class SimulatorActivity : AppCompatActivity() {
                 속도(X): ${state.xVelocity}
                 속도(Y): ${state.yVelocity}
                 속도(Z): ${state.zVelocity}
-                나침반 방향: ${state.compassHeading}
                 lat: ${state.latitude}
                 lng: ${state.longitude}
                 alt: ${state.altitude}
@@ -105,6 +105,9 @@ class SimulatorActivity : AppCompatActivity() {
 
         simulatorVM.targetPosition.observe(this) {
             updateTargetLocation()
+        }
+        simulatorVM.targetDistance.observe(this) { distance ->
+            binding.txtSimulatorDistance.text = "거리: $distance"
         }
 //        1. targetLocationQueue가 비어있지 않은지 확인
 //        2. 비어있지 않다면 moveToTarget() 실행-> 종료될때까지 대기

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
+import com.shieldrone.station.data.Position
 import com.shieldrone.station.databinding.FlightControlActivityBinding
 import com.shieldrone.station.model.FlightControlVM
 import com.shieldrone.station.service.route.RouteAdapter
@@ -28,28 +29,21 @@ class FlightControlActivity : AppCompatActivity() {
 
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
-                flightControlVM.setTargetLocation(latitude, longitude)
+                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
+                flightControlVM.addTargetPosition(position)
                 Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
             }
         }
         routeAdapter = RouteAdapter(routeListener)
         routeController = RouteController(routeAdapter)
-        subscribeDroneValues()
+        routeController.startReceivingLocation()
+
         initUiElements()
         observeData()
     }
 
-
-    private fun subscribeDroneValues() {
-        flightControlVM.subscribeDroneState()
-        flightControlVM.subscribeDroneControlValues()
-        flightControlVM.subscribeDronePositionValues()
-    }
-
-
     private fun initUiElements() {
         initButtonClickListeners()
-        initTextViews()
     }
 
     private fun initButtonClickListeners() {
@@ -66,20 +60,6 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnRotateLeft.setOnClickListener { flightControlVM.rotateLeft() }
         binding.btnRotateRight.setOnClickListener { flightControlVM.rotateRight() }
         binding.btnInitValue.setOnClickListener { flightControlVM.initVirtualStickValue() }
-        binding.btnMoveToTarget.setOnClickListener { flightControlVM.moveToTarget() }
-        binding.btnGetTargetLocation.setOnClickListener {
-            routeController.startReceivingLocation()
-            Log.d(FLIGHT_CONTROL_TAG, "Started receiving location updates")
-        }
-    }
-
-    private fun initTextViews() {
-//        binding.txtDroneStatus.text = "Drone Status"
-//        binding.txtDroneControls.text = "Drone Controls"
-//        binding.txtDronePosition.text = "Drone Position"
-//        binding.txtMessage.text = "Message"
-//        binding.txtGpsLevel.text = "GPS Level"
-//        binding.txtTargetLocation.text = "타겟 위치 표시"
     }
 
     @SuppressLint("SetTextI18n")
@@ -93,7 +73,9 @@ class FlightControlActivity : AppCompatActivity() {
                 속도(X): ${state.xVelocity}
                 속도(Y): ${state.yVelocity}
                 속도(Z): ${state.zVelocity}
-                나침반 방향: ${state.compassHeading}
+                lat: ${state.latitude}
+                lng: ${state.longitude}
+                alt: ${state.altitude}
             """.trimIndent()
             binding.txtDroneState.text = statusText
         })
@@ -101,43 +83,24 @@ class FlightControlActivity : AppCompatActivity() {
         // 메시지 관찰
         flightControlVM.message.observe(this) { message ->
             binding.txtDroneMessage.text = message
-            Log.d("FlightControlActivity", message)
         }
 
         // 드론 제어 정보 관찰
         flightControlVM.droneControls.observe(this) { control ->
             val statusText = """
-                leftStick (VERT-고도): ${control.leftStick.verticalPosition}
-                leftStick (HORI-좌우회전): ${control.leftStick.horizontalPosition}
-                rightStick (VERT-앞뒤): ${control.rightStick.verticalPosition}
-                rightStick (HORI-좌우이동): ${control.rightStick.horizontalPosition}
+                leftStick (고도): ${control.leftStick.verticalPosition}
+                leftStick (좌우회전): ${control.leftStick.horizontalPosition}
+                rightStick (앞뒤): ${control.rightStick.verticalPosition}
+                rightStick (좌우이동): ${control.rightStick.horizontalPosition}
             """.trimIndent()
             binding.txtDroneControls.text = statusText
         }
 
-        // 드론 위치 정보 관찰
-        flightControlVM.dronePosition.observe(this) { position ->
-            val positionText = """
-            위도: ${position.latitude}
-            경도: ${position.longitude}
-            고도: ${position.altitude}
-        """.trimIndent()
-            binding.txtDronePosition.text = positionText
-        }
-
         // GPS 신호 레벨 관찰
         flightControlVM.gpsSignalLevel.observe(this) { gpsLevel ->
-
             binding.txtGpsLevel.text = "GPS Signal Level: $gpsLevel"
         }
-        // 목표 위도와 경도 관찰 및 거리 업데이트
-        flightControlVM.targetLat.observe(this) {
-            Log.d("FlightControlActivity", "targetLat updated: $it")
-            updateTargetLocation()
-        }
-
-        flightControlVM.targetLng.observe(this) {
-            Log.d("FlightControlActivity", "targetLng updated: $it")
+        flightControlVM.targetPosition.observe(this) {
             updateTargetLocation()
         }
 
@@ -145,10 +108,11 @@ class FlightControlActivity : AppCompatActivity() {
 
     @SuppressLint("DefaultLocale")
     private fun updateTargetLocation() {
-        val currentLat = flightControlVM.dronePosition.value?.latitude
-        val currentLng = flightControlVM.dronePosition.value?.longitude
-        val targetLat = flightControlVM.targetLat.value
-        val targetLng = flightControlVM.targetLng.value
+        val currentLat = flightControlVM.droneState.value?.latitude
+        val currentLng = flightControlVM.droneState.value?.longitude
+        val targetPosition = flightControlVM.targetPosition.value
+        val targetLat = targetPosition?.latitude
+        val targetLng = targetPosition?.longitude
 
         if (currentLat != null && currentLng != null && targetLat != null && targetLng != null) {
             val distance = flightControlVM.calculateDistanceAndBearing(
@@ -171,5 +135,4 @@ class FlightControlActivity : AppCompatActivity() {
             binding.txtTargetLocation.text = targetLocationText
         }
     }
-
 }

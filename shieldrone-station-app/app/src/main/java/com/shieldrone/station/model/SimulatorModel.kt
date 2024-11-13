@@ -289,10 +289,10 @@ class SimulatorModel {
 //                    state.longitude = it.longitude
 //                    state.altitude = it.altitude
                     onUpdate(state)
-                    Log.d(
-                        SIMULATOR_TAG,
-                        "Location updated: lat=${it.latitude}, lng=${it.longitude}, alt=${it.altitude}"
-                    )
+//                    Log.d(
+//                        SIMULATOR_TAG,
+//                        "Location updated: lat=${it.latitude}, lng=${it.longitude}, alt=${it.altitude}"
+//                    )
                 }
             }
         KeyManager.getInstance()
@@ -352,45 +352,6 @@ class SimulatorModel {
         })
     }
 
-    /**
-     * 드론의 위치 정보 (altitude, latitude, longitude)를 구독하여 지속적으로 업데이트하는 함수
-     */
-    fun subscribePosition(onUpdate: (Position) -> Unit) {
-        // 초기 위치 설정
-        var currentPosition = Position(
-            altitude = location3D.get()?.altitude ?: 0.0,
-            latitude = location3D.get()?.latitude ?: 0.0,
-            longitude = location3D.get()?.longitude ?: 0.0
-        )
-
-        // 위치 정보를 일정 간격으로 업데이트
-        handler.post(object : Runnable {
-            override fun run() {
-                // 새로운 위치 정보를 가져옴
-                val newAltitude = location3D.get()?.altitude ?: 0.0
-                val newLatitude = location3D.get()?.latitude ?: 0.0
-                val newLongitude = location3D.get()?.longitude ?: 0.0
-                // 새로운 위치와 이전 위치 간의 거리 계산
-                // 새로운 위치 정보로 Position 객체 생성
-                val newPosition = Position(newAltitude, newLatitude, newLongitude)
-
-                // 위치 값이 변경된 경우에만 업데이트
-                if (currentPosition != newPosition) {
-                    currentPosition = newPosition
-                    onUpdate(newPosition)
-                    Log.d(
-                        SIMULATOR_TAG,
-                        "Position updated: altitude = $newAltitude, latitude = $newLatitude, longitude = $newLongitude"
-                    )
-                }
-
-                // 100ms 주기로 위치 정보를 업데이트
-                handler.postDelayed(this, 1000)
-            }
-        })
-
-    }
-
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
         var currentGPSLevel =
             KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
@@ -429,7 +390,7 @@ class SimulatorModel {
      * 드론을 전진시키는 메서드 (Pitch 값 조정)
      */
     fun moveToForward() {
-        val pitch = MAX_STICK_VALUE // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
+        val pitch = 60 // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
         val controls = Controls(
             leftStick = StickPosition(0, 0),
             rightStick = StickPosition(pitch, 0)
@@ -582,7 +543,7 @@ class SimulatorModel {
                         moveToForward()
                     }
                     // 다음 체크를 위해 간격을 1초로 설정
-                    handler.postDelayed(this, 1000)
+                    handler.postDelayed(this, 100)
                 }
             }
         })
@@ -590,10 +551,6 @@ class SimulatorModel {
 
     private fun getCurrentDronePositionForSimulation(): Position {
         var location = location2D.get()
-        Log.d(
-            "LOCATION",
-            String.format("현재 위치의 lat : %.4f lng : %.4f ", location?.latitude, location?.longitude)
-        )
         return if (location != null) {
             Position(location.latitude, location.longitude, 1.2)
         } else {
@@ -610,7 +567,7 @@ class SimulatorModel {
         // 위도와 경도의 차이를 구한 후 라디안으로 변환
         val dLat = Math.toRadians(endLat - startLat)
         val dLng = Math.toRadians(endLng - startLng)
-        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
+//        Log.d("DEBUG", "dLat: $dLat, dLng: $dLng")
 
         // 시작 및 끝 위도도 라디안으로 변환
         val startLatRad = Math.toRadians(startLat)
@@ -620,14 +577,14 @@ class SimulatorModel {
         val a = sin(dLat / 2).pow(2.0) +
                 cos(startLatRad) * cos(endLatRad) *
                 sin(dLng / 2).pow(2.0)
-        Log.d("DEBUG", "a: $a")
+//        Log.d("DEBUG", "a: $a")
 
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        Log.d("DEBUG", "c: $c")
+//        Log.d("DEBUG", "c: $c")
 
         // 거리 계산 (미터 단위)
         val distance = EARTH_RADIUS * c
-        Log.d("DEBUG", "distance: $distance")
+//        Log.d("DEBUG", "distance: $distance")
 
         // 방위각 계산
         val y = sin(dLng) * cos(endLatRad)
@@ -635,7 +592,7 @@ class SimulatorModel {
                 sin(startLatRad) * cos(endLatRad) * cos(dLng)
         var bearing = Math.toDegrees(atan2(y, x))
         bearing = (bearing + 360) % 360 // 방위각을 0~360도로 변환
-        Log.d("DEBUG", "bearing after normalization: $bearing")
+//        Log.d("DEBUG", "bearing after normalization: $bearing")
 
         return Pair(distance, bearing)
     }
@@ -659,7 +616,7 @@ class SimulatorModel {
             rightStick = StickPosition(0, 0) // Pitch, Roll
         )
         setDroneControlValues(controls)
-        Log.d(SIMULATOR_TAG, "Adjusting yaw with yawRate: $yawRate")
+//        Log.d(SIMULATOR_TAG, "Adjusting yaw with yawRate: $yawRate")
     }
 
 
@@ -685,5 +642,9 @@ class SimulatorModel {
      */
     private fun updateStickPositions(stickManager: IVirtualStickManager, controls: Controls) {
         applyControlValues(stickManager, controls, VIRTUAL_STICK_TAG)
+    }
+
+    fun subscribeTargetDistance(distance: Double) {
+
     }
 }
