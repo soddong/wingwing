@@ -1,0 +1,116 @@
+package com.ssafy.shieldroneapp.data.repository
+
+import android.content.Context
+import com.ssafy.shieldroneapp.data.model.DroneState
+import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneRouteRequest
+import com.ssafy.shieldroneapp.data.model.response.DroneMatchResponse
+import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
+import com.ssafy.shieldroneapp.data.source.local.DroneLocalDataSource
+import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.utils.NetworkUtils
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class DroneRepositoryImpl @Inject constructor(
+    private val apiService: ApiService,
+    private val droneLocalDataSource: DroneLocalDataSource,
+    private val context: Context, // Context 주입
+) : DroneRepository {
+
+    /**
+     * 1. 드론 배정 요청
+     *
+     * 서버에 출발지와 도착지 데이터를 전송하여 드론 배정 가능 여부를 확인
+     */
+    override suspend fun requestRoute(request: DroneRouteRequest): Result<DroneRouteResponse> {
+        return NetworkUtils.apiCallAfterNetworkCheck(context) {
+            val response = apiService.requestRoute(request)
+            if (response.isSuccessful) {
+                response.body() ?: throw Exception("경로 응답이 비어 있습니다.")
+            } else {
+                throw Exception("드론 경로 요청 실패")
+            }
+        }
+    }
+
+    /**
+     * 2. 드론 배정 취소 요청
+     *
+     * 서버에 드론 ID를 전송하여 배정을 취소
+     */
+    override suspend fun cancelDrone(request: DroneCancelRequest): Result<Unit> {
+        return NetworkUtils.apiCallAfterNetworkCheck(context) {
+            val response = apiService.cancelDrone(request)
+            if (response.isSuccessful) {
+                Unit
+            } else {
+                throw Exception("드론 배정 취소 실패")
+            }
+        }
+    }
+
+    /**
+     * 3. 드론 매칭 요청
+     *
+     * 서버에 드론 ID와 드론 코드 데이터를 전송하여 매칭 성공 여부를 확인
+     */
+    override suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse> {
+        return NetworkUtils.apiCallAfterNetworkCheck(context) {
+            val response = apiService.matchDrone(request)
+            if (response.isSuccessful) {
+                response.body() ?: throw Exception("매칭 응답이 비어 있습니다.")
+            } else {
+                throw Exception("드론 매칭 요청 실패")
+            }
+        }
+    }
+
+    /**
+     * 4. 드론 상태 조회
+     *
+     * 로컬 저장소에서 드론 상태 정보를 불러옴
+     */
+    override suspend fun getDroneState(): DroneState? {
+        return droneLocalDataSource.getDroneState()
+    }
+
+    /**
+     * 5. 드론 상태 업데이트
+     *
+     * 로컬 저장소에 드론 상태 정보를 업데이트
+     */
+    override suspend fun updateDroneState(state: DroneState) {
+        droneLocalDataSource.updateDroneState(state)
+    }
+
+    /**
+     * 6. 드론 상태 초기화
+     *
+     * 로컬 저장소에 저장된 드론 상태 정보 삭제
+     */
+    override suspend fun clearDroneState() {
+        droneLocalDataSource.clearDroneState()
+    }
+
+    /**
+     * 7. 드론 배정 타이머 시작
+     *
+     * 로컬 저장소에 드론 배정 후, 최종 매칭 타이머 시작 시간 기록
+     */
+    override suspend fun startAssignmentTimer() {
+        droneLocalDataSource.startAssignmentTimer()
+    }
+
+    /**
+     * 8. 드론 배정 만료 여부 확인
+     *
+     * 10분 경과 시 만료
+     * 현재 시간과 배정 시작 시간 간의 경과 시간으로 만료 여부 확인
+     */
+    override suspend fun checkAssignmentExpiration(): Boolean {
+        return droneLocalDataSource.checkAssignmentExpiration()
+    }
+}

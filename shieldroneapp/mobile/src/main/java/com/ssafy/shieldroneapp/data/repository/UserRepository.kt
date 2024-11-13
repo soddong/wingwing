@@ -1,8 +1,8 @@
 package com.ssafy.shieldroneapp.data.repository
 
-import com.ssafy.shieldroneapp.data.model.Guardian
-import com.ssafy.shieldroneapp.data.model.User
+import com.ssafy.shieldroneapp.data.model.request.HomeLocationRequest
 import com.ssafy.shieldroneapp.data.model.request.UserAuthRequest
+import com.ssafy.shieldroneapp.data.model.response.HomeLocationResponse
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import com.ssafy.shieldroneapp.data.model.response.VerificationResponse
 
@@ -32,6 +32,7 @@ interface UserRepository {
     suspend fun saveTokens(tokens: TokenResponse)
     suspend fun refreshAccessToken(refreshToken: String): Result<TokenResponse>
 
-    suspend fun setEndPos(homeAddress: String, lat: Double, lng: Double): Result<Unit>
-    suspend fun addGuardian(newGuardian: Guardian): Result<Unit>
+    // 기본 도착지(집) 설정 및 조회
+    suspend fun setHomeLocation(request: HomeLocationRequest): Result<Unit>
+    suspend fun getHomeLocation(lat: Double, lng: Double): Result<HomeLocationResponse>
 }

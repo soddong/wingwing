@@ -1,6 +1,8 @@
 package com.ssafy.shieldroneapp.di
 
 import android.content.Context
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.ssafy.shieldroneapp.data.audio.AudioAnalyzer
 import com.ssafy.shieldroneapp.data.audio.AudioRecorder
 import com.ssafy.shieldroneapp.data.repository.AudioDataRepository
@@ -157,5 +159,13 @@ object AppModule {
         @ApplicationContext context: Context
     ): MobileConnectionManager {
         return MobileConnectionManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFusedLocationProviderClient(
+        @ApplicationContext context: Context
+    ): FusedLocationProviderClient {
+        return LocationServices.getFusedLocationProviderClient(context)
     }
 }

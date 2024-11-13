@@ -8,6 +8,8 @@ import com.ssafy.shieldroneapp.data.model.Guardian
 import com.ssafy.shieldroneapp.data.model.User
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.ssafy.shieldroneapp.data.model.request.HomeLocationRequest
+import com.ssafy.shieldroneapp.data.model.response.HomeLocationResponse
 import com.ssafy.shieldroneapp.data.model.response.TokenResponse
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +30,7 @@ class UserLocalDataSourceImpl @Inject constructor(
      */
     private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
     private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        "shieldrone_encrypted_prefs",
+        "user_encrypted_prefs",
         masterKeyAlias,
         context,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
@@ -119,31 +121,19 @@ class UserLocalDataSourceImpl @Inject constructor(
 
     /**
      * 5. 기본 도착지 정보 저장
-     *
-     * @param homeAddress 기본 도착지 주소
-     * @param lat 기본 도착지의 위도
-     * @param lng 기본 도착지의 경도
+     * @param location 기본 도착지 요청 데이터 (도로명 주소, 위도, 경도 포함)
      */
-    override suspend fun saveEndPos(homeAddress: String, lat: Double, lng: Double) {
-        sharedPreferences.edit().apply {
-            putString("homeAddress", homeAddress)
-            putFloat("lat", lat.toFloat())
-            putFloat("lng", lng.toFloat())
-            apply()
-        }
+    override suspend fun saveHomeLocation(location: HomeLocationRequest) {
+        sharedPreferences.edit().putString("homeLocation", gson.toJson(location)).apply()
     }
 
     /**
      * 6. 저장된 기본 도착지 정보 불러오기
-     *
-     * @return 저장된 기본 도착지 정보 (주소, 위도, 경도), 없을 경우 null 반환
+     * @return 저장된 기본 도착지 요청 데이터, 없을 경우 null 반환
      */
-    override suspend fun getEndPos(): Triple<String, Double, Double>? {
-        val homeAddress = sharedPreferences.getString("homeAddress", null) ?: return null
-        val lat = sharedPreferences.getFloat("lat", Float.MIN_VALUE)
-        val lng = sharedPreferences.getFloat("lng", Float.MIN_VALUE)
-        if (lat == Float.MIN_VALUE || lng == Float.MIN_VALUE) return null
-        return Triple(homeAddress, lat.toDouble(), lng.toDouble())
+    override suspend fun getHomeLocation(): HomeLocationResponse? {
+        val locationJson = sharedPreferences.getString("homeLocation", null) ?: return null
+        return gson.fromJson(locationJson, HomeLocationResponse::class.java)
     }
 
     /**

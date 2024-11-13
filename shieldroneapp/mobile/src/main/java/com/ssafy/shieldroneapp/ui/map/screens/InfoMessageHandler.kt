@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.ui.map
+package com.ssafy.shieldroneapp.ui.map.screens
 
 /**
  * 다양한 상황에 맞는 InfoMessage를 관리하고 표시하는 클래스.

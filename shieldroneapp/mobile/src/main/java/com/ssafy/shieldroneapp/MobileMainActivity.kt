@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -25,12 +26,15 @@ import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_AUTHENTICATION
 import dagger.hilt.android.AndroidEntryPoint
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_LANDING
-import com.ssafy.shieldroneapp.ui.MainScreen
 import com.ssafy.shieldroneapp.ui.map.MapScreen
+import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -41,6 +45,9 @@ class MobileMainActivity : ComponentActivity() {
 
     @Inject
     lateinit var connectionManager: MobileConnectionManager
+
+    @Inject
+    lateinit var alertHandler: AlertHandler
 
     private val _isAppActive = mutableStateOf(false)
     val isAppActive: State<Boolean> = _isAppActive
@@ -78,6 +85,7 @@ class MobileMainActivity : ComponentActivity() {
 
         setContent {
             val navController = rememberNavController()
+            val coroutineScope = rememberCoroutineScope()
 
             // 토큰이 있는지 확인하여 초기 화면 결정
             val startDestination = if (userLocalDataSource.getTokensSync() != null) {
@@ -105,6 +113,8 @@ class MobileMainActivity : ComponentActivity() {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
                             navController.navigate(ROUTE_AUTHENTICATION) {
+                          //  navController.navigate("main_screen") {
+                            // navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
@@ -113,8 +123,7 @@ class MobileMainActivity : ComponentActivity() {
                     composable(ROUTE_AUTHENTICATION) {
                         AuthenticationScreen(
                             onAuthComplete = {
-                                     navController.navigate(ROUTE_MAP) {
-//                                navController.navigate("main_screen") {
+                                navController.navigate(ROUTE_MAP) {
                                     // 인증 화면들도 백스택에서 제거
                                     popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                 }
@@ -122,11 +131,11 @@ class MobileMainActivity : ComponentActivity() {
                         )
                     }
                     composable(ROUTE_MAP) {
-                        MapScreen(isAppActive = isAppActive.value)
-                    }
-
-                    composable("main_screen") {
-                        MainScreen(isAppActive = isAppActive.value)
+                        MapScreen(
+                            isAppActive = isAppActive.value,
+                            alertHandler = alertHandler,
+                            coroutineScope = coroutineScope
+                        )
                     }
                 }
             }
@@ -175,30 +184,39 @@ class MobileMainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (!isAppActive.value) {
-            lifecycleScope.launch {
-                connectionManager.notifyWatchOfMobileStatus(true)
-                updateAppActive(true)
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    connectionManager.notifyWatchOfMobileStatus(true)
+                    withContext(Dispatchers.Main) {
+                        updateAppActive(true)
+                    }
+                    Log.d(TAG, "앱 활성화 상태 전송 완료")
+                } catch (e: Exception) {
+                    Log.e(TAG, "앱 활성화 상태 전송 실패", e)
+                }
             }
         }
     }
 
     override fun onPause() {
         super.onPause()
-        lifecycleScope.launch {
-            connectionManager.notifyWatchOfMobileStatus(false)
-            updateAppActive(false)
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        lifecycleScope.launch {
-            connectionManager.notifyWatchOfMobileStatus(false)
-            updateAppActive(false)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "앱 종료 감지: isFinishing=$isFinishing")
+                connectionManager.notifyWatchOfMobileStatus(false)
+                updateAppActive(false)
+            } catch (e: Exception) {
+                Log.e(TAG, "앱 종료 상태 전송 실패", e)
+            }
         }
     }
 
     private fun updateAppActive(isActive: Boolean) {
         _isAppActive.value = isActive
+        Log.d(TAG, "앱 활성 상태 업데이트: $isActive")
     }
 }
