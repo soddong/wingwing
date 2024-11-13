@@ -1,6 +1,15 @@
 package com.ssafy.shieldroneapp.data.model.request
 
 /**
+ * 출발지(드론 정류장) 검색을 위한 요청 모델
+ *
+ * @property keyword 사용자가 입력한 검색 키워드
+ */
+data class HiveSearchRequest(
+    val keyword: String
+)
+
+/**
  * 기본 도착지(집) 설정 요청 모델
  *
  * @property homeAddress 도로명 주소
