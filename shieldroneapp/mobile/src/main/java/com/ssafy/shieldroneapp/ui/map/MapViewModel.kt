@@ -76,6 +76,9 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             mapRepository.getLocationUpdates().collect { newLocation ->
                 _state.update { it.copy(currentLocation = newLocation) }
+                Log.d("MapViewModel", "현재 위치 갱신됨: $newLocation")  // 위치 갱신 확인 로그
+
+                // TODO: 웹소켓으로 위치 전송
             }
         }
     }

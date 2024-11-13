@@ -104,13 +104,14 @@ fun MapScreen(
         }
     }
 
-    // 위치 권한을 허용받은 후에만 초기 위치를 로드
+    // 위치 권한이 허락된 경우에만 현재 위치 로드 및 실시간 위치 추적 시작
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val locationGranted = permissions.entries.all { it.value }
         if (locationGranted) {
-            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives) // 현재 위치 로드
+            mapViewModel.handleEvent(MapEvent.StartLocationTracking) // 위치 추적 시작
         }
     }
     LaunchedEffect(Unit) {
