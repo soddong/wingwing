@@ -8,7 +8,7 @@ package com.ssafy.shieldroneapp.data.model
  * INUSE: 현재 사용 중
  */
 enum class DroneStatus {
-    AVAILABLE, RESERVED, INUSE
+    AVAILABLE, RESERVED, IN_USE
 }
 
 /**

@@ -25,7 +25,6 @@ package com.ssafy.shieldroneapp.ui.map.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,8 +35,8 @@ import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -47,7 +46,6 @@ import com.ssafy.shieldroneapp.data.model.RouteLocation
 @Composable
 fun MapMarkerInfoModal(
     routeLocation: RouteLocation,
-    onDismiss: () -> Unit,
     onSelect: (() -> Unit)? = null // 선택 버튼이 필요한 경우에만 사용
 ) {
     val borderColor = if (routeLocation.locationType == LocationType.START) Color.Blue else Color.Red
@@ -55,8 +53,6 @@ fun MapMarkerInfoModal(
 
     Card (
         modifier = Modifier
-//            .padding(16.dp)
-//            .width(280.dp)
             .widthIn(max = 340.dp)
             .padding(horizontal = 16.dp)
             .wrapContentSize(),
@@ -80,18 +76,19 @@ fun MapMarkerInfoModal(
                 Text(text = "거리: ${routeLocation.distance ?: 0}m")
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text("취소")
-                }
-                if (showSelectButton) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onSelect?.invoke() }) {
-                        Text("출발지로 선택")
-                    }
+
+            if (showSelectButton) {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = { onSelect?.invoke() },
+                    modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)
+
+                ) {
+                    Text(
+                        text = "출발지로 선택",
+                        style = MaterialTheme.typography.h6,
+                    )
                 }
             }
         }
