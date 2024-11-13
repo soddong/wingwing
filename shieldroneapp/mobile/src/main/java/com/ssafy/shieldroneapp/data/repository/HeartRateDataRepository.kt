@@ -33,17 +33,19 @@ class HeartRateDataRepository @Inject constructor(
             }
         }
     }
-    
+
     suspend fun processHeartRateData(data: HeartRateData) {
         try {
+            // 로컬 저장
+            localDataSource.saveHeartRateData(data)
+
+            // 서버 전송 시도
             webSocketService.sendHeartRateData(data)
-            // Boolean을 Int로 변환 (true -> 1, false -> 0)
             val pulseValue = if (data.pulseFlag) 1 else 0
             heartRateViewModel.updateHeartRate(pulseValue)
             Log.d(TAG, "심박수 데이터가 처리되어 서버에 전송되었습니다.")
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리 중 오류 발생", e)
-            localDataSource.saveHeartRateData(data)
         }
     }
 
