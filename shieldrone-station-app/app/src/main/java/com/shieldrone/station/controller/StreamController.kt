@@ -19,7 +19,7 @@ class StreamController(private val imageFrameProvider: ImageFrameProvider) {
         private const val HOST = "192.168.0.2"
         private const val PORT = 65432
         private const val FRAME_WIDTH = 640
-        private const val FRAME_HEIGHT = 640
+        private const val FRAME_HEIGHT = 360
     }
 
     init {
