@@ -48,6 +48,7 @@ import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.ui.map.screens.SearchResultsModal
+import com.ssafy.shieldroneapp.utils.rememberKeyboardController
 import com.ssafy.shieldroneapp.utils.setupMap
 import com.ssafy.shieldroneapp.utils.updateAllMarkers
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
@@ -79,6 +80,9 @@ fun MapScreen(
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val isMapInitialized = remember { mutableStateOf(false) }
+
+    // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
+    val keyboardController = rememberKeyboardController() 
 
     // 화면 회전 감지를 위한 Configuration 변경 감지
     val configuration = LocalConfiguration.current
@@ -170,6 +174,12 @@ fun MapScreen(
                                 override fun onMapReady(map: KakaoMap) {
                                     Log.d("MapScreen", "Map ready")
                                     kakaoMap.value = map
+
+                                    // 맵 클릭 리스너 추가 : 키보드 숨기기
+                                    map.setOnMapClickListener { _, _, _, _ ->
+                                        keyboardController.hideKeyboard()
+                                    }
+
                                     if (state.currentLocation != null) {
                                         setupMap(map, mapViewModel)
                                         isMapInitialized.value = true

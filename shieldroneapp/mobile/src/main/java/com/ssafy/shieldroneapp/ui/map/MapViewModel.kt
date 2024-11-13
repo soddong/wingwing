@@ -84,7 +84,7 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
             try {
                 val location = mapRepository.getCurrentLocation() // 현재 위치 (LatLng)
-                _state.update { it.copy(currentLocation = location, isLoading = false) }
+                _state.update { it.copy(currentLocation = location) }
                 Log.d("MapViewModel", "현재 위치 확인: $location") 
 
                 fetchNearbyHives(location) // LatLng 값을 통해 주변 출발지 (드론 정류장) 조회
