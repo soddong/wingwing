@@ -23,11 +23,11 @@ enum class LocationType {
  * 출발지/도착지 위치 정보를 통합 관리하는 데이터 클래스
  *
  * @property locationType 위치 유형 (출발지/도착지)
- * @property distance 현재 위치로부터의 거리 (미터 단위)
+ * @property locationName 위치 이름
+ * @property distance 현재 위치로부터의 거리 (m)
  * @property lat 위도
  * @property lng 경도
  * @property hiveId 정류장 ID (출발지인 경우)
- * @property hiveName 정류장 이름 (출발지인 경우)
  * @property hiveNo 정류장 번호 (출발지인 경우)
  * @property direction 이동 방면 (출발지인 경우)
  * @property homeAddress 도로명 주소 (도착지인 경우)
@@ -36,13 +36,13 @@ data class RouteLocation(
     val locationType: LocationType,
     
     // 공통
+    val locationName: String? = null,
     val distance: Int? = null,
     val lat: Double,
     val lng: Double,
 
     // 출발지(START)
     val hiveId: Int? = null,
-    val hiveName: String? = null,
     val hiveNo: Int? = null,
     val direction: String? = null,
     

@@ -41,13 +41,13 @@ data class HiveResponse(
     fun toRouteLocation(): RouteLocation {
         return RouteLocation(
             locationType = LocationType.START,
-            hiveId = hiveId,
-            hiveName = hiveName,
-            hiveNo = hiveNo,
-            direction = direction,
+            locationName = hiveName,
             distance = distance,
             lat = lat,
-            lng = lng
+            lng = lng,
+            hiveId = hiveId,
+            hiveNo = hiveNo,
+            direction = direction,
         )
     }
 }
@@ -99,4 +99,14 @@ data class KakaoSearchResponse(
         lat = lat,
         lng = lng,
     )
+    fun toRouteLocation(): RouteLocation {
+        return RouteLocation(
+            locationType = LocationType.END,
+            locationName = placeName,
+            distance = distance,
+            lat = lat,
+            lng = lng,
+            homeAddress = roadAddressName,
+        )
+    }
 }
