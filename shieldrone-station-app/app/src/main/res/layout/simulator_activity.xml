@@ -33,17 +33,17 @@
         android:textSize="12sp"
         android:padding="6dp" />
     <TextView
-        android:id="@+id/txtSimulatorLocation"
+        android:id="@+id/txtSimulatorDistance"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="사용자 위치"
+        android:text="거리"
         android:textSize="12sp"
         android:padding="6dp" />
     <TextView
         android:id="@+id/txtSimulatorTargetLocation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="목표위치 및 거리"
+        android:text="목표위치"
         android:textSize="12sp"
         android:padding="6dp" />
     <TextView

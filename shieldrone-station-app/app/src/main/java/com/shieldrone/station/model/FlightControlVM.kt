@@ -1,24 +1,33 @@
 package com.shieldrone.station.model
 
+import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
 import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_DEGREE
 import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
+import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
+import java.util.LinkedList
+import java.util.Queue
 
 class FlightControlVM : ViewModel() {
 
     // 1. 라이브데이터 및 필요한 필드
     private val flightControlModel = FlightControlModel()
     private val handler = Handler(Looper.getMainLooper())
+    private val targetPositionQueue: Queue<Position> = LinkedList()
+
+    private var isMoving = false
 
     private val _droneState = MutableLiveData<State>()
     val droneState: LiveData<State> get() = _droneState
@@ -29,17 +38,13 @@ class FlightControlVM : ViewModel() {
     private val _droneControls = MutableLiveData<Controls>()
     val droneControls: LiveData<Controls> get() = _droneControls
 
-    private val _dronePosition = MutableLiveData<Position>()
-    val dronePosition: LiveData<Position> get() = _dronePosition
 
     private val _gpsSignalLevel = MutableLiveData<Int>()
     val gpsSignalLevel: LiveData<Int> get() = _gpsSignalLevel
 
-    private val _targetLat = MutableLiveData<Double>()
-    val targetLat: LiveData<Double> get() = _targetLat
+    private val _targetPosition = MutableLiveData<Position>()
+    val targetPosition: LiveData<Position> get() = _targetPosition
 
-    private val _targetLng = MutableLiveData<Double>()
-    val targetLng: LiveData<Double> get() = _targetLng
 
     // 2. 필요한 초기화
     init {
@@ -55,20 +60,17 @@ class FlightControlVM : ViewModel() {
             _droneControls.postValue(controls)
         }
 
-        flightControlModel.subscribePosition { position ->
-            _dronePosition.postValue(position)
-        }
     }
 
     fun initVirtualStickValue() {
-        flightControlModel.subscribeControlValues { controls: Controls ->
-            controls.leftStick.verticalPosition = 0
-            controls.leftStick.horizontalPosition = 0
-            controls.rightStick.verticalPosition = 0
-            controls.rightStick.horizontalPosition = 0
-            _droneControls.value = controls
+        val controls = Controls(
+            leftStick = StickPosition(0, 0),
+            rightStick = StickPosition(0, 0)
+        )
+        setDroneControlValues(controls)
+        _droneControls.value = controls
+        Log.d(SIMULATOR_TAG, "Virtual Stick values initialized.")
 
-        }
     }
 
 
@@ -124,7 +126,7 @@ class FlightControlVM : ViewModel() {
         // 일정 시간 후에 값을 초기화하여 정지
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200) // 200ms 후 초기화 (시간 조정 가능)
+        }, BTN_DELAY) // BTN_DELAYms 후 초기화 (시간 조정 가능)
     }
 
     /**
@@ -139,7 +141,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -154,7 +156,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -169,7 +171,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -184,7 +186,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -199,7 +201,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -214,7 +216,7 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
@@ -229,53 +231,15 @@ class FlightControlVM : ViewModel() {
 
         handler.postDelayed({
             initVirtualStickValue()
-        }, 200)
+        }, BTN_DELAY)
     }
 
     /**
      * 드론 제어값 설정
      */
     private fun setDroneControlValues(controls: Controls) {
-        flightControlModel.setControlValues(controls, object : CommonCallbacks.CompletionCallback {
-            override fun onSuccess() {
-                _message.postValue("드론 제어 값이 성공적으로 설정되었습니다.")
-                _droneControls.postValue(controls)
-            }
-
-            override fun onFailure(error: IDJIError) {
-                _message.postValue("드론 제어 설정 실패: ${error.description()}")
-            }
-        })
+        flightControlModel.setDroneControlValues(controls)
     }
-
-    // 6. 구독 메서드
-    /**
-     * 드론 상태 정보 구독 시작(State: attitude, velocity, location)
-     */
-    fun subscribeDroneState() {
-        flightControlModel.subscribeDroneState { state ->
-            _droneState.postValue(state)
-        }
-    }
-
-    /**
-     * 드론 제어 정보 구독 시작(Virtual Stick)
-     */
-    fun subscribeDroneControlValues() {
-        flightControlModel.subscribeControlValues { control ->
-            _droneControls.postValue(control)
-        }
-    }
-
-    /**
-     * 드론 위치 정보 구독 시작(Only Position)
-     */
-    fun subscribeDronePositionValues() {
-        flightControlModel.subscribePosition { position ->
-            _dronePosition.postValue(position)
-        }
-    }
-
 
     // 7. 가상 스틱 활성화 및 비 활성화 메서드
     /**
@@ -284,7 +248,6 @@ class FlightControlVM : ViewModel() {
     fun enableVirtualStickMode() {
         flightControlModel.enableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                initVirtualStickValue()
                 _message.postValue("Virtual Stick 모드가 활성화되었습니다.")
             }
 
@@ -312,27 +275,8 @@ class FlightControlVM : ViewModel() {
     // 8. 타겟 설정, 타겟 이동
 
     /**
-     * RouteAdapter로부터 받은 목표 위치 설정
-     */
-    fun setTargetLocation(lat: Double, lng: Double) {
-        _targetLat.postValue(lat)
-        _targetLng.postValue(lng)
-    }
-
-    /**
      * MoveToTarget 버튼 클릭 시 호출: 목표 위치로 이동
      */
-    fun moveToTarget() {
-        val lat = _targetLat.value
-        val lng = _targetLng.value
-        if (lat != null && lng != null) {
-            flightControlModel.moveToTarget(lat, lng)
-            _message.postValue("목표 위치로 이동 중: 위도=$lat, 경도=$lng")
-        } else {
-            _message.postValue("목표 위치가 설정되지 않았습니다.")
-        }
-    }
-
     /**
      * Yaw 조정
      */
@@ -348,5 +292,38 @@ class FlightControlVM : ViewModel() {
         endLat: Double, endLng: Double
     ): Pair<Double, Double> {
         return flightControlModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
+    }
+
+    @SuppressLint("DefaultLocale")
+    fun addTargetPosition(position: Position) {
+        // 목표 위치를 큐에 추가
+        targetPositionQueue.add(position)
+        _message.postValue("새로운 목표 위치가 큐에 추가되었습니다. 현재 큐 크기: ${targetPositionQueue.size}")
+        Log.d("QueueInfo", "새 목표 위치: 위도=${position.latitude}, 경도=${position.longitude}")
+
+        // 이동 중이 아니라면 새 위치로 이동 시작
+        if (!isMoving) {
+            startNextTarget()
+
+        }
+    }
+
+    // 큐의 다음 위치로 이동하는 메서드
+    private fun startNextTarget() {
+        if (targetPositionQueue.isNotEmpty()) {
+            isMoving = true // 이동 시작
+            Log.d("NextTarget", "isMoving : $isMoving")
+
+            val nextPosition = targetPositionQueue.poll() // 큐에서 첫 번째 위치를 가져옴
+            _targetPosition.postValue(nextPosition)
+            if (nextPosition != null) {
+                Log.d("DEBUG", "next Position : $nextPosition")
+                flightControlModel.moveToTarget(nextPosition) {
+                    isMoving = false // 이동 완료 시 플래그 해제
+                    // 이동 완료 후 큐에 남은 위치가 있으면 다음 위치로 이동
+                    startNextTarget()
+                }
+            }
+        }
     }
 }
