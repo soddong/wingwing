@@ -6,11 +6,14 @@ import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
+import androidx.lifecycle.asLiveData
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
+import com.shieldrone.station.controller.TrackingTargetController
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.databinding.FlightControlActivityBinding
 import com.shieldrone.station.model.FlightControlVM
+import com.shieldrone.station.model.TrackingTargetViewModel
 import com.shieldrone.station.service.route.RouteAdapter
 
 class FlightControlActivity : AppCompatActivity() {
@@ -19,6 +22,8 @@ class FlightControlActivity : AppCompatActivity() {
     private val flightControlVM: FlightControlVM by viewModels()
     private lateinit var routeAdapter: RouteAdapter
     private lateinit var routeController: RouteController
+    private lateinit var trackingController: TrackingTargetController
+    private val trackingVM: TrackingTargetViewModel by viewModels()
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,10 +44,16 @@ class FlightControlActivity : AppCompatActivity() {
         routeController = RouteController(routeAdapter)
         routeController.startReceivingLocation()
 
+        trackingController = TrackingTargetController(trackingVM)
+
         initUiElements()
         observeData()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        trackingController.stopReceivingData()
+    }
     private fun initUiElements() {
         initButtonClickListeners()
     }
@@ -97,6 +108,11 @@ class FlightControlActivity : AppCompatActivity() {
         flightControlVM.goHomeState.observe(this) { message ->
             binding.txtGoHomeMessage.text = message.toString()
         }
+
+        trackingVM.trackingData.asLiveData().observe(this){message ->
+            binding.txtTargetLocationInFrame.text = message.toString()
+        }
+
 
     }
 
