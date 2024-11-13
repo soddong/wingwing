@@ -43,4 +43,11 @@ public class DroneController {
         return ResponseEntity.ok().body(droneMatchResponse);
     }
 
+    @PostMapping("/end")
+    public ResponseEntity<?> droneEnd(@Valid @RequestBody DroneCancelRequest droneCancelRequest,
+                                      @CurrentUser String phoneNumber) {
+        droneService.droneEnd(droneCancelRequest, phoneNumber);
+        return ResponseEntity.ok().build();
+    }
+
 }
