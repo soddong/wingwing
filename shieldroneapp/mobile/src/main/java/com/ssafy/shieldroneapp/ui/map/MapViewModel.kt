@@ -212,10 +212,15 @@ class MapViewModel @Inject constructor(
         }
 
         return try {
+            val currentLocation = state.value.currentLocation
+            if (currentLocation == null) {
+                Log.e(TAG, "현재 위치 정보를 가져올 수 없습니다.")
+                return false
+            }
+
             val request = EmergencyRequest(
-                // TODO: 임시로 좌표 고정
-                lat = BigDecimal("37.123"),
-                lng = BigDecimal("127.456")
+                lat = BigDecimal(currentLocation.lat.toString()),
+                lng = BigDecimal(currentLocation.lng.toString())
             )
             Log.d(TAG, "전송 요청: ${Gson().toJson(request)}")
             val response = apiService.setEmergency(request)
