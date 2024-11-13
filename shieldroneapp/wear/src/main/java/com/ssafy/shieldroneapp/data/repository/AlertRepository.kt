@@ -11,9 +11,13 @@ import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.AlertData
 import com.ssafy.shieldroneapp.utils.await
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,10 +27,14 @@ class AlertRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "워치: 알림 저장소"
+        private const val KEY_TIMESTAMP = "timestamp"
     }
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _currentAlert = MutableStateFlow<AlertData?>(null)
     val currentAlert: StateFlow<AlertData?> = _currentAlert.asStateFlow()
+
+    private var lastSentTimestamp = 0L
 
     suspend fun processDangerAlert(alertData: AlertData) {
         Log.d(TAG, "⚠️ 위험 알림 활성화 - time: ${alertData.time}")
@@ -48,13 +56,22 @@ class AlertRepository @Inject constructor(
 
     private suspend fun sendDangerFlag(flag: Boolean) {
         try {
+            val currentTime = System.currentTimeMillis()
+            // 마지막 전송 후 500ms 이내의 중복 요청은 무시
+            if (currentTime - lastSentTimestamp < 500) {
+                Log.d(TAG, "중복 전송 방지: 이전 전송 후 500ms 이내")
+                return
+            }
+
             val request = PutDataMapRequest.create("/dangerAlert").apply {
                 dataMap.putBoolean("dangerFlag", flag)
+                dataMap.putLong(KEY_TIMESTAMP, currentTime) 
             }
             val putDataReq = request.asPutDataRequest()
             putDataReq.setUrgent()
 
             Wearable.getDataClient(context).putDataItem(putDataReq).await(5000)
+            lastSentTimestamp = currentTime
             Log.d(TAG, "위험 알림 플래그 전송 성공: $flag")
         } catch (e: Exception) {
             Log.e(TAG, "위험 알림 플래그 전송 실패", e)
@@ -63,16 +80,36 @@ class AlertRepository @Inject constructor(
 
     private suspend fun sendObjectFlag(flag: Boolean) {
         try {
+            val currentTime = System.currentTimeMillis()
+            // 마지막 전송 후 500ms 이내의 중복 요청은 무시
+            if (currentTime - lastSentTimestamp < 500) {
+                Log.d(TAG, "중복 전송 방지: 이전 전송 후 500ms 이내")
+                return
+            }
+
             val request = PutDataMapRequest.create("/objectAlert").apply {
                 dataMap.putBoolean("objectFlag", flag)
+                dataMap.putLong(KEY_TIMESTAMP, currentTime)
             }
             val putDataReq = request.asPutDataRequest()
             putDataReq.setUrgent()
 
             Wearable.getDataClient(context).putDataItem(putDataReq).await(5000)
+            lastSentTimestamp = currentTime 
             Log.d(TAG, "물체 감지 알림 플래그 전송 성공: $flag")
         } catch (e: Exception) {
             Log.e(TAG, "물체 감지 플래그 전송 실패", e)
+        }
+    }
+
+    private val _isSafeConfirmed = MutableStateFlow(false)
+    val isSafeConfirmed: StateFlow<Boolean> = _isSafeConfirmed
+
+    fun updateSafeConfirmation(isConfirmed: Boolean) {
+        _isSafeConfirmed.value = isConfirmed
+        if (isConfirmed) {
+            _currentAlert.value = null 
+            _isSafeConfirmed.value = false
         }
     }
 }
