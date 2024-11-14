@@ -18,7 +18,7 @@ class HeartRateViewModel @Inject constructor(
     private val _watchConnectionState = MutableStateFlow<WatchConnectionState>(WatchConnectionState.Disconnected)
     val watchConnectionState = _watchConnectionState.asStateFlow()
 
-    private val _heartRateData = MutableStateFlow<Int?>(null)
+    private val _heartRateData = MutableStateFlow<Double?>(null)
     val heartRateData = _heartRateData.asStateFlow()
 
     init {
@@ -35,9 +35,9 @@ class HeartRateViewModel @Inject constructor(
         }
     }
 
-    fun updateHeartRate(heartRate: Int) {
+    fun updateHeartRate(bpm: Double) {
         viewModelScope.launch {
-            _heartRateData.emit(heartRate)
+            _heartRateData.emit(bpm)
         }
     }
 }

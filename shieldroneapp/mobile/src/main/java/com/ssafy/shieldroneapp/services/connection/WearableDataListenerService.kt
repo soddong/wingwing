@@ -237,27 +237,20 @@ class WearableDataListenerService : BaseMobileService() {
     private fun processHeartRateData(event: DataEvent) {
         try {
             val dataItem = event.dataItem
-            Log.d(TAG, "데이터 아이템 처리 시작 - URI: ${dataItem.uri}")
-
             val dataMap = DataMapItem.fromDataItem(dataItem).dataMap
-            Log.d(TAG, "데이터맵 키셋: ${dataMap.keySet()}")
 
             val pulseFlag = dataMap.getBoolean("pulseFlag")
+            val bpm = dataMap.getDouble("bpm")
             val timestamp = dataMap.getLong("timestamp")
-            val sustained = dataMap.getBoolean("sustained", false)
 
-            Log.d(
-                TAG,
-                "심박수 데이터 파싱 완료 - pulseFlag: $pulseFlag, timestamp: $timestamp, sustained: $sustained"
+            val heartRateData = HeartRateData(
+                pulseFlag = pulseFlag,
+                bpm = bpm,
+                timestamp = timestamp
             )
 
             serviceScope.launch {
-                heartRateDataRepository.processHeartRateData(
-                    HeartRateData(
-                        pulseFlag = pulseFlag,
-                        timestamp = timestamp
-                    )
-                )
+                heartRateDataRepository.processHeartRateData(heartRateData)
             }
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리중 에러 발생", e)

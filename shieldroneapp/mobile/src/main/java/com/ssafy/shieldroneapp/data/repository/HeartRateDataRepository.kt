@@ -41,15 +41,15 @@ class HeartRateDataRepository @Inject constructor(
 
             // 서버 전송 시도
             webSocketService.sendHeartRateData(data)
-            val pulseValue = if (data.pulseFlag) 1 else 0
-            heartRateViewModel.updateHeartRate(pulseValue)
+
+            // 앞단 뷰에만 보여주기
+            heartRateViewModel.updateHeartRate(data.bpm)
+
             Log.d(TAG, "심박수 데이터가 처리되어 서버에 전송되었습니다.")
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리 중 오류 발생", e)
         }
     }
-
-
 
     fun stopSendingData() {
         coroutineScope.coroutineContext.cancelChildren()
