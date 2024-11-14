@@ -6,6 +6,8 @@ import android.util.Log
 import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.TrackingTargetController
 import com.shieldrone.station.data.Position
@@ -32,13 +34,9 @@ class FlightControlActivity : AppCompatActivity() {
 
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
-                val position = Position(latitude, longitude, altitude)
-                Log.d(
-                    "POSITION",
-                    "target 위도 : ${position.latitude}, target 경도 : ${position.longitude}"
-                )
-                flightControlVM.setTargetPosition(position)
-
+                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
+                Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
+                binding.txtTargetLocation.text = "사용자 위도: ${position.latitude}, 경도: ${position.longitude}"
             }
         }
 
@@ -76,7 +74,6 @@ class FlightControlActivity : AppCompatActivity() {
         super.onDestroy()
         trackingController.stopReceivingData()
     }
-
     private fun initUiElements() {
         initButtonClickListeners()
     }
@@ -96,13 +93,20 @@ class FlightControlActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun observeData() {
         // 드론 상태 관찰
-        flightControlVM.droneState.observe(this) { state ->
-            binding.txtDroneState.text = """
-                롤: ${state.roll}, 요: ${state.yaw}, 피치: ${state.pitch},
-                속도(X): ${state.xVelocity}, 속도(Y): ${state.yVelocity}, 속도(Z): ${state.zVelocity},
-                lat: ${state.latitude}, lng: ${state.longitude}, alt: ${state.altitude}
+        flightControlVM.droneState.observe(this, Observer { state ->
+            val statusText = """
+                롤: ${state.roll}
+                요: ${state.yaw}
+                피치: ${state.pitch}
+                속도(X): ${state.xVelocity}
+                속도(Y): ${state.yVelocity}
+                속도(Z): ${state.zVelocity}
+                lat: ${state.latitude}
+                lng: ${state.longitude}
+                alt: ${state.altitude}
             """.trimIndent()
-        }
+            binding.txtDroneState.text = statusText
+        })
 
         // 메시지 관찰
         flightControlVM.message.observe(this) { message ->
@@ -139,4 +143,5 @@ class FlightControlActivity : AppCompatActivity() {
         }
 
     }
+
 }
