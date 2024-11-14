@@ -32,11 +32,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
+import com.shieldrone.station.model.BatteryModel
+import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
 import com.shieldrone.station.service.route.RouteAdapter
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
+import com.shieldrone.station.ui.TrackingTargetActivity
 import dji.v5.manager.KeyManager
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.opencv.android.OpenCVLoader
@@ -88,6 +91,7 @@ class DJIMainActivity : AppCompatActivity() {
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
     private var isOpenCVInitialized = false
+    private lateinit var batteryViewModel: BatteryViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +102,9 @@ class DJIMainActivity : AppCompatActivity() {
             return
 
         }
+//        val batteryModel = BatteryModel()
+//        batteryViewModel = BatteryViewModel(batteryModel)
+//        batteryViewModel.startSendingBatteryStatus()
 //        setContent {
 //            com.shieldrone.station.ui.theme.ShieldronStationTheme {
 //                CameraPermissionScreen(
@@ -128,6 +135,8 @@ class DJIMainActivity : AppCompatActivity() {
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
+//        batteryViewModel.stopSendingBatteryStatus()
+
     }
 
     private fun checkAndRequestPermissions() {
@@ -263,29 +272,27 @@ class DJIMainActivity : AppCompatActivity() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    if (!isStreaming) {
-                        Row {
-                            Button(onClick = { onModeSelected(true) }) {
-                                Text(text = "Camera Mode")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(onClick = { onModeSelected(false) }) {
-                                Text(text = "Drone Mode")
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            // 시뮬레이터 모드 버튼 추가
-                            Button(onClick = { navigateToSimulator() }) {
-                                Text(text = "Simulator Mode")
-                            }
-
+                    Row {
+                        Button(onClick = { onModeSelected(true) }) {
+                            Text(text = "Camera Mode")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        // 버추얼 스틱 모드 버튼 추가
-                        Button(onClick = { navigateToFlightControl() }) {
-                            Text(text = "Virtual Stick Mode")
+                        Button(onClick = { onModeSelected(false)
+                            navigateToTrackingControl()
+                        }) {
+                            Text(text = "Drone Mode")
                         }
-                    } else if (!cameraPermissionGranted && isCameraMode) {
-                        PermissionRequestButton(onRequestPermission = onRequestPermission)
+                        Spacer(modifier = Modifier.width(10.dp))
+//                        // 시뮬레이터 모드 버튼 추가
+//                        Button(onClick = { navigateToSimulator() }) {
+//                            Text(text = "Simulator Mode")
+//                        }
+
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // 버추얼 스틱 모드 버튼 추가
+                    Button(onClick = { navigateToFlightControl() }) {
+                        Text(text = "Virtual Stick Mode")
                     }
                 }
             }
@@ -316,6 +323,10 @@ class DJIMainActivity : AppCompatActivity() {
     // FlightControlActivity로 이동하는 함수 추가
     private fun navigateToFlightControl() {
         val intent = Intent(this, FlightControlActivity::class.java)
+        startActivity(intent)
+    }
+    private fun navigateToTrackingControl() {
+        val intent = Intent(this, TrackingTargetActivity::class.java)
         startActivity(intent)
     }
 }
