@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.LatLng
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
@@ -67,8 +68,12 @@ class MapViewModel @Inject constructor(
             is MapEvent.EndLocationSelected -> TODO()
             is MapEvent.CloseModal -> dismissModal() // 모달 닫기
 
+            is MapEvent.SearchFieldClicked -> clickSearchField(event.type) // 출발지/도착지 검색 입력 필드 클릭
+
             is MapEvent.UpdateStartLocationText -> searchStartLocation(event.text)
             is MapEvent.UpdateEndLocationText -> searchEndLocation(event.text)
+
+            is MapEvent.SetStartLocation -> setStartLocation(event.location)
 
             is MapEvent.RequestDroneAssignment -> TODO()
             is MapEvent.BackPressed -> TODO()
@@ -156,7 +161,13 @@ class MapViewModel @Inject constructor(
         ) }
     }
 
-    // 6. 출발지 검색
+    // 6. 출발지/도착지 검색 입력 필드 클릭
+    private fun clickSearchField(type: LocationType) {
+        Log.d("MapViewModel", "searchType 아 진짜 왜저래: $type")
+        _state.update { it.copy(searchType = type) }
+    }
+
+    // 7. 출발지 검색
     private fun searchStartLocation(text: String) {
         Log.d("MapViewModel", "출발지 검색 입력 값: $text")
         _state.update { it.copy(startSearchText = text) }
@@ -167,12 +178,32 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    // 7. TODO: (확인 필요) 도착지 설정 관련 업데이트
+    // 8. TODO: 확인 요망 (ING)
+    private fun setStartLocation(location: RouteLocation) {
+        viewModelScope.launch {
+            try {
+                _state.update { currentState ->
+                    currentState.copy(
+                        selectedStart = location,
+                        startSearchText = location.locationName ?: "",
+//                        showSearchModal = false,
+                    )
+                }
+//                mapRepository.saveStartLocation(location)
+                Log.d(TAG, "출발지 설정 완료: ${location.locationName}")
+            } catch (e: Exception) {
+                Log.e(TAG, "출발지 설정 중 오류 발생", e)
+                setError("출발지 설정 중 오류가 발생했습니다.")
+            }
+        }
+    }
+
+    // TODO: (확인 필요) 도착지 설정 관련 업데이트
     private fun searchEndLocation(text: String) {
         _state.update { it.copy(endSearchText = text) }
     }
 
-    // 8. 실시간 위치 추적을 시작하는 함수
+    // 9. 실시간 위치 추적을 시작하는 함수
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
         viewModelScope.launch {
