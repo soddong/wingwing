@@ -20,6 +20,8 @@ import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
+import dji.sdk.keyvalue.value.common.LocationCoordinate2D
+import dji.sdk.keyvalue.value.common.LocationCoordinate3D
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
@@ -61,6 +63,7 @@ class FlightControlModel {
         val goToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStartGoHome) }
         val stopToHome by lazy { KeyTools.createKey(FlightControllerKey.KeyStopGoHome) }
         val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
+        val homeLocation by lazy { KeyTools.createKey(FlightControllerKey.KeyHomeLocation) }
     }
 
     // Virtual Stick 입력 값을 초기화하는 메서드
@@ -318,6 +321,55 @@ class FlightControlModel {
     }
 
     /**
+     * Home 위치 구독
+     */
+    fun subscribeHomeLocation(onUpdate: (LocationCoordinate2D) -> Unit) {
+        // KeyManager를 통해 GoHome 상태를 구독
+        KeyManager.getInstance().listen(homeLocation, this) { _, data ->
+            data?.let { homeLocation ->
+                Log.d(FLIGHT_CONTROL_TAG, "집주소 업데이트: $homeLocation")
+                onUpdate(homeLocation)
+            } ?: Log.e(FLIGHT_CONTROL_TAG, "집주소를 받아오지 못했습니다.")
+        }
+    }
+
+    /**
+     * Home 위치를 Set
+     */
+    fun setHomeLocation(callback: CommonCallbacks.CompletionCallback) {
+        // Retrieve the current 3D location (latitude, longitude, altitude) from the drone
+        val currentLocation3D: LocationCoordinate3D? = KeyManager.getInstance().getValue(location3D)
+
+        if (currentLocation3D != null) {
+            // Convert LocationCoordinate3D to LocationCoordinate2D (latitude, longitude only)
+            val homeLocation2D = LocationCoordinate2D(currentLocation3D.latitude, currentLocation3D.longitude)
+
+            // Set the 2D location as the home location
+            KeyManager.getInstance().setValue(homeLocation, homeLocation2D, object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(FLIGHT_CONTROL_TAG, "Home location successfully set to: $homeLocation2D")
+                    callback.onSuccess()
+                }
+
+                override fun onFailure(error: IDJIError) {
+                    Log.e(FLIGHT_CONTROL_TAG, "Failed to set home location: ${error.description()}")
+                    callback.onFailure(error)
+                }
+            })
+        } else {
+            Log.e(FLIGHT_CONTROL_TAG, "Current location not available to set as home location.")
+            callback.onFailure(object : IDJIError {
+                override fun errorType() = ErrorType.UNKNOWN
+                override fun errorCode() = "LOCATION_NOT_AVAILABLE"
+                override fun innerCode() = "LOCATION_NOT_AVAILABLE"
+                override fun hint() = "Could not retrieve current location."
+                override fun description() = "Drone's current location is unavailable."
+                override fun isError(p0: String?) = true
+            })
+        }
+    }
+
+    /**
      * Control 값을 설정하는 메서드
      */
     fun setDroneControlValues(controls: Controls) {
@@ -511,7 +563,7 @@ class FlightControlModel {
     }
 
     /**
-     * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home)
+     * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home) - homeLocation
      */
     fun startReturnToHome(callback: CommonCallbacks.CompletionCallback) {
         KeyManager.getInstance().run {
@@ -523,6 +575,11 @@ class FlightControlModel {
                     callback.onFailure(e)
                 })
         }
+    }
+
+    fun getHomeLocation() {
+        val location = KeyManager.getInstance().getValue(homeLocation)
+
     }
 
     /**

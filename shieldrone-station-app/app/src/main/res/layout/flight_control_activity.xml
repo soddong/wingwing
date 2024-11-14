@@ -41,6 +41,13 @@
         android:textSize="12sp"
         android:padding="6dp" />
     <TextView
+        android:id="@+id/txtHomeLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="홈 위치"
+        android:textSize="12sp"
+        android:padding="6dp" />
+    <TextView
         android:id="@+id/txtTargetLocation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -93,12 +100,25 @@
             android:text="착륙" />
 
         <Button
+            android:id="@+id/btnSetHome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="집 설정" />
+
+        <Button
             android:id="@+id/btnGoToHome"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="복귀" />
+    </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="4">
         <Button
             android:id="@+id/btnEnableVirtualStick"
             android:layout_width="0dp"
