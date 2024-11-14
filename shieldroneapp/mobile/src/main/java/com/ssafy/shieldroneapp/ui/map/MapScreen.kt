@@ -356,5 +356,4 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
-    }
 }
