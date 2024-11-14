@@ -20,8 +20,6 @@ import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
-import dji.sdk.keyvalue.value.common.LocationCoordinate2D
-import dji.sdk.keyvalue.value.common.LocationCoordinate3D
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
@@ -339,30 +337,20 @@ class FlightControlModel {
 
         if (currentLocation3D != null) {
             // Convert LocationCoordinate3D to LocationCoordinate2D (latitude, longitude only)
-            val homeLocation2D =
-                LocationCoordinate2D(currentLocation3D.latitude, currentLocation3D.longitude)
+            val homeLocation2D = LocationCoordinate2D(currentLocation3D.latitude, currentLocation3D.longitude)
 
             // Set the 2D location as the home location
-            KeyManager.getInstance().setValue(
-                homeLocation,
-                homeLocation2D,
-                object : CommonCallbacks.CompletionCallback {
-                    override fun onSuccess() {
-                        Log.d(
-                            FLIGHT_CONTROL_TAG,
-                            "Home location successfully set to: $homeLocation2D"
-                        )
-                        callback.onSuccess()
-                    }
+            KeyManager.getInstance().setValue(homeLocation, homeLocation2D, object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(FLIGHT_CONTROL_TAG, "Home location successfully set to: $homeLocation2D")
+                    callback.onSuccess()
+                }
 
-                    override fun onFailure(error: IDJIError) {
-                        Log.e(
-                            FLIGHT_CONTROL_TAG,
-                            "Failed to set home location: ${error.description()}"
-                        )
-                        callback.onFailure(error)
-                    }
-                })
+                override fun onFailure(error: IDJIError) {
+                    Log.e(FLIGHT_CONTROL_TAG, "Failed to set home location: ${error.description()}")
+                    callback.onFailure(error)
+                }
+            })
         } else {
             Log.e(FLIGHT_CONTROL_TAG, "Current location not available to set as home location.")
             callback.onFailure(object : IDJIError {
@@ -607,7 +595,9 @@ class FlightControlModel {
 //    }
 
 
-// 8. Control Value Settings, Print Logs
+
+
+    // 8. Control Value Settings, Print Logs
     /**
      * Control 값을 설정하고 로그를 출력하는 메서드
      */
