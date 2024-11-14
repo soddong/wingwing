@@ -13,21 +13,34 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationCompat
 import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import com.ssafy.shieldroneapp.utils.await
 import com.ssafy.shieldroneapp.viewmodels.AlertViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun AlertScreen(
-    viewModel: AlertViewModel,  // AlertViewModel 주입
-    modifier: Modifier = Modifier
+    alertViewModel: AlertViewModel,
+    modifier: Modifier = Modifier,
+    wearConnectionManager: WearConnectionManager
 ) {
-    val currentAlert by viewModel.currentAlert.collectAsState(initial = null)
+    val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
     var timeLeft by remember { mutableStateOf(5) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
+    val confirmedFromMobile by alertViewModel.confirmedFromMobile.collectAsState()
+    val isSafeConfirmed by alertViewModel.isSafeConfirmed.collectAsState()
     val context = LocalContext.current
+
 
     // 현재 알림이 없으면 빈 화면 반환
     if (currentAlert == null) {
@@ -62,7 +75,6 @@ fun AlertScreen(
         notificationManager.notify(1, notification)
     }
 
-    // TODO: 위험 상황 모바일 앱으로 알림 전송
     @Composable
     fun EmergencyNotificationScreen() {
         Column(
@@ -89,21 +101,51 @@ fun AlertScreen(
         }
     }
 
-    LaunchedEffect(isTimerRunning) {
-        while (isTimerRunning && timeLeft > 0) {
+    // 안전 확인 메시지를 모바일로 전송하는 함수
+    suspend fun sendSafeConfirmationToMobile() {
+        val messageClient = Wearable.getMessageClient(context)
+        try {
+            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
+            nodes.forEach { node ->
+                messageClient.sendMessage(
+                    node.id,
+                    "/safe_confirmation",
+                    "WATCH_CONFIRMED_SAFE".toByteArray()
+                ).await(5000)
+            }
+        } catch (e: Exception) {
+            Log.e("AlertScreen", "Failed to send safe confirmation to mobile", e)
+        }
+    }
+
+    LaunchedEffect(isTimerRunning, isSafeConfirmed) {
+        while (isTimerRunning && timeLeft > 0 && !isSafeConfirmed) {
             delay(1000L)
             timeLeft--
         }
-        if (timeLeft == 0) {
-            showEmergencyAlert()
-            showEmergencyNotification = true
-            delay(2000L)
-            viewModel.clearAlert()
+
+        when {
+            isSafeConfirmed -> {
+                isTimerRunning = false
+                timeLeft = 0
+                alertViewModel.clearAlert()
+            }
+            timeLeft == 0 && !isSafeConfirmed -> {
+                showEmergencyAlert()
+                showEmergencyNotification = true
+                delay(2000L)
+                alertViewModel.clearAlert()
+            }
+            else -> {
+                isTimerRunning = false
+            }
         }
     }
 
     if (showEmergencyNotification) {
         EmergencyNotificationScreen()
+    } else if (isSafeConfirmed) {
+        SafeConfirmedScreen(confirmedFromMobile = confirmedFromMobile)
     } else {
         Column(
             modifier = modifier
@@ -139,9 +181,34 @@ fun AlertScreen(
                 text = "안전 확인",
                 onClick = {
                     isTimerRunning = false
-                    viewModel.clearAlert() 
+                    alertViewModel.clearAlert()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        wearConnectionManager.sendSafeConfirmationToMobile()
+                    }
                 }
             )
         }
+    }
+}
+
+@Composable
+fun SafeConfirmedScreen(confirmedFromMobile: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = Color.Black.copy(alpha = 0.8f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (confirmedFromMobile) {
+                "모바일 앱에서 안전함이 확인되어\n알림이 중지됩니다"
+            } else {
+                "워치에서 안전함이 확인되어\n알림이 중지됩니다"
+            },
+            style = MaterialTheme.typography.body2,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }

@@ -24,6 +24,7 @@ import android.Manifest
 import android.content.ComponentName
 import com.google.android.gms.wearable.Node
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 
 @AndroidEntryPoint
 class WearableDataListenerService : BaseMobileService() {
@@ -41,16 +42,19 @@ class WearableDataListenerService : BaseMobileService() {
     @Inject
     lateinit var connectionManager: MobileConnectionManager
 
+    @Inject
+    lateinit var webSocketSubscriptions: WebSocketSubscriptions
+
     private lateinit var dataClient: DataClient
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "WearableDataListenerService 생성됨")
         dataClient = Wearable.getDataClient(this)
-        // 서비스 시작 시 로컬 데이터 전송 시작
         heartRateDataRepository.startSendingLocalHeartRateData()
         checkExistingData()
         checkConnectedNodes()
+        webSocketSubscriptions.setupWatchMessageListener()
     }
 
     override fun onPeerConnected(node: Node) {
@@ -72,6 +76,7 @@ class WearableDataListenerService : BaseMobileService() {
                 Log.d(TAG, "워치로부터 모바일 앱 실행 요청 수신")
                 launchMobileApp()
             }
+
             PATH_WATCH_LAUNCHED -> {
                 Log.d(TAG, "워치 앱 실행 확인됨")
                 connectionManager.updateWatchConnectionState(true)
@@ -81,6 +86,7 @@ class WearableDataListenerService : BaseMobileService() {
                     "워치와 연결되어 심박수 모니터링을 시작합니다."
                 )
             }
+
             MobileConnectionManager.PATH_WATCH_STATUS -> {
                 val isWatchActive = messageEvent.data[0] == 1.toByte()
                 connectionManager.updateWatchConnectionState(isWatchActive)
@@ -187,6 +193,7 @@ class WearableDataListenerService : BaseMobileService() {
                             Log.d(TAG, "심박수 데이터 이벤트 감지됨")
                             processHeartRateData(event)
                         }
+
                         else -> Log.d(TAG, "알 수 없는 경로: ${event.dataItem.uri.path}")
                     }
                 } else {
@@ -205,7 +212,6 @@ class WearableDataListenerService : BaseMobileService() {
                 Log.d(TAG, "연결된 노드 수: ${nodes.size}")
                 nodes.forEach { node ->
                     Log.d(TAG, "연결된 노드: ${node.displayName}, ID: ${node.id}")
-                    // 노드별 데이터 요청
                     requestDataFromNode(node.id)
                 }
             }
@@ -240,7 +246,10 @@ class WearableDataListenerService : BaseMobileService() {
             val timestamp = dataMap.getLong("timestamp")
             val sustained = dataMap.getBoolean("sustained", false)
 
-            Log.d(TAG, "심박수 데이터 파싱 완료 - pulseFlag: $pulseFlag, timestamp: $timestamp, sustained: $sustained")
+            Log.d(
+                TAG,
+                "심박수 데이터 파싱 완료 - pulseFlag: $pulseFlag, timestamp: $timestamp, sustained: $sustained"
+            )
 
             serviceScope.launch {
                 heartRateDataRepository.processHeartRateData(
@@ -249,7 +258,6 @@ class WearableDataListenerService : BaseMobileService() {
                         timestamp = timestamp
                     )
                 )
-                heartRateDataRepository.startSendingLocalHeartRateData()
             }
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리중 에러 발생", e)

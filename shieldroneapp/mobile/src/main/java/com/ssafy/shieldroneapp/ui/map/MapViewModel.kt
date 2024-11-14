@@ -13,6 +13,7 @@ import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.components.AlertState
 import com.ssafy.shieldroneapp.ui.components.AlertType
@@ -28,18 +29,6 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 
-/**
- * Map 화면의 상태와 로직을 관리하는 ViewModel 클래스.
- *
- * 유저의 GPS 위치, 근처 정류장 리스트, 출발지/도착지 정보 등을 관리.
- * 드론 배정 요청, 드론 코드 인식, 위험 상황 알림 등 주요 이벤트를 처리한다.
- * 위치 정보와 드론 관련 데이터를 처리하기 위해 리포지토리와 상호작용한다.
- *
- * @property mapRepository 출발지/도착지 위치 데이터를 관리하는 리포지토리 객체
- * @property droneRepository 드론 배정 및 매칭 관련 데이터를 관리하는 리포지토리 객체
- * @property alertRepository 위험 상황 알림 데이터를 관리하는 리포지토리 객체
- */
-
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
@@ -47,10 +36,14 @@ class MapViewModel @Inject constructor(
     private val alertRepository: AlertRepository,
     private val alertHandler: AlertHandler,
     private val apiService: ApiService,
+    private val webSocketMessageSender: WebSocketMessageSender,
 ) : ViewModel() {
     companion object {
         private const val TAG = "모바일: 맵 뷰모델"
     }
+
+    private val _isWatchConfirmed = MutableStateFlow(false)
+    val isWatchConfirmed: StateFlow<Boolean> = _isWatchConfirmed.asStateFlow()
 
     private val _showToast = MutableStateFlow(false)
     val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
@@ -211,7 +204,12 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(currentLocation = newLocation) }
                 Log.d("MapViewModel", "현재 위치 갱신됨: $newLocation")  // 위치 갱신 확인 로그
 
-                // TODO: 웹소켓으로 위치 전송
+                try {
+                    webSocketMessageSender.sendLocationUpdate(newLocation)
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "위치 전송 실패", e)
+                    // 실패해도 추적 계속
+                }
             }
         }
     }
@@ -254,12 +252,26 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    fun updateWatchConfirmation(confirmed: Boolean) {
+        _isWatchConfirmed.value = confirmed
+    }
+
     suspend fun sendEmergencyAlert(): Boolean {
+        // 워치에서 안전 확인된 경우 API 호출하지 않음
+        if (alertHandler.isWatchConfirmed()) {
+            return false
+        }
+
         return try {
+            val currentLocation = state.value.currentLocation
+            if (currentLocation == null) {
+                Log.e(TAG, "현재 위치 정보를 가져올 수 없습니다.")
+                return false
+            }
+
             val request = EmergencyRequest(
-                // TODO: 임시로 좌표 고정
-                lat = BigDecimal("37.123"),
-                lng = BigDecimal("127.456")
+                lat = BigDecimal.valueOf(currentLocation.lat),
+                lng = BigDecimal.valueOf(currentLocation.lng)
             )
             Log.d(TAG, "전송 요청: ${Gson().toJson(request)}")
             val response = apiService.setEmergency(request)
@@ -286,4 +298,15 @@ class MapViewModel @Inject constructor(
     fun hideToast() {
         _showToast.value = false
     }
+
+    fun handleSafeConfirmation() {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "안전 확인 처리 완료")
+            } catch (e: Exception) {
+                Log.e(TAG, "안전 확인 처리 실패", e)
+            }
+        }
+    }
+
 }

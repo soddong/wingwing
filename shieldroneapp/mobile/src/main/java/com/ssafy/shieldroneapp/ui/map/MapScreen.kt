@@ -39,6 +39,8 @@ import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -71,6 +73,7 @@ fun MapScreen(
     isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
     alertHandler: AlertHandler,
+    safetyMessageSender: SafetyMessageSender,
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
@@ -78,6 +81,10 @@ fun MapScreen(
     val context = LocalContext.current
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val mapViewModel: MapViewModel = hiltViewModel()
+    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
+    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
     val isMapInitialized = remember { mutableStateOf(false) }
 
     // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
@@ -87,12 +94,8 @@ fun MapScreen(
     val configuration = LocalConfiguration.current
     val screenRotation = remember { mutableStateOf(configuration.orientation) }
 
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
-    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
-    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
-
     // 워치 연결 관리
-    WatchConnectionManager (
+    WatchConnectionManager(
         onConnectionStatusDetermined = { isConnected ->
             viewModel.updateWatchConnectionState(
                 if (isConnected) WatchConnectionState.Connected
@@ -114,7 +117,8 @@ fun MapScreen(
         }
     }
 
-    // 위치 권한이 허락된 경우에만 현재 위치 로드 및 실시간 위치 추적 시작
+
+    // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -145,6 +149,10 @@ fun MapScreen(
             // 현재 위치나 주변 정류장 정보가 있을 때 마커 업데이트
             if (state.currentLocation != null || state.nearbyHives.isNotEmpty()) {
                 updateAllMarkers(map, state)
+                Log.d(
+                    "MapScreen",
+                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
+                )
                 Log.d(
                     "MapScreen",
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
@@ -330,16 +338,23 @@ fun MapScreen(
                         } else {
                             // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
                         }
+
                     }
                     true
                 }
             } else null,
-            alertHandler = alertHandler
+            onSafeConfirm = {
+                mapViewModel.handleSafeConfirmation()
+                mapViewModel.dismissAlert()
+            },
+            alertHandler = alertHandler,
+            safetyMessageSender = safetyMessageSender
         )
 
         ConnectionStatusSnackbar(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+    }
     }
 }

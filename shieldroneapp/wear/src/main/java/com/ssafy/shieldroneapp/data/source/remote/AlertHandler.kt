@@ -30,6 +30,7 @@ class AlertHandler @Inject constructor(
             scope.launch {
                 if (alertData.warningFlag) {
                     alertRepository.processDangerAlert(alertData)
+                    alertRepository.updateSafeConfirmation(false)
                 } else {
                     alertRepository.clearAlert()
                 }
@@ -39,6 +40,7 @@ class AlertHandler @Inject constructor(
             e.printStackTrace()
         }
     }
+
     fun handleObjectAlert(alertJson: String) {
         try {
             val alertData = gson.fromJson(alertJson, AlertData::class.java)
@@ -54,6 +56,21 @@ class AlertHandler @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "위험 알림 처리 실패", e)
             e.printStackTrace()
+        }
+    }
+
+    fun updateSafeConfirmation(isConfirmed: Boolean) {
+        if (isConfirmed) {
+            dismissAlert()
+            scope.launch {
+                alertRepository.updateSafeConfirmation(true)
+            }
+        }
+    }
+
+    fun dismissAlert() {
+        scope.launch {
+            alertRepository.clearAlert()
         }
     }
 }

@@ -20,15 +20,24 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        signingConfigs {
+            create("release") {
+                storeFile = file("keystore/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     compileOptions {
@@ -37,9 +46,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
-    }
-    buildFeatures {
-        compose = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
@@ -54,7 +60,7 @@ android {
 dependencies {
     implementation(libs.play.services.wearable)
     implementation(platform(libs.androidx.compose.bom))
-    
+
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.compose.material)
@@ -72,7 +78,7 @@ dependencies {
     implementation("androidx.wear.compose:compose-material:1.2.1")
     implementation("androidx.wear.compose:compose-foundation:1.2.1")
     implementation("androidx.wear.compose:compose-navigation:1.2.1")
-    
+
     // Material Icons 추가
     implementation("androidx.compose.material:material-icons-core:1.5.4")
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
@@ -83,10 +89,11 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     implementation ("androidx.navigation:navigation-compose:2.5.3")
-    
+
     // Hilt dependency injection
     implementation("com.google.dagger:hilt-android:${rootProject.extra["hiltVersion"]}")
     implementation(libs.androidx.constraintlayout)
+//    implementation(project(":mobile"))
     kapt("com.google.dagger:hilt-android-compiler:${rootProject.extra["hiltVersion"]}")
     implementation("androidx.hilt:hilt-work:1.2.0")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
@@ -110,7 +117,7 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-android")
     implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
 
-   // Lifecycle
+    // Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
