@@ -1,5 +1,6 @@
 package com.shieldrone.station.model
 
+import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -14,9 +15,12 @@ import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
+import dji.sdk.keyvalue.value.common.LocationCoordinate2D
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
+import java.util.LinkedList
+import java.util.Queue
 
 class FlightControlVM : ViewModel() {
 
@@ -44,8 +48,12 @@ class FlightControlVM : ViewModel() {
 
     private val _targetUser = MutableLiveData<TrackingData>()
     val targetUser: LiveData<TrackingData> get() = _targetUser
+
     private val _goHomeState = MutableLiveData<FCGoHomeState>()
     val goHomeState: LiveData<FCGoHomeState> get() = _goHomeState
+
+    private val _homeLocation = MutableLiveData<LocationCoordinate2D>()
+    val homeLocation: LiveData<LocationCoordinate2D> get() = _homeLocation
 
 
     // 2. 필요한 초기화
@@ -64,6 +72,10 @@ class FlightControlVM : ViewModel() {
 
         flightControlModel.subscribeGoHomeState { state ->
             _goHomeState.postValue(state)
+        }
+
+        flightControlModel.subscribeHomeLocation { location ->
+            _homeLocation.postValue(location)
         }
 
 
@@ -134,14 +146,17 @@ class FlightControlVM : ViewModel() {
         })
     }
 
-    fun setReturnToHome() {
-        flightControlModel.setReturnToHome(object : CommonCallbacks.CompletionCallback {
+    /**
+     * Go Home
+     */
+    fun setHomeLocation() {
+        flightControlModel.setHomeLocation(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                _message.postValue("집설정이 완료되었습니다.")
+                _message.postValue("집 위치를 설정하였습니다.")
             }
 
             override fun onFailure(error: IDJIError) {
-                _message.postValue("복귀 실패: ${error.description()}")
+                _message.postValue("집 설정 실패: ${error.description()}")
             }
         })
     }
@@ -331,11 +346,9 @@ class FlightControlVM : ViewModel() {
 
     fun subscribeTargetPosition(position: Position) {
         _targetPosition.postValue(position)
-
     }
+    fun subscribeTargetUser() {
 
-    fun subscribeTargetUser(trackingData: TrackingData) {
-        _targetUser.postValue(trackingData)
     }
 
 }

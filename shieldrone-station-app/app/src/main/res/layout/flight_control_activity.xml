@@ -26,6 +26,7 @@
         android:text="컨트롤"
         android:textSize="12sp"
         android:padding="6dp" />
+
     <TextView
         android:id="@+id/txtGpsLevel"
         android:layout_width="match_parent"
@@ -41,17 +42,17 @@
         android:textSize="12sp"
         android:padding="6dp" />
     <TextView
+        android:id="@+id/txtHomeLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="홈 위치"
+        android:textSize="12sp"
+        android:padding="6dp" />
+    <TextView
         android:id="@+id/txtTargetLocation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="목표위치 및 거리"
-        android:textSize="12sp"
-        android:padding="6dp" />
-    <TextView
-        android:id="@+id/txtTargetLocationInFrame"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="프레임 내 목표"
         android:textSize="12sp"
         android:padding="6dp" />
     <!-- 메시지 표시 -->
@@ -69,14 +70,13 @@
         android:text="복귀상태"
         android:textSize="12sp"
         android:padding="6dp" />
-
-    <!-- 버튼들 (5개씩 한 줄에 배치) -->
+    <!-- 버튼들 (4개씩 한 줄에 배치) -->
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="59dp"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="5">
+        android:weightSum="4">
 
         <Button
             android:id="@+id/btnTakeOff"
@@ -97,119 +97,34 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="집설정" />
+            android:text="집 설정" />
+
         <Button
             android:id="@+id/btnGoToHome"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="복귀" />
-
     </LinearLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:weightSum="4">
-    <Button
-        android:id="@+id/btnEnableVirtualStick"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="활성화" />
+        <Button
+            android:id="@+id/btnEnableVirtualStick"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="활성화" />
 
-    <Button
-        android:id="@+id/btnDisableVirtualStick"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="비활성화" />
+        <Button
+            android:id="@+id/btnDisableVirtualStick"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="비활성화" />
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="10dp">
-
-        <!-- 슬라이더 제목 -->
-        <TextView
-            android:id="@+id/yawSliderTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="yaw 제어 속도"
-            android:layout_gravity="start" />
-
-        <!-- 슬라이더와 값 표시 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="10"
-            android:gravity="center_vertical">
-
-            <!-- 슬라이더 -->
-            <SeekBar
-                android:id="@+id/yawSlider"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="9"
-                android:max="100"
-                android:progress="50"
-                android:padding="8dp" />
-
-            <!-- 슬라이더 값 표시 -->
-            <TextView
-                android:id="@+id/yawSliderValue"
-                android:layout_width="4dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:text="50" />
-        </LinearLayout>
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="10dp">
-
-        <!-- 슬라이더 제목 -->
-        <TextView
-            android:id="@+id/boxSliderTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="yaw 제어 속도"
-            android:layout_gravity="start" />
-
-        <!-- 슬라이더와 값 표시 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="10"
-            android:gravity="center_vertical">
-
-            <!-- 슬라이더 -->
-            <SeekBar
-                android:id="@+id/slider"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="9"
-                android:max="100"
-                android:progress="50"
-                android:padding="8dp" />
-
-            <!-- 슬라이더 값 표시 -->
-            <TextView
-                android:id="@+id/sliderValue"
-                android:layout_width="4dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:text="50" />
-        </LinearLayout>
-    </LinearLayout>
-
 
 </LinearLayout>

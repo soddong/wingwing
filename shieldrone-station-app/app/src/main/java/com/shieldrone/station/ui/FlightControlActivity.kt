@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.asLiveData
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.TrackingTargetController
@@ -32,14 +31,12 @@ class FlightControlActivity : AppCompatActivity() {
         binding = FlightControlActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-//        position 구독
         val routeListener = object : RouteAdapter.RouteListener {
             override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
                 val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
                 Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
                 binding.txtTargetLocation.text =
                     "사용자 위도: ${position.latitude}, 경도: ${position.longitude}"
-
             }
         }
 
@@ -57,6 +54,7 @@ class FlightControlActivity : AppCompatActivity() {
         super.onDestroy()
         trackingController.stopReceivingData()
     }
+
     private fun initUiElements() {
         initButtonClickListeners()
     }
@@ -67,10 +65,8 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnEnableVirtualStick.setOnClickListener { flightControlVM.enableVirtualStickMode() }
         binding.btnDisableVirtualStick.setOnClickListener { flightControlVM.disableVirtualStickMode() }
         binding.btnGoToHome.setOnClickListener { flightControlVM.startReturnToHome() }
-        binding.btnSetHome.setOnClickListener { flightControlVM.setReturnToHome() }
-
+        binding.btnSetHome.setOnClickListener { flightControlVM.setHomeLocation() }
     }
-
 
     @SuppressLint("SetTextI18n")
     private fun observeData() {
@@ -115,11 +111,13 @@ class FlightControlActivity : AppCompatActivity() {
             binding.txtGoHomeMessage.text = message.toString()
         }
 
+        flightControlVM.homeLocation.observe(this) { message ->
+            binding.txtHomeLocation.text = message.toString()
+        }
+
         trackingVM.trackingData.asLiveData().observe(this){message ->
             binding.txtTargetLocationInFrame.text = message.toString()
         }
-
-
     }
 
 }
