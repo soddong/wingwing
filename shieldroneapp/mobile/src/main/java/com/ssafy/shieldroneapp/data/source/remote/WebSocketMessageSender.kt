@@ -17,8 +17,12 @@ import android.util.Log
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.model.HeartRateData
+import com.ssafy.shieldroneapp.data.model.LatLng
 import okhttp3.WebSocket
 import okio.ByteString
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocket?) {
@@ -26,8 +30,10 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
     companion object {
         private const val TAG = "모바일: 웹소켓 메시지 센더"
         private var lastSentDbFlag: Boolean? = null
+        private var lastSentLocation: LatLng? = null
         private var lastSentTime: Long = 0
         private val PERIODIC_SEND_INTERVAL = 5000L
+        private const val MIN_LOCATION_UPDATE_INTERVAL = 1000L
     }
 
     fun sendWatchSensorData(data: HeartRateData) {
@@ -100,5 +106,45 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
     fun setWebSocket(socket: WebSocket?) {
         webSocket = socket
         Log.d(TAG, "새로운 WebSocket ${if (socket != null) "설정됨" else "해제됨"}")
+    }
+
+    fun sendLocationUpdate(location: LatLng) {
+        try {
+            requireNotNull(webSocket) { "WebSocket이 null입니다" }
+
+            val currentTime = System.currentTimeMillis()
+            // 마지막 전송 위치와 동일하고, 최소 업데이트 간격이 지나지 않은 경우 안보냄
+            if (lastSentLocation?.lat == location.lat &&
+                lastSentLocation?.lng == location.lng &&
+                currentTime - lastSentTime < MIN_LOCATION_UPDATE_INTERVAL) {
+                return
+            }
+
+            val locationMap = mapOf(
+                "type" to "trackPosition",
+                "time" to SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    .format(Date()),
+                "location" to mapOf(
+                    "lat" to location.lat.toString(),
+                    "lng" to location.lng.toString()
+                )
+            )
+
+            val jsonData = Gson().toJson(locationMap)
+            Log.d(TAG, "위치 데이터 전송: $jsonData")
+            val isSent = webSocket?.send(jsonData) ?: false
+
+            if (isSent) {
+                lastSentLocation = location
+                lastSentTime = currentTime
+                Log.d(TAG, "위치 데이터 전송 성공 - lat: ${location.lat}, lng: ${location.lng}")
+            } else {
+                Log.e(TAG, "위치 데이터 전송 실패")
+                throw Exception("위치 데이터 전송 실패")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "위치 데이터 전송 중 에러 발생", e)
+            throw e
+        }
     }
 }

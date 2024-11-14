@@ -12,6 +12,7 @@ import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.components.AlertState
 import com.ssafy.shieldroneapp.ui.components.AlertType
@@ -34,6 +35,7 @@ class MapViewModel @Inject constructor(
     private val alertRepository: AlertRepository,
     private val alertHandler: AlertHandler,
     private val apiService: ApiService,
+    private val webSocketMessageSender: WebSocketMessageSender,
 ) : ViewModel() {
     companion object {
         private const val TAG = "모바일: 맵 뷰모델"
@@ -73,7 +75,6 @@ class MapViewModel @Inject constructor(
             try {
                 val location = mapRepository.getCurrentLocation() // 현재 위치 (LatLng)
                 _state.update { it.copy(currentLocation = location, isLoading = false) }
-                Log.d("MapViewModel", "현재 위치 확인: $location") 
 
                 fetchNearbyHives(location) // LatLng 값을 통해 주변 출발지 (드론 정류장) 조회
             } catch (e: Exception) {
@@ -144,7 +145,12 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(currentLocation = newLocation) }
                 Log.d("MapViewModel", "현재 위치 갱신됨: $newLocation")  // 위치 갱신 확인 로그
 
-                // TODO: 웹소켓으로 위치 전송
+                try {
+                    webSocketMessageSender.sendLocationUpdate(newLocation)
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "위치 전송 실패", e)
+                    // 실패해도 추적 계속
+                }
             }
         }
     }
@@ -219,8 +225,8 @@ class MapViewModel @Inject constructor(
             }
 
             val request = EmergencyRequest(
-                lat = BigDecimal(currentLocation.lat.toString()),
-                lng = BigDecimal(currentLocation.lng.toString())
+                lat = BigDecimal.valueOf(currentLocation.lat),
+                lng = BigDecimal.valueOf(currentLocation.lng)
             )
             Log.d(TAG, "전송 요청: ${Gson().toJson(request)}")
             val response = apiService.setEmergency(request)
