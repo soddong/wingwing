@@ -1,6 +1,10 @@
 package com.ssafy.shieldroneapp.ui.map
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.location.LocationManager
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +46,6 @@ import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
-import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -48,6 +53,8 @@ import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
+import com.ssafy.shieldroneapp.ui.map.screens.SearchResultsModal
+import com.ssafy.shieldroneapp.utils.rememberKeyboardController
 import com.ssafy.shieldroneapp.utils.setupMap
 import com.ssafy.shieldroneapp.utils.updateAllMarkers
 import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
@@ -77,17 +84,26 @@ fun MapScreen(
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
+
+    // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val mapViewModel: MapViewModel = hiltViewModel()
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
-    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
-    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
     val isMapInitialized = remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
+    val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
 
     // 화면 회전 감지를 위한 Configuration 변경 감지
     val configuration = LocalConfiguration.current
     val screenRotation = remember { mutableStateOf(configuration.orientation) }
+
+    // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
+    val keyboardController = rememberKeyboardController()
+
+    // 알람
+    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
+    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
     // 워치 연결 관리
     WatchConnectionManager(
@@ -99,19 +115,13 @@ fun MapScreen(
         }
     )
 
-    // 화면 회전 시 마커 재생성을 위한 Effect
-    LaunchedEffect(configuration.orientation) {
-        if (screenRotation.value != configuration.orientation) {
-            screenRotation.value = configuration.orientation
-            kakaoMap.value?.let { map ->
-                if (state.currentLocation != null) {
-                    updateAllMarkers(map, state)
-                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
-                }
-            }
-        }
+    // 위치 서비스 상태 체크
+    LaunchedEffect(Unit) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(isLocationEnabled))
     }
-
 
     // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -148,72 +158,141 @@ fun MapScreen(
                     "MapScreen",
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
                 )
+                Log.d(
+                    "MapScreen",
+                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
+                )
             }
         }
     }
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // 지도 영역
-        val mapView = remember { MapView(context) }
 
-        DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_CREATE -> mapView.start(
-                        object : MapLifeCycleCallback() {
-                            override fun onMapDestroy() {
-                                Log.d("MapScreen", "Map destroyed")
-                            }
+    // 화면 회전 시 마커 재생성을 위한 Effect
+    LaunchedEffect(configuration.orientation) {
+        if (screenRotation.value != configuration.orientation) {
+            screenRotation.value = configuration.orientation
+            kakaoMap.value?.let { map ->
+                if (state.currentLocation != null) {
+                    updateAllMarkers(map, state)
+                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
+                }
+            }
+        }
+    }
 
-                            override fun onMapError(error: Exception) {
-                                Log.e("MapScreen", "Map error: ${error.message}", error)
-                            }
-                        },
-                        object : KakaoMapReadyCallback() {
-                            override fun onMapReady(map: KakaoMap) {
-                                Log.d("MapScreen", "Map ready")
-                                kakaoMap.value = map
-                                if (state.currentLocation != null) {
-                                    setupMap(map, mapViewModel)
-                                    isMapInitialized.value = true
-                                    updateAllMarkers(map, state)  // 명시적으로 마커 업데이트 호출
-                                }
-                            }
+    // 위치 서비스가 비활성화된 경우 다이얼로그 표시
+    if (!locationServicesEnabled.value) {
+        AlertDialog(
+            onDismissRequest = {
+                mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+            },
+            title = { Text("위치 서비스 필요") },
+            text = { Text("이 앱을 사용하기 위해서는 위치 서비스가 필요합니다.\n설정에서 위치 서비스를 활성화해주세요.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                        context.startActivity(intent)
+                        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+                    }
+                ) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // 지도 영역
+    val mapView = remember { MapView(context) } // 기존 MapView
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.start(
+                    object : MapLifeCycleCallback() {
+                        override fun onMapDestroy() {
+                            Log.d("MapScreen", "Map destroyed")
+                            isMapInitialized.value = false
                         }
-                    )
 
-                    Lifecycle.Event.ON_RESUME -> {
-                        // 화면이 다시 활성화될 때 마커 상태 복원
-                        kakaoMap.value?.let { map ->
+                        override fun onMapError(error: Exception) {
+                            Log.e("MapScreen", "Map error: ${error.message}", error)
+                        }
+                    },
+                    object : KakaoMapReadyCallback() {
+                        override fun onMapReady(map: KakaoMap) {
+                            Log.d("MapScreen", "Map ready")
+                            kakaoMap.value = map
+
+                            // 맵 클릭 리스너 추가 : 키보드 숨기기
+                            map.setOnMapClickListener { _, _, _, _ ->
+                                keyboardController.hideKeyboard()
+                            }
+
                             if (state.currentLocation != null) {
-                                updateAllMarkers(map, state)
-                                Log.d("MapScreen", "화면 재개로 인한 마커 재생성")
+                                setupMap(map, mapViewModel)
+                                isMapInitialized.value = true
+                                updateAllMarkers(map, state)  // 명시적으로 마커 업데이트 호출
                             }
                         }
                     }
+                )
 
-                    else -> {}
+                Lifecycle.Event.ON_RESUME -> {
+                    // 화면이 다시 활성화될 때 마커 상태 복원
+                    kakaoMap.value?.let { map ->
+                        if (state.currentLocation != null) {
+                            updateAllMarkers(map, state)
+                            Log.d("MapScreen", "화면 재개로 인한 마커 재생성")
+                        }
+                    }
                 }
-            }
-            lifecycleOwner.lifecycle.addObserver(observer)
-            onDispose {
-                lifecycleOwner.lifecycle.removeObserver(observer)
-                kakaoMap.value = null
-                isMapInitialized.value = false
+
+                else -> {}
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            kakaoMap.value = null
+            isMapInitialized.value = false
+        }
+    }
 
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // 1. AndroidView로 MapView를 전체 화면에 배치 (최하단 레이어)
         AndroidView(
             factory = { mapView },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    keyboardController.hideKeyboard()
+                    if (state.showSearchModal || state.showStartMarkerModal) {
+                        mapViewModel.handleEvent(MapEvent.CloseModal)
+                    }
+                },
         )
 
-        // 검색 필드, 마커 정보 모달
+        // 2. UI 요소들 (맵 위의 레이어)
+
+        // 2-1) 검색 필드 & 마커 정보 모달
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // 검색 필드, 마커 정보 모달
+            // 검색 필드
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -222,19 +301,40 @@ fun MapScreen(
                 SearchInputFields(
                     startText = state.startSearchText,
                     endText = state.endSearchText,
-                    onStartTextChange = { mapViewModel.updateStartLocationText(it) },
-                    onEndTextChange = { mapViewModel.updateEndLocationText(it) }
+                    onStartTextChange = {
+                        mapViewModel.handleEvent(
+                            MapEvent.UpdateStartLocationText(
+                                it
+                            )
+                        )
+                    },
+                    onEndTextChange = { mapViewModel.handleEvent(MapEvent.UpdateEndLocationText(it)) },
+                    onFieldClick = { type ->
+                        mapViewModel.handleEvent(
+                            MapEvent.SearchFieldClicked(
+                                type
+                            )
+                        )
+                    }
+
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp)) // 여유 공간 추가
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // 마커 정보 모달 표시 - 출발지
+            // 마커 정보 모달 - 출발지
             if (state.showStartMarkerModal) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(onClick = { mapViewModel.handleEvent(MapEvent.DismissStartMarkerModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            mapViewModel.handleEvent(MapEvent.CloseModal)
+                        },
+                    // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
+//                        .clickable(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Box(
@@ -254,7 +354,7 @@ fun MapScreen(
             }
         }
 
-        // 하단 버튼
+        // 2-2) 드론 배정 요청 버튼
         Button(
             onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
             shape = RoundedCornerShape(0.dp),
@@ -267,6 +367,23 @@ fun MapScreen(
             Text(
                 text = "드론 배정 요청",
                 style = MaterialTheme.typography.h5
+            )
+        }
+
+        // 3. 검색 결과 모달 (최상단 레이어)
+        if (state.showSearchModal) {
+            SearchResultsModal(
+                searchType = state.searchType,
+                searchResults = state.searchResults,
+                onItemSelected = { selectedLocation ->
+//                    if (state.searchType == LocationType.START) {
+                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+//                    } else {
+//                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
+//                    }
+//                    mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                },
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
             )
         }
 

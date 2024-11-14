@@ -64,6 +64,7 @@ fun MapMarkerInfoModal(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // TODO: availableDrone 개수, battery 정보 등 추가해야 함
             Text(
                 text = routeLocation.locationName ?: "이름 없음",
                 style = MaterialTheme.typography.h6
