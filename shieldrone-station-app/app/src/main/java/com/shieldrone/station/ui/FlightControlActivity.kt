@@ -53,6 +53,7 @@ class FlightControlActivity : AppCompatActivity() {
         binding.btnEnableVirtualStick.setOnClickListener { flightControlVM.enableVirtualStickMode() }
         binding.btnDisableVirtualStick.setOnClickListener { flightControlVM.disableVirtualStickMode() }
         binding.btnGoToHome.setOnClickListener{ flightControlVM.startReturnToHome() }
+        binding.btnSetHome.setOnClickListener{ flightControlVM.setHomeLocation() }
     }
 
     @SuppressLint("SetTextI18n")
@@ -98,6 +99,9 @@ class FlightControlActivity : AppCompatActivity() {
             binding.txtGoHomeMessage.text = message.toString()
         }
 
+        flightControlVM.homeLocation.observe(this) { message ->
+            binding.txtHomeLocation.text = message.toString()
+        }
     }
 
 }
