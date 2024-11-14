@@ -67,7 +67,6 @@ class MobileMainApplication : Application() {
 
         setupLogging() // 로깅 설정
         createNotificationChannels() // 워치 연결 상태 알림 채널 생성
-        KakaoMapSdk.init(this, BuildConfig.KAKAO_API_KEY) // Kakao Maps SDK 초기화
 
         initializeWebSocket()
         startService(Intent(this, WearableDataListenerService::class.java)) // 서비스 자동 시작

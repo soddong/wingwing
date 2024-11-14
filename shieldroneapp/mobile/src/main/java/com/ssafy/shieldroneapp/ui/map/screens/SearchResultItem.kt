@@ -27,6 +27,7 @@ fun SearchResultItem(
             Text(text = "정류장 번호: ${location.hiveNo ?: "N/A"}")
             Text(text = "방면: ${location.direction ?: "N/A"}")
             Text(text = "거리: ${location.distance ?: 0}m")
+            Text(text = "이용 가능 드론 수: ${location.availableDrone ?: 0}개")
         } else {
             Text(text = "도로명 주소: ${location.homeAddress ?: "N/A"}")
             Text(text = "거리: ${location.distance ?: 0}m")

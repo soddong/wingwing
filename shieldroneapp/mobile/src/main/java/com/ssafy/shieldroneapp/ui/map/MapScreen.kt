@@ -363,7 +363,7 @@ fun MapScreen(
                 .fillMaxWidth()
                 .height(56.dp)
                 .align(Alignment.BottomCenter),
-            enabled = state.isTrackingLocation,
+            enabled = state.selectedStart != null && state.selectedEnd != null,
         ) {
             Text(
                 text = "드론 배정 요청",
