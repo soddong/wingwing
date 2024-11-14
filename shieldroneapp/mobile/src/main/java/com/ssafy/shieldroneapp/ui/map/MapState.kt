@@ -2,11 +2,8 @@ package com.ssafy.shieldroneapp.ui.map
 
 import com.ssafy.shieldroneapp.data.model.DroneState
 import com.ssafy.shieldroneapp.data.model.LatLng
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
-
-enum class SearchType {
-    NONE, START, END
-}
 
 data class MapState(
     // 위치 관련
@@ -19,7 +16,10 @@ data class MapState(
     val startSearchText: String = "",
     val endSearchText: String = "",
     val searchResults: List<RouteLocation> = emptyList(),
-    val searchType: SearchType = SearchType.NONE,
+    val searchType: LocationType = LocationType.NONE,
+// TODO: 체크할 것
+//    val searchType: LocationType = LocationType.START,  // NONE 대신 START로 초기화
+
 
     // 마커 및 모달
     val selectedStartMarker: RouteLocation? = null, // 선택된 출발지 마커
