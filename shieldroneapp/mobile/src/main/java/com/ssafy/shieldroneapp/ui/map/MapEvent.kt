@@ -31,6 +31,9 @@ sealed class MapEvent {
     object RequestDroneAssignment : MapEvent() // 드론 배정 시작
     object BackPressed : MapEvent() // 뒤로 가기
 
+    // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
+    data class UpdateLocationServicesState(val isEnabled: Boolean) : MapEvent()
+
     // 실시간 위치 추적 이벤트
     object StartLocationTracking : MapEvent() // 실시간 위치 추적 시작
     object StopLocationTracking : MapEvent() // 실시간 위치 추적 중지

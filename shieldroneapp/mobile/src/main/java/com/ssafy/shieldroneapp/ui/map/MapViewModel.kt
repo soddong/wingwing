@@ -41,15 +41,18 @@ class MapViewModel @Inject constructor(
     companion object {
         private const val TAG = "모바일: 맵 뷰모델"
     }
+    private val _state = MutableStateFlow(MapState())
+    val state: StateFlow<MapState> = _state.asStateFlow()
+
+    // 위치 서비스 활성화 상태를 추적하기 위한 상태 추가
+    private val _locationServicesEnabled = MutableStateFlow(false)
+    val locationServicesEnabled: StateFlow<Boolean> = _locationServicesEnabled.asStateFlow()
 
     private val _isWatchConfirmed = MutableStateFlow(false)
     val isWatchConfirmed: StateFlow<Boolean> = _isWatchConfirmed.asStateFlow()
 
     private val _showToast = MutableStateFlow(false)
     val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
-
-    private val _state = MutableStateFlow(MapState())
-    val state: StateFlow<MapState> = _state.asStateFlow()
 
     fun handleEvent(event: MapEvent) {
         when (event) {
@@ -70,6 +73,8 @@ class MapViewModel @Inject constructor(
 
             is MapEvent.RequestDroneAssignment -> TODO()
             is MapEvent.BackPressed -> TODO()
+
+            is MapEvent.UpdateLocationServicesState -> updateLocationServicesState(event.isEnabled) // 위치 서비스 활성화 상태 업데이트
 
             is MapEvent.StartLocationTracking -> startTrackingLocation()
             is MapEvent.StopLocationTracking -> stopTrackingLocation()
@@ -196,7 +201,12 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(endSearchText = text) }
     }
 
-    // 9. 실시간 위치 추적을 시작하는 함수
+    // 9. 위치 서비스 활성화 상태 업데이트
+    fun updateLocationServicesState(isEnabled: Boolean) {
+        _locationServicesEnabled.value = isEnabled
+    }
+
+    // 10. 실시간 위치 추적을 시작하는 함수
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
         viewModelScope.launch {

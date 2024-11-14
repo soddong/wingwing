@@ -1,6 +1,10 @@
 package com.ssafy.shieldroneapp.ui.map
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.location.LocationManager
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +46,6 @@ import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
-import com.ssafy.shieldroneapp.data.source.remote.WebSocketSubscriptions
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -79,20 +84,26 @@ fun MapScreen(
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
-    val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val mapViewModel: MapViewModel = hiltViewModel()
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
-    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
-    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
-    val isMapInitialized = remember { mutableStateOf(false) }
 
-    // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
-    val keyboardController = rememberKeyboardController() 
+    // 카카오 맵
+    val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
+    val isMapInitialized = remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
+    val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
 
     // 화면 회전 감지를 위한 Configuration 변경 감지
     val configuration = LocalConfiguration.current
     val screenRotation = remember { mutableStateOf(configuration.orientation) }
+
+    // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
+    val keyboardController = rememberKeyboardController()
+
+    // 알람
+    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
+    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
     // 워치 연결 관리
     WatchConnectionManager(
@@ -104,19 +115,13 @@ fun MapScreen(
         }
     )
 
-    // 화면 회전 시 마커 재생성을 위한 Effect
-    LaunchedEffect(configuration.orientation) {
-        if (screenRotation.value != configuration.orientation) {
-            screenRotation.value = configuration.orientation
-            kakaoMap.value?.let { map ->
-                if (state.currentLocation != null) {
-                    updateAllMarkers(map, state)
-                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
-                }
-            }
-        }
+    // 위치 서비스 상태 체크
+    LaunchedEffect(Unit) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(isLocationEnabled))
     }
-
 
     // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -159,6 +164,50 @@ fun MapScreen(
                 )
             }
         }
+    }
+
+    // 화면 회전 시 마커 재생성을 위한 Effect
+    LaunchedEffect(configuration.orientation) {
+        if (screenRotation.value != configuration.orientation) {
+            screenRotation.value = configuration.orientation
+            kakaoMap.value?.let { map ->
+                if (state.currentLocation != null) {
+                    updateAllMarkers(map, state)
+                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
+                }
+            }
+        }
+    }
+
+    // 위치 서비스가 비활성화된 경우 다이얼로그 표시
+    if (!locationServicesEnabled.value) {
+        AlertDialog(
+            onDismissRequest = {
+                mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+            },
+            title = { Text("위치 서비스 필요") },
+            text = { Text("이 앱을 사용하기 위해서는 위치 서비스가 필요합니다.\n설정에서 위치 서비스를 활성화해주세요.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                        context.startActivity(intent)
+                        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
+                    }
+                ) {
+                    Text("취소")
+                }
+            }
+        )
     }
 
     // 지도 영역
@@ -238,7 +287,7 @@ fun MapScreen(
         )
 
         // 2. UI 요소들 (맵 위의 레이어)
-        
+
         // 2-1) 검색 필드 & 마커 정보 모달
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -252,9 +301,21 @@ fun MapScreen(
                 SearchInputFields(
                     startText = state.startSearchText,
                     endText = state.endSearchText,
-                    onStartTextChange = { mapViewModel.handleEvent(MapEvent.UpdateStartLocationText(it)) },
+                    onStartTextChange = {
+                        mapViewModel.handleEvent(
+                            MapEvent.UpdateStartLocationText(
+                                it
+                            )
+                        )
+                    },
                     onEndTextChange = { mapViewModel.handleEvent(MapEvent.UpdateEndLocationText(it)) },
-                    onFieldClick = { type -> mapViewModel.handleEvent(MapEvent.SearchFieldClicked(type)) }
+                    onFieldClick = { type ->
+                        mapViewModel.handleEvent(
+                            MapEvent.SearchFieldClicked(
+                                type
+                            )
+                        )
+                    }
 
                 )
             }
@@ -272,7 +333,7 @@ fun MapScreen(
                         ) {
                             mapViewModel.handleEvent(MapEvent.CloseModal)
                         },
-                        // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
+                    // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
 //                        .clickable(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -308,7 +369,7 @@ fun MapScreen(
                 style = MaterialTheme.typography.h5
             )
         }
-        
+
         // 3. 검색 결과 모달 (최상단 레이어)
         if (state.showSearchModal) {
             SearchResultsModal(
@@ -316,7 +377,7 @@ fun MapScreen(
                 searchResults = state.searchResults,
                 onItemSelected = { selectedLocation ->
 //                    if (state.searchType == LocationType.START) {
-                        mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
 //                    } else {
 //                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
 //                    }
