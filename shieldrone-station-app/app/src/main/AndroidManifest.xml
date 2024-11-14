@@ -45,7 +45,7 @@
         </activity>
         <activity android:name=".ui.SimulatorActivity" />
         <activity android:name=".ui.FlightControlActivity" />
-
+        <activity android:name=".ui.TrackingTargetActivity" />
     </application>
 
 </manifest>
