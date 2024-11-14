@@ -17,7 +17,6 @@ data class LatLng(
  * 위치 유형을 구분하는 열거형
  */
 enum class LocationType {
-    NONE,
     START,  // 출발지 (드론 정류장)
     END     // 도착지 (집)
 }
