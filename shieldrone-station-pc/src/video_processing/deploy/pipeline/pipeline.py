@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 from datetime import datetime
 import json
 import os
@@ -288,17 +289,22 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
-    def send_danger_signal(self, socket, flag = False):
+    def send_danger_signal(self, socket, frame=None, flag = False):
         """
         위험 상황 발생 시 메시지를 전송합니다.
         """
-        message = json.dumps({
-            "type": "sendCameraFlag",
-            "time": datetime.now().isoformat(),
-            "warningFlag": flag
-        })
-        socket.send_string(message)
         if flag:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            _, buffer = cv2.imencode('.jpg', frame)
+            
+            frame_encoded = base64.b64encode(buffer).decode('utf-8')
+            message = json.dumps({
+                "type": "sendCameraFlag",
+                "time": datetime.now().isoformat(),
+                "warningFlag": flag,
+                "frame": frame_encoded
+            })
+            socket.send_string(message)
             print(f"가까운 곳에서 빠르게 접근하는 객체 존재합니다")
 
     def send_flight_info(self, send_socket, info):
@@ -361,6 +367,7 @@ class PipePredictor(object):
 
             frame_data = framequeue.get()
             frame_rgb = frame_data["frame"]
+            origin_frame = copy.deepcopy(frame_rgb)
             frame_time = frame_data["inputTime"]
 
             if frame_id > self.warmup_frame:
@@ -473,7 +480,12 @@ class PipePredictor(object):
                     if info["is_near"] and info["getting_closer_quickly"]:
                         is_danger = True
                         break
-                self.send_danger_signal(socket_camera, is_danger)
+                self.send_danger_signal(socket_camera, frame_rgb, is_danger)
+
+                # if (frame_id//50)%2==0:
+                #     self.send_danger_signal(socket_camera, origin_frame, True)
+                # else:
+                #     self.send_danger_signal(socket_camera, origin_frame, False)
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
 
 
