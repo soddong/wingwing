@@ -162,7 +162,11 @@ class MapViewModel @Inject constructor(
     // 6. 출발지/도착지 검색 입력 필드 클릭
     private fun clickSearchField(type: LocationType) {
         Log.d("MapViewModel", "searchType 아 진짜 왜저래: $type")
-        _state.update { it.copy(searchType = type) }
+        _state.update { it.copy(
+            searchType = type,
+            showStartMarkerModal = false,
+        ) }
+
     }
 
     // 7. 출발지 검색

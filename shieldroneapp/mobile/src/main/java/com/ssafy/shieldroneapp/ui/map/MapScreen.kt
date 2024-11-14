@@ -333,8 +333,6 @@ fun MapScreen(
                         ) {
                             mapViewModel.handleEvent(MapEvent.CloseModal)
                         },
-                    // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
-//                        .clickable(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Box(
@@ -347,7 +345,10 @@ fun MapScreen(
                     ) {
                         MapMarkerInfoModal(
                             routeLocation = state.selectedStartMarker!!,
-                            onSelect = { Log.d("MapScreen", "출발지로 선택 버튼 누르는 경우의 로직") },
+                            onSelect = {
+                                mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
+                                mapViewModel.handleEvent(MapEvent.CloseModal)
+                            }
                         )
                     }
                 }

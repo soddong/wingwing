@@ -16,10 +16,7 @@ data class MapState(
     val startSearchText: String = "",
     val endSearchText: String = "",
     val searchResults: List<RouteLocation> = emptyList(),
-    val searchType: LocationType = LocationType.NONE,
-// TODO: 체크할 것
-//    val searchType: LocationType = LocationType.START,  // NONE 대신 START로 초기화
-
+    val searchType: LocationType = LocationType.START,
 
     // 마커 및 모달
     val selectedStartMarker: RouteLocation? = null, // 선택된 출발지 마커
