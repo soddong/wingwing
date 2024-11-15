@@ -223,9 +223,9 @@ class MapViewModel @Inject constructor(
      * 8. 출발지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchStartLocation(text: String) {
-        Log.d(TAG, "출발지 검색 입력 값: $text")
         _state.update { it.copy(startSearchText = text) }
         if (text.trim() == "") {
+            _state.update { it.copy(selectedStart = null) }
             dismissModal()
         } else {
             searchHivesByKeyword(HiveSearchRequest(text))
@@ -236,7 +236,6 @@ class MapViewModel @Inject constructor(
      * 9. 도착지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchEndLocation(text: String) {
-        Log.d(TAG, "도착지 검색 입력 값: $text")
         _state.update { it.copy(endSearchText = text) }
 
         searchJob?.cancel()
@@ -244,6 +243,7 @@ class MapViewModel @Inject constructor(
             delay(300) // 300ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
+                _state.update { it.copy(selectedEnd = null) }
                 dismissModal()
                 return@launch
             }
@@ -266,7 +266,7 @@ class MapViewModel @Inject constructor(
                     )
                 }
 //                mapRepository.saveStartLocation(location)
-                Log.d(TAG, "출발지 설정 완료: ${location.locationName}")
+                Log.d(TAG, "출발지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "출발지 설정 중 오류 발생", e)
                 setError("출발지 설정 중 오류가 발생했습니다.")
@@ -289,7 +289,7 @@ class MapViewModel @Inject constructor(
                     )
                 }
 //                mapRepository.saveEndLocation(location)
-                Log.d(TAG, "도착지 설정 완료: ${location.locationName}")
+                Log.d(TAG, "도착지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "도착지 설정 중 오류 발생", e)
                 setError("도착지 설정 중 오류가 발생했습니다.")
@@ -321,7 +321,7 @@ class MapViewModel @Inject constructor(
                 try {
                     webSocketMessageSender.sendLocationUpdate(newLocation)
                 } catch (e: Exception) {
-                    Log.e(TAG, "위치 전송 실패", e)
+//                    Log.e(TAG, "위치 전송 실패", e)
                     // 실패해도 추적 계속
                 }
             }
