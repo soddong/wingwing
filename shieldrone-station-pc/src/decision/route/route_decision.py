@@ -5,6 +5,7 @@ import socket
 import csv
 import re
 import time
+import aiofiles
 from datetime import datetime
 
 class RouteDecision:
@@ -17,17 +18,16 @@ class RouteDecision:
         with open(config_path, "r") as config_file:
             config = json.load(config_file)
 
-        self.context = zmq.Context()
-        self.receive_socket = self.context.socket(zmq.PULL)
-        self.receive_socket.connect("tcp://127.0.0.1:5570")  
-
+        # UDP 소켓 설정
         self.sender_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.target_host = config["APPSERVER_HOST"]
         self.target_port = config["APPSERVER_PORT"]
 
+        # 위치 정보 초기화
         self.lat = 0.0
         self.lng = 0.0
         self.last_processed_time = None
+        self.file_path = os.path.join(os.path.dirname(__file__), "user_location_log.csv")
 
     def parse_wkt_point(self, wkt):
         """
@@ -60,54 +60,44 @@ class RouteDecision:
         
         while True:
             for position in positions:
-                self.set_position(position)
-                self.send_data()
+                self.set_position(position)  # 위치 업데이트 시 send_data가 호출됨
                 time.sleep(1)
-
-
-    def receive_data(self):
-        """
-        ZeroMQ를 통해 서버로부터 데이터를 수신하고 메시지 유형과 값에 따라 트리거 설정.
-        """
-        print("ZeroMQ 서버로부터 메시지 수신을 대기 중...")
-        while True:
-            try:
-                message = self.receive_socket.recv_string()
-                data = json.loads(message)
-                message_type = data.get("type")
-                
-                current_time = datetime.now()
-                if self.last_processed_time is None or (current_time - self.last_processed_time).total_seconds() >= 1:
-                    if message_type == "trackPosition":
-                        self.set_position(data.get("location"))
-                        self.last_processed_time = current_time
-                    else:
-                        print(f"Unknown Message Type: {message_type}")
-
-                    self.send_data()
-
-            except zmq.ZMQError as e:
-                print(f"ZeroMQ 에러 발생: {e}")
-                break
 
     def send_data(self):
         """
-        현재 위치 정보를 소켓을 통해 앱서버로 전송.
+        현재 위치 정보를 UDP 소켓을 통해 앱서버로 전송.
         """
         location_data = {
             "lat": self.lat,
             "lng": self.lng
         }
         message = json.dumps(location_data)
-
         self.sender_socket.sendto(message.encode('utf-8'), (self.target_host, self.target_port))
         print(f"[데이터 전송] 위치 정보가 앱서버로 전송되었습니다.")
-        
+
+    def handle_position_update(self, lat, lng):
+        """
+        Updates the position with the new latitude and longitude
+        received from the server.
+        """
+        self.set_position({"lat": lat, "lng": lng})
+        print(f"[Position Update] New position received: lat={lat}, lng={lng}")
 
     def set_position(self, data):
+        """
+        위치 정보를 업데이트하고, 업데이트가 발생할 때마다 UDP로 데이터를 전송.
+        """
         self.lat = data.get("lat")
         self.lng = data.get("lng")
-        print(f"[위치 업데이트] 위치 정보가 lat:{self.lat}, lng:{self.lng} 로 업데이트 되었습니다.")
+        print(f"[위치 업데이트] 위치 정보가 lat:{self.lat}, lng:{self.lng}로 업데이트 되었습니다.")
+        
+        with open(self.file_path, mode="a") as file:
+            file.write(f"{datetime.now().isoformat()},\"{self.lat}, {self.lng}\"\n")
+            file.flush()  # 버퍼를 강제로 비워 파일에 즉시 쓰기
+
+
+        # 위치가 업데이트될 때마다 UDP로 전송
+        self.send_data()
 
     def select_file(self):
         """
@@ -126,12 +116,13 @@ class RouteDecision:
         """
         if use_csv:
             file_path = self.select_file()
-            self.receive_data_from_csv(file_path)
+            self.receive_data_set_positionfrom_csv(file_path)
         else:
-            self.receive_data()
+            print("ZeroMQ 데이터 수신 기능은 현재 비활성화 상태입니다.")
+            # ZeroMQ 데이터 수신 대신 다른 방법으로 데이터를 받을 경우 추가
 
 # 실행 예시
 if __name__ == "__main__":
     client = RouteDecision()
     # CSV 파일을 사용해 위치 데이터를 전송하려면 use_csv=True로 설정
-    client.start(use_csv=True)
+    client.start(use_csv=False)
