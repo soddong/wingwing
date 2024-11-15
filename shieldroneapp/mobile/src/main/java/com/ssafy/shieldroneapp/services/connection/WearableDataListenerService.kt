@@ -239,18 +239,36 @@ class WearableDataListenerService : BaseMobileService() {
             val dataItem = event.dataItem
             val dataMap = DataMapItem.fromDataItem(dataItem).dataMap
 
-            val pulseFlag = dataMap.getBoolean("pulseFlag")
-            val bpm = dataMap.getDouble("bpm")
-            val timestamp = dataMap.getLong("timestamp")
+            val bpm = dataMap.getDouble("bpm", 0.0)
+            val timestamp = dataMap.getLong("timestamp", System.currentTimeMillis())
+            val availability = dataMap.getString("availability", "UNKNOWN")
 
-            val heartRateData = HeartRateData(
-                pulseFlag = pulseFlag,
-                bpm = bpm,
-                timestamp = timestamp
-            )
+            if (bpm > 0) {
+                val heartRateData = HeartRateData(
+                    pulseFlag = dataMap.getBoolean("pulseFlag", false),
+                    bpm = bpm,
+                    timestamp = timestamp
+                )
 
-            serviceScope.launch {
-                heartRateDataRepository.processHeartRateData(heartRateData)
+                serviceScope.launch {
+                    heartRateDataRepository.processHeartRateData(heartRateData)
+                    Log.d(TAG, "새로운 심박수 데이터 처리됨: $bpm BPM, timestamp: $timestamp")
+                }
+            } else {
+                val pulseFlag = dataMap.getBoolean("pulseFlag", false)
+                val sustained = dataMap.getBoolean("sustained", false)
+
+                val heartRateData = HeartRateData(
+                    pulseFlag = pulseFlag,
+                    bpm = 0.0,
+                    timestamp = timestamp,
+                    sustained = sustained
+                )
+
+                serviceScope.launch {
+                    heartRateDataRepository.processHeartRateData(heartRateData)
+                    Log.d(TAG, "상태 변경 데이터 처리됨: 심박수 - pulseFlag=$pulseFlag, sustained=$sustained")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리중 에러 발생", e)
