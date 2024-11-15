@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.ui.map
 import com.ssafy.shieldroneapp.data.model.DroneMatchingResult
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
+import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 
@@ -29,8 +30,9 @@ sealed class MapEvent {
     data class SetStartLocation(val location: RouteLocation) : MapEvent()
     data class SetEndLocation(val location: RouteLocation) : MapEvent()
 
-    // 드론 배정 요청 / 최종 매칭 요청 / 결과 처리
+    // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
     object RequestDroneAssignment : MapEvent()
+    data class RequestDroneCancel(val droneId: DroneCancelRequest) : MapEvent()
     data class RequestDroneMatching (val droneCode: Int) : MapEvent()
     data class HandleDroneMatchingResult (val result: DroneMatchingResult) : MapEvent()
 
