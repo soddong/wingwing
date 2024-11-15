@@ -44,6 +44,7 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
@@ -377,12 +378,11 @@ fun MapScreen(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
                 onItemSelected = { selectedLocation ->
-//                    if (state.searchType == LocationType.START) {
-                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
-//                    } else {
-//                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
-//                    }
-//                    mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                    if (state.searchType == LocationType.START) {
+                        mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+                    } else {
+                        mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
+                    }
                 },
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
             )
