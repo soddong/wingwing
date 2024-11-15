@@ -67,7 +67,13 @@ fun SearchInputFields(
                     },
                 label = { Text("도착지 검색") },
                 colors = TextFieldDefaults.textFieldColors(backgroundColor = MaterialTheme.colors.background),
-                singleLine = true  // 한 줄로 설정
+                singleLine = true,  // 한 줄로 설정
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        onEndTextChange(endText)  // Enter 키 누를 때 검색 호출
+                        keyboardController.hideKeyboard()    // Enter 후 키보드 숨기기
+                    }
+                ),
             )
 
     }
