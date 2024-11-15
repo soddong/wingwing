@@ -78,7 +78,6 @@ private const val TAG = "모바일: 맵 화면"
 
 @Composable
 fun MapScreen(
-    isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
     alertHandler: AlertHandler,
     safetyMessageSender: SafetyMessageSender,
@@ -415,9 +414,11 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopEnd
         ) {
-            HeartRateDisplay(
-                heartRate = heartRate
-            )
+            if (connectionState == WatchConnectionState.Connected || connectionState is WatchConnectionState.Connecting) {
+                HeartRateDisplay(
+                    heartRate = heartRate
+                )
+            }
         }
     }
 }
