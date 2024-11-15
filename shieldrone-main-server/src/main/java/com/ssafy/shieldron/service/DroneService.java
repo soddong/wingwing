@@ -154,12 +154,12 @@ public class DroneService {
 
     private DroneAssignmentResponse createAssignmentResponse(Drone drone, double distanceInMeters) {
         int estimatedMinutes = (int) Math.ceil(distanceInMeters / SPEED_METERS_PER_MINUTE);
-        String formattedDistance = String.format("%.0fm", distanceInMeters);
+        String formattedDistance = String.format("%.0f", distanceInMeters);
 
         return new DroneAssignmentResponse(
                 drone.getId(),
                 estimatedMinutes,
-                formattedDistance
+                Integer.valueOf(formattedDistance)
         );
     }
 
