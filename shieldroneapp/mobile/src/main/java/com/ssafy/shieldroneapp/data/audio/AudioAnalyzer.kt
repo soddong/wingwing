@@ -13,7 +13,7 @@ class AudioAnalyzer @Inject constructor() {
         private const val SAMPLE_RATE = 16000
 
         // 음성 분석 임계값
-        private const val DECIBEL_THRESHOLD = 50.0
+        private const val DECIBEL_THRESHOLD = 60.0
         private const val MALE_NORMAL_FREQ_MIN = 100.0
         private const val MALE_NORMAL_FREQ_MAX = 199.0
         private const val FEMALE_NORMAL_FREQ_MIN = 200.0
@@ -24,28 +24,30 @@ class AudioAnalyzer @Inject constructor() {
         private const val FEMALE_SCREAM_FREQ_MAX = 3000.0
     }
 
-    fun analyzeAudioData(buffer: ByteArray): Boolean {
+    fun analyzeAudioData(buffer: ByteArray, enableDetailedAnalysis: Boolean = false): Boolean {
         val decibel = calculateDecibel(buffer)
         val frequency = calculateFrequency(buffer)
-
+    
         Log.d(TAG, "데시벨: $decibel, 주파수: $frequency")
-
+    
         // 소리 유형 분석
-        when {
-            isInFrequencyRange(frequency, MALE_NORMAL_FREQ_MIN, MALE_NORMAL_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 남자 일반 목소리")
-            }
-            isInFrequencyRange(frequency, FEMALE_NORMAL_FREQ_MIN, FEMALE_NORMAL_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 여자 일반 목소리")
-            }
-            isInFrequencyRange(frequency, MALE_SCREAM_FREQ_MIN, MALE_SCREAM_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 남자 비명 목소리")
-            }
-            isInFrequencyRange(frequency, FEMALE_SCREAM_FREQ_MIN, FEMALE_SCREAM_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 여자 비명 목소리")
-            }
-            else -> {
-                Log.d(TAG, "분석 결과, 해당 없음")
+        if (enableDetailedAnalysis) {
+            when {
+                isInFrequencyRange(frequency, MALE_NORMAL_FREQ_MIN, MALE_NORMAL_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 남자 일반 목소리")
+                }
+                isInFrequencyRange(frequency, FEMALE_NORMAL_FREQ_MIN, FEMALE_NORMAL_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 여자 일반 목소리")
+                }
+                isInFrequencyRange(frequency, MALE_SCREAM_FREQ_MIN, MALE_SCREAM_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 남자 비명 목소리")
+                }
+                isInFrequencyRange(frequency, FEMALE_SCREAM_FREQ_MIN, FEMALE_SCREAM_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 여자 비명 목소리")
+                }
+                else -> {
+                    Log.d(TAG, "분석 결과, 해당 없음")
+                }
             }
         }
 
