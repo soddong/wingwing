@@ -61,12 +61,20 @@ class ApiInterceptor @Inject constructor(
                 gson.fromJson(responseBody, ErrorResponse::class.java)
             }
 
-            when (errorResponse?.code) {
-                "001" -> throw IOException("인증 코드가 만료되었습니다.")
-                "002" -> throw IOException("유효하지 않은 인증 코드입니다.")
-                "004" -> throw IOException("번호 인증이 완료되지 않았습니다.")
-                "005" -> throw IOException("이미 가입된 회원입니다.")
+            val errorMessage = when (errorResponse?.code) {
+                "001" -> "인증 코드가 만료되었습니다."
+                "002" -> "유효하지 않은 인증 코드입니다."
+                "004" -> "번호 인증이 완료되지 않았습니다."
+                "005" -> "이미 가입된 회원입니다."
+                // 드론 관련 에러 코드 추가
+                "012" -> "이용 가능한 드론이 없습니다."
+                "014" -> "이미 매칭된 유저입니다."
+                "015" -> "출발지와 도착지가 동일합니다."
+                "016" -> "이미 매칭 중인 드론 정류장입니다."
+                else -> "알 수 없는 오류가 발생했습니다."
             }
+
+            throw IOException(errorMessage)
         }
 
         // 인증 실패(401 응답) 처리: 토큰 갱신 및 요청 재시도

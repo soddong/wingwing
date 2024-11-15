@@ -4,10 +4,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import com.ssafy.shieldroneapp.data.model.DroneMatchingResult
+import com.ssafy.shieldroneapp.data.model.DroneState
 import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
+import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneRouteRequest
 import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
+import com.ssafy.shieldroneapp.data.model.request.EndLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
@@ -58,32 +63,45 @@ class MapViewModel @Inject constructor(
     private val _showToast = MutableStateFlow(false)
     val showToast: StateFlow<Boolean> = _showToast.asStateFlow()
 
-    private var searchJob: Job? = null
+    private var searchJob: Job? = null // 검색 디바운스 용도
+    private var timerJob: Job? = null // 10분 타이머 용도
 
+    // 전체 이벤트 핸들러
     fun handleEvent(event: MapEvent) {
         when (event) {
+            // 출발지/도착지 리스트 조회/검색
             is MapEvent.LoadCurrentLocationAndFetchHives -> fetchCurrentLocationAndNearbyHives() // 근처 출발지 조회
             is MapEvent.SearchHivesByKeyword -> searchHivesByKeyword(event.keyword) // 출발지 검색
             is MapEvent.SearchDestination ->  searchDestinationByKeyword(event.destination) // 도착지 검색
 
+            // 출발지/도착지 마커 선택 및 모달 관리
             is MapEvent.StartLocationSelected -> selectStartLocation(event.location) // 출발지 마커 선택
             is MapEvent.EndLocationSelected -> TODO() // 도착지 마커 선택
             is MapEvent.CloseModal -> dismissModal() // 모달 닫기
 
+            // 출발지/도착지 검색 입력 필드 클릭 / 텍스트 입력 시
             is MapEvent.SearchFieldClicked -> clickSearchField(event.type) // 검색 입력 필드 클릭 (출발/도착 공통)
             is MapEvent.UpdateStartLocationText -> searchStartLocation(event.text) // 출발지 검색 - 텍스트 입력 시 처리
             is MapEvent.UpdateEndLocationText -> searchEndLocation(event.text) // 도착지 검색 - 텍스트 입력 시 처리
 
+            // 출발지/도착지 선택
             is MapEvent.SetStartLocation -> setStartLocation(event.location) // 출발지 선택
             is MapEvent.SetEndLocation  -> setEndLocation(event.location) // 도착지 선택
 
-            is MapEvent.RequestDroneAssignment -> TODO() // 드론 배정 요청
+            // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
+            is MapEvent.RequestDroneAssignment -> requestDroneAssignment() // 드론 배정 요청
+            is MapEvent.RequestDroneCancel -> requestDroneCancel(event.droneId) // 배정 취소
+            is MapEvent.RequestDroneMatching -> requestDroneMatching(event.droneCode) // 드론 최종 매칭 요청
+            is MapEvent.HandleDroneMatchingResult -> handleMatchingResult(event.result) // 드론 매칭 결과 별 이벤트 처리
 
+            // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
             is MapEvent.UpdateLocationServicesState -> updateLocationServicesState(event.isEnabled) // 위치 서비스 활성화 상태 업데이트
 
+            // 실시간 위치 추적 이벤트
             is MapEvent.StartLocationTracking -> startTrackingLocation() // 실시간 위치 추적 시작
             is MapEvent.StopLocationTracking -> stopTrackingLocation() // 실시간 위치 추적 중지
-            
+
+            // 오류 메시지 설정
             is MapEvent.SetErrorMessage -> setError(event.message) // 오류 메세지 설정
         }
     }
@@ -223,9 +241,9 @@ class MapViewModel @Inject constructor(
      * 8. 출발지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchStartLocation(text: String) {
-        Log.d(TAG, "출발지 검색 입력 값: $text")
         _state.update { it.copy(startSearchText = text) }
         if (text.trim() == "") {
+            _state.update { it.copy(selectedStart = null) }
             dismissModal()
         } else {
             searchHivesByKeyword(HiveSearchRequest(text))
@@ -236,7 +254,6 @@ class MapViewModel @Inject constructor(
      * 9. 도착지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchEndLocation(text: String) {
-        Log.d(TAG, "도착지 검색 입력 값: $text")
         _state.update { it.copy(endSearchText = text) }
 
         searchJob?.cancel()
@@ -244,6 +261,7 @@ class MapViewModel @Inject constructor(
             delay(300) // 300ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
+                _state.update { it.copy(selectedEnd = null) }
                 dismissModal()
                 return@launch
             }
@@ -266,7 +284,7 @@ class MapViewModel @Inject constructor(
                     )
                 }
 //                mapRepository.saveStartLocation(location)
-                Log.d(TAG, "출발지 설정 완료: ${location.locationName}")
+                Log.d(TAG, "출발지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "출발지 설정 중 오류 발생", e)
                 setError("출발지 설정 중 오류가 발생했습니다.")
@@ -289,7 +307,7 @@ class MapViewModel @Inject constructor(
                     )
                 }
 //                mapRepository.saveEndLocation(location)
-                Log.d(TAG, "도착지 설정 완료: ${location.locationName}")
+                Log.d(TAG, "도착지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "도착지 설정 중 오류 발생", e)
                 setError("도착지 설정 중 오류가 발생했습니다.")
@@ -298,18 +316,108 @@ class MapViewModel @Inject constructor(
     }
     
     /**
-     * 12. 드론 배정 요청
+     * 12-1. 드론 배정 요청
      * */
+    private fun requestDroneAssignment() {
+        val startLocation = _state.value.selectedStart
+        val endLocation = _state.value.selectedEnd
+
+        if (startLocation == null || endLocation == null) {
+            setError("출발지와 도착지를 모두 설정해야 합니다.")
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+
+            val request = DroneRouteRequest(
+                hiveId = startLocation.hiveId!!,
+                endLocation = EndLocation(lat = endLocation.lat, lng = endLocation.lng)
+            )
+
+            droneRepository.requestDrone(request)
+                .onSuccess { response ->
+                    Log.d(TAG, "드론 배정 요청 성공 response: $response")
+                    _state.update { it.copy(
+                        droneState = DroneState.createDroneStateFromResponse(response),
+                        error = null
+                    )}
+                    startTimer() // 배정 완료 후, 매칭까지 10분 타이머 시작
+                }.onFailure { error ->
+                    setError(error.message ?: "드론 배정 요청 중 오류 발생")
+                    Log.d(TAG, "드론 배정 요청 실패: ${error.message}")
+                }
+
+            _state.update { it.copy(isLoading = false) }
+        }
+    }
 
     /**
-     * 13. 위치 서비스 활성화 상태 업데이트
+     * 12-2. 드론 배정 후, 타이머 시작 (10분)
+     * */
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            delay(10 * 60 * 1000L) // 10분 타이머
+            handleMatchingResult(DroneMatchingResult.TIMEOUT)
+        }
+    }
+
+    /**
+     * 13. 10분 경과 하면, 드론 배정 취소 요청
+     * */
+    private fun requestDroneCancel(droneId: DroneCancelRequest) {
+    }
+
+    /**
+     * 14. 드론 최종 매칭 요청
+     * */
+    private fun requestDroneMatching(droneCode: Int) {
+//        viewModelScope.launch {
+//            val droneId = _state.value.droneId ?: return@launch
+//            val isMatched = mapRepository.verifyDroneCode(droneId, code)
+//
+//            val result = if (isMatched) DroneMatchingResult.SUCCESS else DroneMatchingResult.FAILURE
+//            handleMatchingResult(result)
+//        }
+    }
+
+    /**
+     * 15. 드론 매칭 결과 별, 이벤트 처리
+     */
+    private fun handleMatchingResult(result: DroneMatchingResult) {
+//        when (result) {
+//            DroneMatchingResult.SUCCESS -> {
+//                _state.update { it.copy(droneState = DroneState.MATCHED) }
+//                showSuccessAlert()
+//            }
+//            DroneMatchingResult.FAILURE -> {
+//                setError("드론 코드가 틀렸습니다.")
+//            }
+//            DroneMatchingResult.TIMEOUT -> {
+//                viewModelScope.launch {
+//                    mapRepository.cancelDroneAssignment(_state.value.droneId!!)
+//                }
+//                setError("드론 배정 시간이 초과되었습니다.")
+//            }
+//        }
+    }
+
+    // 결과 처리에서 이것까지 해야 함? ======> 성공 알림 및 애니메이션 시작
+//    private fun showSuccessAlert() {
+//        _state.update { it.copy(isSuccessAlertVisible = true) }
+//        // 애니메이션 실행 로직 호출
+//    }
+
+    /**
+     * 16. 위치 서비스 활성화 상태 업데이트
      * */
     fun updateLocationServicesState(isEnabled: Boolean) {
         _locationServicesEnabled.value = isEnabled
     }
 
     /**
-     * 14. 실시간 위치 추적을 시작
+     * 17. 실시간 위치 추적을 시작
      * */
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
@@ -321,7 +429,7 @@ class MapViewModel @Inject constructor(
                 try {
                     webSocketMessageSender.sendLocationUpdate(newLocation)
                 } catch (e: Exception) {
-                    Log.e(TAG, "위치 전송 실패", e)
+//                    Log.e(TAG, "위치 전송 실패", e)
                     // 실패해도 추적 계속
                 }
             }
@@ -329,14 +437,14 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 15. TODO: 실시간 위치 추적을 중지 (필요 시)
+     * 18. TODO: 실시간 위치 추적을 중지 (필요 시)
      * */
     private fun stopTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = false) }
     }
 
     /**
-     * 16. 오류 메시지 설정
+     * 19. 오류 메시지 설정
      * */
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }

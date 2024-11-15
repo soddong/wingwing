@@ -1,5 +1,7 @@
 package com.ssafy.shieldroneapp.data.model
 
+import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
+
 /**
  * 드론 이용 가능 상태를 나타내는 열거형 클래스.
  *
@@ -9,6 +11,15 @@ package com.ssafy.shieldroneapp.data.model
  */
 enum class DroneStatus {
     AVAILABLE, RESERVED, IN_USE
+}
+
+/**
+ * 드론 매칭 최종 상태
+ *
+ * 사용자 입력 코드 검증 결과를 나타냄.
+ */
+enum class DroneMatchingResult {
+    SUCCESS, FAILURE, TIMEOUT
 }
 
 /**
@@ -40,4 +51,18 @@ data class DroneState(
     val estimatedTime: Int? = null,
     val distance: Int? = null,
     val assignedTime: Long? = null
-)
+) {
+    companion object {
+        /**
+         * DroneRouteResponse 데이터를 기반으로 DroneState를 생성
+         */
+        fun createDroneStateFromResponse(response: DroneRouteResponse): DroneState {
+            return DroneState(
+                droneId = response.droneId ?: -1,
+                estimatedTime = response.estimatedTime,
+                distance = response.distance,
+                isAssigned = true
+            )
+        }
+    }
+}

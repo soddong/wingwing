@@ -152,14 +152,14 @@ interface ApiService {
     // 4. 드론 관련 API
 
     /**
-     * 1) 드론 경로 안내 요청
+     * 1) 드론 배정 요청
      * 사용자가 설정한 출발지와 도착지를 서버에 전송하여 안내 가능 여부를 확인하는 API
      *
      * @param requestBody 드론 경로 요청 데이터
      * @return 드론 배정 가능 여부와 예상 시간, 거리
      */
-    @POST("routes")
-    suspend fun requestRoute(@Body requestBody: DroneRouteRequest): Response<DroneRouteResponse>
+    @POST("drones/routes")
+    suspend fun requestDrone(@Body requestBody: DroneRouteRequest): Response<DroneRouteResponse>
 
     /**
      * 2) 드론 배정 취소

@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.ssafy.shieldroneapp.data.model.DroneState
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
 import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
@@ -19,18 +20,25 @@ class DroneRepositoryImpl @Inject constructor(
     private val droneLocalDataSource: DroneLocalDataSource,
     private val context: Context, // Context 주입
 ) : DroneRepository {
+    companion object {
+        private const val TAG = "Map - DroneRepositoryImpl"
+    }
 
     /**
      * 1. 드론 배정 요청
      *
      * 서버에 출발지와 도착지 데이터를 전송하여 드론 배정 가능 여부를 확인
      */
-    override suspend fun requestRoute(request: DroneRouteRequest): Result<DroneRouteResponse> {
+    override suspend fun requestDrone(request: DroneRouteRequest): Result<DroneRouteResponse> {
         return NetworkUtils.apiCallAfterNetworkCheck(context) {
-            val response = apiService.requestRoute(request)
+            val response = apiService.requestDrone(request)
+            Log.d(TAG, "드론 배정 API 응답 결과? $response")
+
             if (response.isSuccessful) {
+                Log.d(TAG, "서버에 드론 배정 요청 후 받은 성공 후 응답: $response")
                 response.body() ?: throw Exception("경로 응답이 비어 있습니다.")
             } else {
+                Log.d(TAG, "서버에 드론 배정 요청 실패")
                 throw Exception("드론 경로 요청 실패")
             }
         }
