@@ -1,6 +1,7 @@
 package com.shieldrone.station.ui
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -10,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
+import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.TrackingTargetController
-import com.shieldrone.station.model.TrackingTargetViewModel
-import androidx.compose.runtime.collectAsState
-
+import com.shieldrone.station.data.Position
 import com.shieldrone.station.model.FlightAutoControlVM
+import com.shieldrone.station.model.TrackingTargetViewModel
+import com.shieldrone.station.service.route.RouteAdapter
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -22,6 +25,9 @@ class TrackingTargetActivity : ComponentActivity() {
     private val trackingVM: TrackingTargetViewModel by viewModels()
     private lateinit var trackingController: TrackingTargetController
     private val flightControlVM: FlightAutoControlVM by viewModels() // FlightControlVM 추가
+    private lateinit var routeAdapter: RouteAdapter
+    private lateinit var routeController: RouteController
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +35,21 @@ class TrackingTargetActivity : ComponentActivity() {
         setContent {
             TrackingTargetScreen(trackingVM, trackingController, flightControlVM)
         }
+        val routeListener = object : RouteAdapter.RouteListener {
+            override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
+                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
+                Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
+                flightControlVM.setTargetPosition(position)
+                flightControlVM.moveToForward()
+
+            }
+        }
+
+        routeAdapter = RouteAdapter(routeListener)
+        routeController = RouteController(routeAdapter)
+        routeController.startReceivingLocation()
+
+
     }
 
     override fun onDestroy() {
@@ -48,6 +69,9 @@ fun TrackingTargetScreen(
     val droneState by flightControlVM.droneState.collectAsState()
     val droneControls by flightControlVM.droneControls.collectAsState()
     val gpsSignalLevel by flightControlVM.gpsSignalLevel.collectAsState()
+    val targetPosition by flightControlVM.targetPosition.collectAsState()
+
+    var pitchValue by remember { mutableStateOf(0) }
     // Yaw 조정 시작/중지를 위한 상태 추가
     var isAdjustingYaw by remember { mutableStateOf(false) }
 
@@ -89,46 +113,39 @@ fun TrackingTargetScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(10.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 드론 상태 정보 표시
             Text("드론 상태:")
-            if (droneState != null ) {
-                Text("롤: ${droneState!!.roll}")
-                Text("요: ${droneState!!.yaw}")
-                Text("피치: ${droneState!!.pitch}")
-                Text("속도 X: ${droneState!!.xVelocity}")
-                Text("속도 Y: ${droneState!!.yVelocity}")
-                Text("속도 Z: ${droneState!!.zVelocity}")
-                Text("나침반 방향: ${droneState!!.compassHeading}")
+            if (droneState != null) {
+                Text("롤: ${droneState!!.roll}, 요: ${droneState!!.yaw}, 피치: ${droneState!!.pitch}")
+                Text("속도 X: ${droneState!!.xVelocity}, Y: ${droneState!!.yVelocity},  Z:${droneState!!.zVelocity}")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // 드론 제어 정보 표시
             Text("드론 제어:")
-            if (droneControls != null ) {
+            if (droneControls != null) {
                 Text("leftStick (고도): ${droneControls!!.leftStick.verticalPosition}")
                 Text("leftStick (회전): ${droneControls!!.leftStick.horizontalPosition}")
                 Text("rightStick (앞뒤): ${droneControls!!.rightStick.verticalPosition}")
                 Text("rightStick (좌우): ${droneControls!!.rightStick.horizontalPosition}")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Tracking Data 정보 표시
             Text("Tracking Data:")
-            Text("Offset X: ${trackingData.offsetX}")
-            Text("Offset Y: ${trackingData.offsetY}")
+            Text("Offset X: ${trackingData.offsetX}, Offset Y: ${trackingData.offsetY}")
             Text("Movement: ${trackingData.movement}")
-            Text("Box Width: ${trackingData.boxWidth}")
-            Text("Box Height: ${trackingData.boxHeight}")
+            Text("Box Width: ${trackingData.boxWidth}, Box Height: ${trackingData.boxHeight}")
             Text("Normalized Offset X: ${trackingData.normalizedOffsetX}")
             Text("Normalized Offset Y: ${trackingData.normalizedOffsetY}")
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row {
                 Button(
@@ -142,18 +159,18 @@ fun TrackingTargetScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Yaw 조정 버튼 추가
             Button(
                 onClick = { isAdjustingYaw = !isAdjustingYaw },
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 10.dp)
             ) {
                 Text(if (isAdjustingYaw) "Stop Adjusting Yaw" else "Start Adjusting Yaw")
             }
 
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // 이륙, 착륙, 가상 스틱 모드 제어 버튼 추가
             Row(
@@ -168,7 +185,7 @@ fun TrackingTargetScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -180,6 +197,32 @@ fun TrackingTargetScreen(
                 Button(onClick = { flightControlVM.disableVirtualStickMode() }) {
                     Text("Disable Virtual Stick")
                 }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Slider (Compose의 SeekBar 대체)
+            Text("Pitch 조절:")
+            Slider(
+                value = pitchValue.toFloat(),
+                onValueChange = { value ->
+                    pitchValue = value.toInt()
+                    flightControlVM.updatePitch(pitchValue) // 슬라이더 조정 시 pitch 값 업데이트
+                },
+                valueRange = -100f..100f,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp)
+            )
+            Text("현재 Pitch: $pitchValue")
+            Spacer(modifier = Modifier.height(10.dp))
+            // targetPosition 정보 표시
+            Text("목표 위치:")
+            if (targetPosition != null) {
+                Text("위도: ${targetPosition!!.latitude}")
+                Text("경도: ${targetPosition!!.longitude}")
+                Text("고도: ${targetPosition!!.altitude}")
+            } else {
+                Text("목표 위치 정보가 없습니다.")
             }
         }
     }

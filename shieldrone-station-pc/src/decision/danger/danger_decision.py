@@ -20,7 +20,6 @@ class DangerDecision:
         self.pulse_flag_time = 0
         self.db_flag_time = 0
         self.camera_flag_time = 0
-        self.frame = None
 
         # 타임아웃 설정 (5초)
         self.trigger_timeout = 5

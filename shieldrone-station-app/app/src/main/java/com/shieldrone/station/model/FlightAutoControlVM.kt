@@ -1,15 +1,12 @@
 package com.shieldrone.station.model
 
-import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_DEGREE
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
 import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
@@ -20,8 +17,6 @@ import dji.v5.common.error.IDJIError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.util.LinkedList
-import java.util.Queue
 
 class FlightAutoControlVM : ViewModel() {
 
@@ -47,6 +42,8 @@ class FlightAutoControlVM : ViewModel() {
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
 
+    var pitch: Int by mutableStateOf(0)
+        private set
     // 2. 필요한 초기화
     init {
         flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
@@ -154,5 +151,16 @@ class FlightAutoControlVM : ViewModel() {
 
     fun adjustYaw(yawDifference: Double) {
         flightControlModel.adjustYaw(yawDifference)
+    }
+    fun setTargetPosition(position: Position) {
+        _targetPosition.value = position
+    }
+
+    fun updatePitch(value: Int) {
+        pitch = value
+    }
+
+    fun moveToForward() {
+        flightControlModel.moveToForward(pitch)
     }
 }

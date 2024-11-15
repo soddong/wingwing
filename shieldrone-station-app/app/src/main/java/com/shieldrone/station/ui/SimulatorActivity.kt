@@ -27,16 +27,16 @@ class SimulatorActivity : AppCompatActivity() {
         binding = SimulatorActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val routeListener = object : RouteAdapter.RouteListener {
-            override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
-                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
-                simulatorVM.addTargetPosition(position)
+//        val routeListener = object : RouteAdapter.RouteListener {
+//            override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
+//                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
+//                simulatorVM.addTargetPosition(position)
 //                Log.d(SIMULATOR_TAG, "Updated Route to: $latitude, $longitude, altitude: 1.2")
-            }
-        }
-        routeAdapter = RouteAdapter(routeListener)
-        routeController = RouteController(routeAdapter)
-        routeController.startReceivingLocation()
+//            }
+//        }
+//        routeAdapter = RouteAdapter(routeListener)
+//        routeController = RouteController(routeAdapter)
+//        routeController.startReceivingLocation()
 
         initUiElements()
         observeData()
