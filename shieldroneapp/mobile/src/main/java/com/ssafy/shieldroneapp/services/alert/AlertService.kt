@@ -39,6 +39,10 @@ class AlertService @Inject constructor(
         // 진동 세기 (안드로이드 O 이상)
         private val WARNING_VIBRATION_AMPLITUDE = intArrayOf(0, 255, 0, 255)  // 최대 세기
         private val OBJECT_VIBRATION_AMPLITUDE = intArrayOf(0, 100)  // 약한 세기
+
+        // 소음 감지용 진동 패턴
+        private val NOISE_VIBRATION_PATTERN = longArrayOf(0, 50)
+        private val NOISE_VIBRATION_AMPLITUDE = intArrayOf(0, 50)  // 가장 약한 세기
     }
 
     private var mediaPlayer: MediaPlayer? = null
@@ -102,7 +106,7 @@ class AlertService @Inject constructor(
     }
 
     private enum class VibrationType {
-        WARNING, OBJECT
+        WARNING, OBJECT, NOISE
     }
 
     private fun startWarningSound() {
@@ -176,18 +180,30 @@ class AlertService @Inject constructor(
                         vibrator.vibrate(effect)
                         Log.d(TAG, "타인 감지 진동 시작 - 약한 세기")
                     }
+
+                    VibrationType.NOISE -> {
+                        val effect = VibrationEffect.createWaveform(
+                            NOISE_VIBRATION_PATTERN,
+                            NOISE_VIBRATION_AMPLITUDE,
+                            -1
+                        )
+                        vibrator.vibrate(effect)
+                        Log.d(TAG, "소음 감지 진동 시작 - 가장 약한 세기")
+                    }
                 }
             } else {
                 @Suppress("DEPRECATION")
                 when (type) {
                     VibrationType.WARNING -> {
                         vibrator.vibrate(WARNING_VIBRATION_PATTERN, -1)
-                        Log.d(TAG, "위험 감지 진동 시작 (하위 버전)")
                     }
 
                     VibrationType.OBJECT -> {
                         vibrator.vibrate(OBJECT_VIBRATION_PATTERN, -1)
-                        Log.d(TAG, "타인 감지 진동 시작 (하위 버전)")
+                    }
+
+                    VibrationType.NOISE -> {
+                        vibrator.vibrate(NOISE_VIBRATION_PATTERN, -1)
                     }
                 }
             }
@@ -200,13 +216,16 @@ class AlertService @Inject constructor(
         stopWarningSound()
         stopVibration()
 
+        startVibration(VibrationType.NOISE)
+
         val notification = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setSmallIcon(R.drawable.alert_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setAutoCancel(true)  //  탭하면 자동으로 사라짐
+            .setAutoCancel(true)
             .build()
 
         notificationManager.notify(SAFE_CONFIRMATION_NOTIFICATION_ID, notification)
@@ -228,7 +247,7 @@ class AlertService @Inject constructor(
     fun release() {
         stopWarningSound()
         cancelWarningNotification()
-        notificationManager.cancel(SAFE_CONFIRMATION_NOTIFICATION_ID) 
+        notificationManager.cancel(SAFE_CONFIRMATION_NOTIFICATION_ID)
         stopVibration()
     }
 }
