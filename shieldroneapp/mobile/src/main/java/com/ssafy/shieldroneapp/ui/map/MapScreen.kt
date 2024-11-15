@@ -324,7 +324,7 @@ fun MapScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 마커 정보 모달 - 출발지
-            if (state.showStartMarkerModal) {
+            if (state.showStartMarkerModal && state.selectedStartMarker != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -341,11 +341,10 @@ fun MapScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { // 모달 안쪽은 클릭해도 안 닫히도록
-                            }
+                            ) { /* 모달 안쪽은 클릭해도 닫히지 않도록 */ }
                     ) {
                         MapMarkerInfoModal(
-                            routeLocation = state.selectedStartMarker!!,
+                            routeLocation = state.selectedStartMarker,
                             onSelect = {
                                 mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
                                 mapViewModel.handleEvent(MapEvent.CloseModal)
