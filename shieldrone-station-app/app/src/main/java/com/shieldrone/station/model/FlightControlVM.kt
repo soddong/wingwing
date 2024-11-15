@@ -1,6 +1,5 @@
 package com.shieldrone.station.model
 
-import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -19,8 +18,6 @@ import dji.sdk.keyvalue.value.common.LocationCoordinate2D
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
-import java.util.LinkedList
-import java.util.Queue
 
 class FlightControlVM : ViewModel() {
 
@@ -55,6 +52,11 @@ class FlightControlVM : ViewModel() {
     private val _homeLocation = MutableLiveData<LocationCoordinate2D>()
     val homeLocation: LiveData<LocationCoordinate2D> get() = _homeLocation
 
+    private var pitch: Int = INPUT_VELOCITY // 기본값을 설정하거나 필요에 따라 조정
+
+    fun setPitch(newPitch: Int) {
+        pitch = newPitch
+    }
 
     // 2. 필요한 초기화
     init {
@@ -167,16 +169,7 @@ class FlightControlVM : ViewModel() {
      * 드론을 앞으로 이동
      */
     fun moveForward() {
-        val controls = Controls(
-            leftStick = StickPosition(0, 0),
-            rightStick = StickPosition(INPUT_VELOCITY, 0)
-        )
-        setDroneControlValues(controls)
-
-        // 일정 시간 후에 값을 초기화하여 정지
-        handler.postDelayed({
-            initVirtualStickValue()
-        }, BTN_DELAY) // BTN_DELAYms 후 초기화 (시간 조정 가능)
+        flightControlModel.moveToForward(pitch)
     }
 
     /**
@@ -344,11 +337,16 @@ class FlightControlVM : ViewModel() {
         return flightControlModel.calculateDistanceAndBearing(startLat, startLng, endLat, endLng)
     }
 
-    fun subscribeTargetPosition(position: Position) {
-        _targetPosition.postValue(position)
-    }
     fun subscribeTargetUser() {
 
+    }
+
+    fun setTargetPosition(position: Position) {
+        _targetPosition.postValue(position)
+    }
+
+    fun startMoveForward() {
+        flightControlModel.moveToForward(pitch)
     }
 
 }

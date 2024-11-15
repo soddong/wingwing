@@ -28,15 +28,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
-import com.shieldrone.station.model.BatteryModel
 import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
 import com.shieldrone.station.service.route.RouteAdapter
+import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
 import com.shieldrone.station.ui.TrackingTargetActivity
@@ -235,20 +236,20 @@ class DJIMainActivity : AppCompatActivity() {
 
     // 카메라 또는 드론 모드에서 스트리밍 시작
     private fun startStreaming() {
-        Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
-
-        streamController = if (isCameraMode) {
-            StreamController(CameraImageFrameProvider(this))
-        } else {
-            StreamController(DroneImageFrameProvider(this))
-        }
-
-        val routeAdapter = RouteAdapter()
-        routeController = RouteController(routeAdapter)
-
-        streamController.startLive()
-        routeController.startReceivingLocation()
-        isStreaming = true
+//        Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
+//
+//        streamController = if (isCameraMode) {
+//            StreamController(CameraImageFrameProvider(this))
+//        } else {
+//            StreamController(DroneImageFrameProvider(this))
+//        }
+//
+//        val routeAdapter = RouteAdapter()
+//        routeController = RouteController(routeAdapter)
+//
+//        streamController.startLive()
+//        routeController.startReceivingLocation()
+//        isStreaming = true
     }
 
 
@@ -277,8 +278,8 @@ class DJIMainActivity : AppCompatActivity() {
                             Text(text = "Camera Mode")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { onModeSelected(false)
-                            navigateToTrackingControl()
+                        Button(onClick = { onModeSelected(true)
+                            navigateToCameraStreamList()
                         }) {
                             Text(text = "Drone Mode")
                         }
@@ -325,8 +326,13 @@ class DJIMainActivity : AppCompatActivity() {
         val intent = Intent(this, FlightControlActivity::class.java)
         startActivity(intent)
     }
+
     private fun navigateToTrackingControl() {
         val intent = Intent(this, TrackingTargetActivity::class.java)
+        startActivity(intent)
+    }
+    private fun navigateToCameraStreamList() {
+        val intent = Intent(this, CameraStreamActivity::class.java)
         startActivity(intent)
     }
 }

@@ -5,7 +5,7 @@ import threading
 import json
 import zmq
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class Server:
     def __init__(self):
@@ -16,8 +16,6 @@ class Server:
         self.ws_clients = set()
         self.setup_routes()
         self.setup_zmq()
-        self.frame_lasttime = datetime.now()
-        self.frame = None
 
     def setup_routes(self):
         """
@@ -107,16 +105,17 @@ class Server:
             try:
                 message = self.socket_flag.recv_string()
                 data = json.loads(message)
+                time = data.get("time", datetime.now().isoformat())
 
                 # 위험 상황 판단 및 경고음 전송
                 if data.get("type") == "sendWarningFlag":
                     self.trigger_warning_beep()
-                    print(f"[sendWarningFlag] Warning Flag가 전송되었습니다.")
+                    print(f"[sendWarningFlag] {data}")
 
                 # 위험 상황 판단 및 경고음 전송
                 if data.get("type") == "sendObjectFlag":
-                    self.trigger_warning_object(data)
-                    print(f"[sendObjectFlag] Object Flag가 전송되었습니다.")
+                    self.trigger_warning_object()
+                    print(f"[sendObjectFlag] {data}")
 
             except zmq.ZMQError as e:
                 print(f"ZeroMQ 에러 발생: {e}")
@@ -185,14 +184,9 @@ class Server:
     async def send_warning_beep(self):
         """
         경고음 전송 메시지를 모든 연결된 WebSocket 클라이언트에 전송.
-        """  
-        
-        if (datetime.now() - self.frame_lasttime) < timedelta(seconds=30):
-            print("[경고음 전송] 아직 유효하므로 프레임 포함하여 전송")
-            message = json.dumps({"type": "sendWarningFlag", "time": datetime.now().isoformat(), "warningFlag": True, "frame": self.frame})
-        else:
-            print("[경고음 전송] 시간이 30초 초과되었으므로 프레임 제외하여 전송")
-            message = json.dumps({"type": "sendWarningFlag", "time": datetime.now().isoformat(), "warningFlag": True, "frame": None})
+        """
+        time = datetime.now().isoformat()
+        message = json.dumps({"type": "sendWarningFlag", "time": time, "warningFlag": True})
         for client in self.ws_clients:
             try:
                 await client.send(message)
@@ -200,11 +194,12 @@ class Server:
             except websockets.ConnectionClosed:
                 print("클라이언트가 예상치 않게 연결 해제됨.")
 
-    async def send_object_flag(self, data):
+    async def send_object_flag(self):
         """
         send_object_flag WebSocket 클라이언트에 전송.
         """
-        message = json.dumps({"type": "sendObjectFlag", "time": data.get("time"), "objectFlag": data.get("objectFlag")})
+        time = datetime.now().isoformat()
+        message = json.dumps({"type": "sendObjectFlag", "time": time, "objectFlag": True})
         for client in self.ws_clients:
             try:
                 await client.send(message)
@@ -218,13 +213,11 @@ class Server:
         """
         asyncio.run(self.send_warning_beep())
     
-    def trigger_warning_object(self, data):
+    def trigger_warning_object(self):
         """
         경고음을 WebSocket 클라이언트에 비동기적으로 전송함.
         """
-        self.frame = data.get("frame")
-        self.frame_lasttime = datetime.fromisoformat(data.get("time"))
-        asyncio.run(self.send_object_flag(data))
+        asyncio.run(self.send_object_flag())
 
     def run_flask(self):
         self.app.run(host="0.0.0.0", port=5000)

@@ -1,6 +1,3 @@
-import base64
-import cv2
-import numpy as np
 import zmq
 import json
 import time
@@ -42,10 +39,9 @@ class DangerDecision:
         self.pulse_flag_time = 0
         self.db_flag_time = 0
         self.camera_flag_time = 0
-        self.frame = None
 
         # 타임아웃 설정 (30초)
-        self.trigger_timeout = 5
+        self.trigger_timeout = 30
 
     def receive_data(self):
         """
@@ -120,19 +116,16 @@ class DangerDecision:
     def set_camera_flag_trigger(self, data):
         current_time = time.time()
         new_camera_flag = data.get("warningFlag")
-        frame_base64 = data.get("frame")
-
+        
         if self.camera_flag_trigger:
             if current_time - self.camera_flag_time > self.trigger_timeout:
                 self.camera_flag_trigger = new_camera_flag
                 self.camera_flag_time = current_time
-                self.frame = frame_base64
                 print("[트리거 재설정] sendCameraFlag 트리거가 재설정되었습니다.")
         else:
             if new_camera_flag:
                 self.camera_flag_trigger = True
                 self.camera_flag_time = current_time
-                self.frame = frame_base64
                 self.send_object_signal()
                 print("[트리거 설정] sendCameraFlag 트리거가 발동되었습니다.")
 
@@ -170,8 +163,7 @@ class DangerDecision:
         message = json.dumps({
             "type": "sendObjectFlag",
             "time": datetime.now().isoformat(),
-            "objectFlag": True,
-            "frame": self.frame
+            "objectFlag": True
         })
         self.socket_flag.send_string(message)
         print("[위험 경고 전송] 경고 메시지가 5590 포트로 전송되었습니다.")

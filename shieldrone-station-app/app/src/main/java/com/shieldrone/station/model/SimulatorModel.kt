@@ -634,7 +634,7 @@ class SimulatorModel {
         stickManager.rightStick.verticalPosition = controls.rightStick.verticalPosition
         stickManager.rightStick.horizontalPosition = controls.rightStick.horizontalPosition
 
-        Log.d(logTag, "Control values set: $controls")
+//        Log.d(logTag, "Control values set: $controls")
     }
 
     /**

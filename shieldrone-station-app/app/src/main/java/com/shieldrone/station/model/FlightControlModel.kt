@@ -7,7 +7,6 @@ import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
 import com.shieldrone.station.constant.FlightContstant.Companion.EARTH_RADIUS
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.FORWARD_DELAY_MILLISECONDS
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
 import com.shieldrone.station.constant.FlightContstant.Companion.LANDING_DELAY_MILLISECONDS
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_DEGREE
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
@@ -29,9 +28,6 @@ import dji.v5.common.error.IDJIError
 import dji.v5.et.action
 import dji.v5.et.get
 import dji.v5.manager.KeyManager
-import dji.v5.manager.aircraft.flightrecord.FlightLogManager
-import dji.sdk.keyvalue.value.flightcontroller.GoHomePathMode
-
 import dji.v5.manager.aircraft.virtualstick.IStick
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
 import dji.v5.manager.interfaces.IVirtualStickManager
@@ -288,13 +284,13 @@ class FlightControlModel {
         val stickManager = virtualStickManager
 
         // 초기 control 값을 설정
-        var currentControls = getCurrentStickPositions(stickManager)
+        var currentControls = getCurrentStickPositions()
 
         // 일정 간격으로 control 값을 갱신하고 콜백 호출
         handler.post(object : Runnable {
             override fun run() {
                 // 새로운 Controls 상태를 구독
-                val newControls = getCurrentStickPositions(stickManager)
+                val newControls = getCurrentStickPositions()
 
                 // 새로운 control 값을 onUpdate 콜백으로 전달
                 onUpdate(newControls)
@@ -342,20 +338,30 @@ class FlightControlModel {
 
         if (currentLocation3D != null) {
             // Convert LocationCoordinate3D to LocationCoordinate2D (latitude, longitude only)
-            val homeLocation2D = LocationCoordinate2D(currentLocation3D.latitude, currentLocation3D.longitude)
+            val homeLocation2D =
+                LocationCoordinate2D(currentLocation3D.latitude, currentLocation3D.longitude)
 
             // Set the 2D location as the home location
-            KeyManager.getInstance().setValue(homeLocation, homeLocation2D, object : CommonCallbacks.CompletionCallback {
-                override fun onSuccess() {
-                    Log.d(FLIGHT_CONTROL_TAG, "Home location successfully set to: $homeLocation2D")
-                    callback.onSuccess()
-                }
+            KeyManager.getInstance().setValue(
+                homeLocation,
+                homeLocation2D,
+                object : CommonCallbacks.CompletionCallback {
+                    override fun onSuccess() {
+                        Log.d(
+                            FLIGHT_CONTROL_TAG,
+                            "Home location successfully set to: $homeLocation2D"
+                        )
+                        callback.onSuccess()
+                    }
 
-                override fun onFailure(error: IDJIError) {
-                    Log.e(FLIGHT_CONTROL_TAG, "Failed to set home location: ${error.description()}")
-                    callback.onFailure(error)
-                }
-            })
+                    override fun onFailure(error: IDJIError) {
+                        Log.e(
+                            FLIGHT_CONTROL_TAG,
+                            "Failed to set home location: ${error.description()}"
+                        )
+                        callback.onFailure(error)
+                    }
+                })
         } else {
             Log.e(FLIGHT_CONTROL_TAG, "Current location not available to set as home location.")
             callback.onFailure(object : IDJIError {
@@ -382,10 +388,7 @@ class FlightControlModel {
      * 드론을 전진시키는 메서드 (Pitch 값 조정)
      * rightStick만 제어하기
      */
-    fun moveToForward() {
-        // 적절한 전진 속도 값 설정 (범위: -660 ~ 660)
-        // 13m/s 가정하면 42 -> 약 0.8m, 10m/s -> 약 54
-        val pitch = INPUT_VELOCITY
+    fun moveToForward(pitch: Int) {
         val rightStick = RightStick().apply {
             verticalPosition = pitch
             horizontalPosition = 0
@@ -421,7 +424,7 @@ class FlightControlModel {
                     initVirtualStickValue()
                     onComplete()
                 } else {
-                    moveToForward()
+//                    moveToForward()
                     // 다음 체크를 위해 다시 호출
                     handler.postDelayed(this, checkInterval)
                 }
@@ -487,15 +490,15 @@ class FlightControlModel {
     /**
      * 현재 스틱의 위치를 리턴
      */
-    private fun getCurrentStickPositions(stickManager: IVirtualStickManager): Controls {
+    fun getCurrentStickPositions(): Controls {
         return Controls(
             StickPosition(
-                stickManager.leftStick.verticalPosition,
-                stickManager.leftStick.horizontalPosition
+                virtualStickManager.leftStick.verticalPosition,
+                virtualStickManager.leftStick.horizontalPosition
             ),
             StickPosition(
-                stickManager.rightStick.verticalPosition,
-                stickManager.rightStick.horizontalPosition
+                virtualStickManager.rightStick.verticalPosition,
+                virtualStickManager.rightStick.horizontalPosition
             )
         )
     }
@@ -598,8 +601,6 @@ class FlightControlModel {
 //            }
 //        })
 //    }
-
-
 
 
     // 8. Control Value Settings, Print Logs

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 from datetime import datetime
 import json
 import os
@@ -235,7 +234,7 @@ class PipePredictor(object):
         self.spatial_info_tracker = SpatialInfoTracker()
         # TODO : arg로 변경
         # 앱서버의 ip와 port로 변경하고 사용
-        self.res_sender = ResultSendHandler("192.168.0.8", 11435)
+        self.res_sender = ResultSendHandler("192.168.0.7", 23456)
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -293,6 +292,7 @@ class PipePredictor(object):
         """
         위험 상황 발생 시 메시지를 전송합니다.
         """
+
         if flag:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             _, buffer = cv2.imencode('.jpg', frame)
@@ -320,7 +320,6 @@ class PipePredictor(object):
 
             if retry_count == max_retries:
                 print("여러 번 시도했지만 메시지 전송에 실패했습니다.")
-
 
     def send_flight_info(self, send_socket, info):
         message = json.dumps({
@@ -458,9 +457,6 @@ class PipePredictor(object):
             # update target
             if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
                 self.target_id=None
-                self.drone_controller.control_value.init_zero()
-                control_res = self.drone_controller.get_control_value()
-                resultqueue.put(control_res.get())
             if self.target_id is None:
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
@@ -508,7 +504,8 @@ class PipePredictor(object):
                 #     self.send_danger_signal(socket_camera, frame_rgb, True)
                 # else:
                 #     self.send_danger_signal(socket_camera, frame_rgb, False)
-                # self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
+                
+                self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
 
 
 
