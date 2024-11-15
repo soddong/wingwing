@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class FlightAutoControlVM : ViewModel() {
 
     // 1. 라이브데이터 및 필요한 필드
-    private val flightControlModel = FlightControlModel()
+    private val flightControlModel = FlightAutoControlModel()
     private val handler = Handler(Looper.getMainLooper())
 
     private var isMoving = false

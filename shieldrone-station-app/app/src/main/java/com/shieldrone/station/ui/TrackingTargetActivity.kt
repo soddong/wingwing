@@ -126,16 +126,16 @@ fun TrackingTargetScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 드론 제어 정보 표시
-            Text("드론 제어:")
-            if (droneControls != null) {
-                Text("leftStick (고도): ${droneControls!!.leftStick.verticalPosition}")
-                Text("leftStick (회전): ${droneControls!!.leftStick.horizontalPosition}")
-                Text("rightStick (앞뒤): ${droneControls!!.rightStick.verticalPosition}")
-                Text("rightStick (좌우): ${droneControls!!.rightStick.horizontalPosition}")
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
+//            // 드론 제어 정보 표시
+//            Text("드론 제어:")
+//            if (droneControls != null) {
+//                Text("leftStick (고도): ${droneControls!!.leftStick.verticalPosition}")
+//                Text("leftStick (회전): ${droneControls!!.leftStick.horizontalPosition}")
+//                Text("rightStick (앞뒤): ${droneControls!!.rightStick.verticalPosition}")
+//                Text("rightStick (좌우): ${droneControls!!.rightStick.horizontalPosition}")
+//            }
+//
+//            Spacer(modifier = Modifier.height(10.dp))
 
             // Tracking Data 정보 표시
             Text("Tracking Data:")
