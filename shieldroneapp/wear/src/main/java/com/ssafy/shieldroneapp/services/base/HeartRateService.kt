@@ -25,6 +25,7 @@ class HeartRateService : LifecycleService() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
     private var measurementJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var lastMeasurementTime = 0L
 
     @Inject
     lateinit var sensorRepository: SensorRepository
@@ -40,24 +41,16 @@ class HeartRateService : LifecycleService() {
         private const val CHANNEL_ID = "HeartRateService"
         private const val CHANNEL_NAME = "Heart Rate Monitoring"
         private const val TAG = "워치: 심박수 레포"
+        private const val MEASUREMENT_INTERVAL = 1000L
     }
 
     override fun onCreate() {
         super.onCreate()
-        acquireWakeLock()
+        WakeLockManager.getInstance(applicationContext).acquireWakeLock()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification())
     }
 
-    private fun acquireWakeLock() {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "ShieldDrone::HeartRateServiceWakeLock"
-        ).apply {
-            acquire()
-        }
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -75,42 +68,43 @@ class HeartRateService : LifecycleService() {
                     return@launch
                 }
 
-                while (isActive) { 
+                while (isActive) {
                     try {
-                        sensorRepository.heartRateMeasureFlow()
-                            .collect { measureMessage ->
-                                when (measureMessage) {
-                                    is MeasureMessage.MeasureData -> {
-                                        val bpm = measureMessage.data.last().value
-                                        if (bpm > 0) { 
-                                            val viewModel = WearableService.getHeartRateViewModel()
-                                            if (viewModel != null) {
-                                                viewModel.updateHeartRate(bpm)
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastMeasurementTime >= MEASUREMENT_INTERVAL) {
+                            sensorRepository.heartRateMeasureFlow()
+                                .collect { measureMessage ->
+                                    when (measureMessage) {
+                                        is MeasureMessage.MeasureData -> {
+                                            measureMessage.data.lastOrNull()?.let { heartRateSample ->
+                                                val bpm = heartRateSample.value
+                                                if (bpm > 0) {
+                                                    WearableService.getHeartRateViewModel()?.updateHeartRate(bpm)
+                                                    sendHeartRateData(bpm, DataTypeAvailability.AVAILABLE)
+                                                    lastMeasurementTime = currentTime
+                                                }
                                             }
-                                            sendHeartRateData(bpm, DataTypeAvailability.AVAILABLE)
-                                        } else {
-                                            delay(1000) 
                                         }
-                                    }
-                                    is MeasureMessage.MeasureAvailability -> {
-                                        val newAvailability = measureMessage.availability
-                                        Log.d(TAG, "가용성 변경: $newAvailability")
-                                        if (newAvailability == DataTypeAvailability.UNAVAILABLE) {
-                                            Log.d(TAG, "센서 연결 끊김, 재연결 시도")
-                                            delay(1000) 
+                                        is MeasureMessage.MeasureAvailability -> {
+                                            val availability = measureMessage.availability
+                                            Log.d(TAG, "가용성 변경: $availability")
+                                            WearableService.getHeartRateViewModel()?.updateAvailability(availability)
+                                            if (availability == DataTypeAvailability.UNAVAILABLE) {
+                                                Log.d(TAG, "센서 연결 끊김, 재연결 시도")
+                                            }
                                         }
-                                        WearableService.getHeartRateViewModel()?.updateAvailability(newAvailability)
                                     }
                                 }
-                            }
+                        }
+                        delay(MEASUREMENT_INTERVAL)
                     } catch (e: Exception) {
                         Log.e(TAG, "측정 중 오류 발생, 재시도", e)
-                        delay(1000) 
+                        delay(MEASUREMENT_INTERVAL)
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "서비스 실행 중 치명적 오류 발생", e)
-                delay(1000)
+                delay(MEASUREMENT_INTERVAL)
                 startHeartRateMonitoring()
             }
         }
