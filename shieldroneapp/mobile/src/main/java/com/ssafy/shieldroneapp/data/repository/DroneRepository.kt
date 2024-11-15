@@ -18,7 +18,7 @@ import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
 interface DroneRepository {
 
     // 드론 배정/매칭 관련
-    suspend fun requestRoute(request: DroneRouteRequest): Result<DroneRouteResponse>
+    suspend fun requestDrone(request: DroneRouteRequest): Result<DroneRouteResponse>
     suspend fun cancelDrone(request: DroneCancelRequest): Result<Unit>
     suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse>
 
