@@ -43,9 +43,6 @@ class FlightControlVM : ViewModel() {
     private val _targetPosition = MutableLiveData<Position>()
     val targetPosition: LiveData<Position> get() = _targetPosition
 
-    private val _targetUser = MutableLiveData<TrackingData>()
-    val targetUser: LiveData<TrackingData> get() = _targetUser
-
     private val _goHomeState = MutableLiveData<FCGoHomeState>()
     val goHomeState: LiveData<FCGoHomeState> get() = _goHomeState
 

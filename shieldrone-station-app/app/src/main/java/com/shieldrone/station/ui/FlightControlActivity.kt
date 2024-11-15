@@ -9,19 +9,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
-import com.shieldrone.station.controller.TrackingTargetController
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.databinding.FlightControlActivityBinding
 import com.shieldrone.station.model.FlightControlVM
-import com.shieldrone.station.model.TrackingTargetViewModel
+import com.shieldrone.station.model.TrackingDataVM
 import com.shieldrone.station.service.route.RouteAdapter
 
 class FlightControlActivity : AppCompatActivity() {
 
     private lateinit var binding: FlightControlActivityBinding
     private val flightControlVM: FlightControlVM by viewModels()
-    private lateinit var trackingController: TrackingTargetController
-    private val trackingVM: TrackingTargetViewModel by viewModels()
+    private val trackingVM: TrackingDataVM by viewModels()
     private lateinit var routeController: RouteController
     private lateinit var routeAdapter: RouteAdapter
 
@@ -43,9 +41,6 @@ class FlightControlActivity : AppCompatActivity() {
         routeAdapter = RouteAdapter(routeListener)
         routeController = RouteController(routeAdapter)
         routeController.startReceivingLocation()
-
-        trackingController = TrackingTargetController(trackingVM)
-        trackingController.startReceivingData()
 
         // SeekBar 초기화 및 OnSeekBarChangeListener 설정
         val pitchSeekBar = binding.slider
@@ -72,7 +67,6 @@ class FlightControlActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        trackingController.stopReceivingData()
     }
     private fun initUiElements() {
         initButtonClickListeners()

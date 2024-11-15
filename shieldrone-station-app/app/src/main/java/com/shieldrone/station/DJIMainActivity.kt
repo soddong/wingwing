@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -28,15 +27,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
 import com.shieldrone.station.model.BatteryViewModel
-import com.shieldrone.station.service.camera.CameraImageFrameProvider
-import com.shieldrone.station.service.camera.DroneImageFrameProvider
-import com.shieldrone.station.service.route.RouteAdapter
 import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
@@ -49,8 +44,6 @@ class DJIMainActivity : AppCompatActivity() {
 
     private lateinit var streamController: StreamController
     private lateinit var routeController: RouteController
-    private var cameraPermissionGranted by mutableStateOf(false)
-    private var isCameraMode by mutableStateOf(true)
     private var isStreaming by mutableStateOf(false)
 
 
@@ -81,14 +74,6 @@ class DJIMainActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 권한 요청 런처
-    private val cameraPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            cameraPermissionGranted = isGranted
-            if (isGranted) {
-                startStreaming()
-            }
-        }
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
     private var isOpenCVInitialized = false
@@ -163,39 +148,9 @@ class DJIMainActivity : AppCompatActivity() {
                 if (!allPermissionsGranted) {
                     PermissionsRequiredScreen()
                 } else {
-                    CameraPermissionScreen(
-                        onRequestPermission = { requestCameraPermission() },
-                        onModeSelected = { isCamera -> onModeSelected(isCamera) },
-                        cameraPermissionGranted = cameraPermissionGranted,
-                        isCameraMode = isCameraMode,
-                        isStreaming = isStreaming
-                    )
+                    CameraPermissionScreen()
                 }
             }
-        }
-    }
-
-    // 모드 선택 시 호출
-    private fun onModeSelected(isCamera: Boolean) {
-        isCameraMode = isCamera
-        if (isCameraMode) {
-            requestCameraPermission()
-        } else {
-            startStreaming()
-        }
-    }
-
-    // 카메라 권한 요청
-    private fun requestCameraPermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            cameraPermissionGranted = true
-            startStreaming()
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -234,34 +189,10 @@ class DJIMainActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 또는 드론 모드에서 스트리밍 시작
-    private fun startStreaming() {
-//        Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
-//
-//        streamController = if (isCameraMode) {
-//            StreamController(CameraImageFrameProvider(this))
-//        } else {
-//            StreamController(DroneImageFrameProvider(this))
-//        }
-//
-//        val routeAdapter = RouteAdapter()
-//        routeController = RouteController(routeAdapter)
-//
-//        streamController.startLive()
-//        routeController.startReceivingLocation()
-//        isStreaming = true
-    }
-
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun CameraPermissionScreen(
-        onRequestPermission: () -> Unit,
-        onModeSelected: (Boolean) -> Unit,
-        cameraPermissionGranted: Boolean,
-        isCameraMode: Boolean,
-        isStreaming: Boolean
-    ) {
+    fun CameraPermissionScreen() {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             content = { innerPadding ->
@@ -274,14 +205,7 @@ class DJIMainActivity : AppCompatActivity() {
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row {
-                        Button(onClick = { onModeSelected(true) }) {
-                            Text(text = "Camera Mode")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = {
-//                            onModeSelected(true)
-//                            navigateToCameraStreamList()
-                            onModeSelected(false)
                             navigateToTrackingControl()
                         }) {
                             Text(text = "Drone Mode")
@@ -301,21 +225,6 @@ class DJIMainActivity : AppCompatActivity() {
                 }
             }
         )
-    }
-
-    @Composable
-    fun PermissionRequestButton(onRequestPermission: () -> Unit) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Text(text = "Camera permission is required to start streaming.")
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { onRequestPermission() }) {
-                Text(text = "Request Camera Permission")
-            }
-        }
     }
 
     // SimulatorActivity로 이동하는 함수 추가

@@ -1,5 +1,7 @@
 package com.shieldrone.station.controller
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
@@ -15,10 +17,10 @@ import java.net.InetAddress
 class CameraStreamController {
 
     companion object {
-        private const val HOST = "192.168.0.2"
+        private const val HOST = "192.168.107.191"
         private const val PORT = 65432
         private const val MTU_SIZE = 1500 // MTU를 고려한 최대 패킷 크기 제한
-        private const val JPEG_QUALITY = 70 // JPEG 압축 품질 (0 ~ 100)
+        private const val JPEG_QUALITY = 25 // JPEG 압축 품질 (0 ~ 100)
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -72,7 +74,20 @@ class CameraStreamController {
             val yuvImage = YuvImage(data, ImageFormat.NV21, width, height, null)
             val outputStream = ByteArrayOutputStream()
             yuvImage.compressToJpeg(Rect(0, 0, width, height), JPEG_QUALITY, outputStream)
-            outputStream.toByteArray()
+            val jpegData = outputStream.toByteArray()
+
+            // 2. JPEG 데이터를 Bitmap으로 디코딩
+            val bitmap = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
+
+            // 3. Bitmap을 640x480 해상도로 리사이즈
+            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 480, true)
+
+            // 4. 리사이즈된 Bitmap을 다시 JPEG로 압축
+            val resizedOutputStream = ByteArrayOutputStream()
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 20, resizedOutputStream)
+
+            // 5. 최종 JPEG 데이터를 반환
+            resizedOutputStream.toByteArray()
         } catch (e: Exception) {
             Log.e("StreamController", "Error converting NV21 to JPEG: ${e.message}")
             ByteArray(0)

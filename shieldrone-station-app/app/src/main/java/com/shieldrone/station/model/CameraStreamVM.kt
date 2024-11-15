@@ -27,9 +27,6 @@ class CameraStreamVM : ViewModel() {
     private val _cameraName = MutableStateFlow("Unknown")
     val cameraName: StateFlow<String> = _cameraName
 
-    private val _streamInfo = MutableStateFlow("")
-    val streamInfo: StateFlow<String> = _streamInfo
-
     private val _frameInfo = MutableStateFlow("No frame data")
     val frameInfo: StateFlow<String> = _frameInfo
 
@@ -67,7 +64,6 @@ class CameraStreamVM : ViewModel() {
         KeyManager.getInstance().cancelListen(this)
         listenCameraType()
         addFrameListener()
-
     }
 
     private fun listenCameraType() {
