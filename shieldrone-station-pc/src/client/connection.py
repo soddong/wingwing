@@ -39,9 +39,9 @@ class Server:
 
         self.socket_flag.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        # self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
-        # self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
-        # self.socket_flag.setsockopt(zmq.RCVTIMEO, 5000)
+        self.socket_danger.setsockopt(zmq.SNDTIMEO, 5000)
+        self.socket_route.setsockopt(zmq.SNDTIMEO, 5000)
+        self.socket_flag.setsockopt(zmq.RCVTIMEO, 5000)
 
         threading.Thread(target=self.receive_flag_data, daemon=True).start()
 

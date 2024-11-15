@@ -288,18 +288,38 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
-    def send_danger_signal(self, socket, flag = False):
+    def send_danger_signal(self, socket, frame=None, flag=False):
         """
         위험 상황 발생 시 메시지를 전송합니다.
         """
-        message = json.dumps({
-            "type": "sendCameraFlag",
-            "time": datetime.now().isoformat(),
-            "warningFlag": flag
-        })
-        socket.send_string(message)
+
         if flag:
-            print(f"가까운 곳에서 빠르게 접근하는 객체 존재합니다")
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            _, buffer = cv2.imencode('.jpg', frame)
+            
+            frame_encoded = base64.b64encode(buffer).decode('utf-8')
+            message = json.dumps({
+                "type": "sendCameraFlag",
+                "time": datetime.now().isoformat(),
+                "warningFlag": flag,
+                "frame": frame_encoded
+            })
+
+            max_retries = 5  # 최대 재시도 횟수
+            retry_count = 0
+
+            while retry_count < max_retries:
+                try:
+                    socket.send_string(message)
+                    print("경고 메시지를 성공적으로 전송했습니다.")
+                    break  # 성공적으로 전송하면 루프 종료
+                except zmq.Again:
+                    print("소켓이 일시적으로 사용 불가능합니다. 재시도 중...")
+                    retry_count += 1
+                    time.sleep(0.1)  # 재시도 전 대기 시간 설정
+
+            if retry_count == max_retries:
+                print("여러 번 시도했지만 메시지 전송에 실패했습니다.")
 
     def send_flight_info(self, send_socket, info):
         message = json.dumps({
@@ -345,7 +365,7 @@ class PipePredictor(object):
             writer = cv2.VideoWriter(out_path, fourcc, video_fps, (self.video_handler.width, self.video_handler.height))
 
         context = zmq.Context()
-        socket_camera = context.socket(zmq.PUSH)
+        socket_camera = context.socket(zmq.PUB)
         socket_camera.bind("tcp://127.0.0.1:5580")  # 송신자 주소를 지정 (예: 포트 5555)
         socket_camera.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
@@ -361,6 +381,14 @@ class PipePredictor(object):
 
             frame_data = framequeue.get()
             frame_rgb = frame_data["frame"]
+
+            # 프레임 크기 축소
+            scale_percent = 50 
+            width = int(frame_rgb.shape[1] * scale_percent / 100)
+            height = int(frame_rgb.shape[0] * scale_percent / 100)
+            dim = (width, height)
+            origin_frame = cv2.resize(frame_rgb, dim, interpolation=cv2.INTER_AREA)
+
             frame_time = frame_data["inputTime"]
 
             if frame_id > self.warmup_frame:
@@ -470,7 +498,13 @@ class PipePredictor(object):
                     if info["is_near"] and info["getting_closer_quickly"]:
                         is_danger = True
                         break
-                self.send_danger_signal(socket_camera, is_danger)
+                self.send_danger_signal(socket_camera, origin_frame, is_danger)
+
+                # if (frame_id//50)%2==0:
+                #     self.send_danger_signal(socket_camera, frame_rgb, True)
+                # else:
+                #     self.send_danger_signal(socket_camera, frame_rgb, False)
+                
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
 
 
