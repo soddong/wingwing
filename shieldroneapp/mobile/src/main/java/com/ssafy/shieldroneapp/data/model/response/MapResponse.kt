@@ -131,7 +131,7 @@ data class DroneResponse(
 )
 
 /**
- * 드론 경로 안내 가능 여부 응답 모델
+ * 드론 배정 요청에 대한 응답 모델
  *
  * @property droneId 배정된 드론 ID (가능한 경우)
  * @property estimatedTime 예상 소요 시간 (분 단위)

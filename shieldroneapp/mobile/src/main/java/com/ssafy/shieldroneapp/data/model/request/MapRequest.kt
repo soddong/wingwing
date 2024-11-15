@@ -33,23 +33,19 @@ data class HomeLocationRequest(
 )
 
 /**
- * 드론 경로 안내 요청 모델
+ * 드론 배정 요청 모델
  *
- * @property startLocation 출발 정류장 정보
+ * @property hiveId 출발 정류장 ID
  * @property endLocation 도착지 위치 정보
  */
 data class DroneRouteRequest(
-    val startLocation: StartLocation,
-    val endLocation: EndLocation
-)
-
-data class StartLocation(
-    val hiveId: Int
+    val hiveId: Int,
+    val endLocation: EndLocation,
 )
 
 data class EndLocation(
     val lat: Double,
-    val lng: Double
+    val lng: Double,
 )
 
 /**
