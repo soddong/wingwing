@@ -278,8 +278,11 @@ class DJIMainActivity : AppCompatActivity() {
                             Text(text = "Camera Mode")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { onModeSelected(true)
-                            navigateToCameraStreamList()
+                        Button(onClick = {
+//                            onModeSelected(true)
+//                            navigateToCameraStreamList()
+                            onModeSelected(false)
+                            navigateToTrackingControl()
                         }) {
                             Text(text = "Drone Mode")
                         }

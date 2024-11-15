@@ -3,6 +3,9 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.data.Controls
@@ -39,9 +42,8 @@ class FlightAutoControlVM : ViewModel() {
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
 
-    // pitch 값을 관리하는 MutableStateFlow 선언
-    private val _pitch = MutableStateFlow(0)
-    val pitch: StateFlow<Int> get() = _pitch.asStateFlow()
+    var pitch: Int by mutableStateOf(0)
+        private set
     // 2. 필요한 초기화
     init {
         flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
@@ -154,19 +156,11 @@ class FlightAutoControlVM : ViewModel() {
         _targetPosition.value = position
     }
 
-    // pitch 값을 설정하는 메서드
-    fun setPitch(pitchValue: Int) {
-        _pitch.value = pitchValue
+    fun updatePitch(value: Int) {
+        pitch = value
     }
-    fun moveForward() {
-        // 현재 leftStick과 rightStick의 상태를 가져온 후 필요한 값만 수정
-        val currentControls = flightControlModel.getCurrentStickPositions()
 
-        val updatedControls = Controls(
-            leftStick = currentControls.leftStick, // 기존 leftStick 값 유지
-            rightStick = StickPosition(_pitch.value, currentControls.rightStick.horizontalPosition) // pitch 값을 전진 속도로 설정
-        )
-
-        flightControlModel.setDroneControlValues(updatedControls)
+    fun moveToForward() {
+        flightControlModel.moveToForward(pitch)
     }
 }
