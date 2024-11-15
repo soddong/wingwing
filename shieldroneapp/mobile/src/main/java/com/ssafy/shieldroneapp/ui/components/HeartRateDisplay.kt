@@ -28,6 +28,15 @@ import com.ssafy.shieldroneapp.BuildConfig
 fun HeartRateDisplay(
     heartRate: Double,
 ) {
+    // 마지막 유효한 심박수 값을 저장
+    var lastValidHeartRate by rememberSaveable { mutableStateOf(heartRate) }
+
+    LaunchedEffect(heartRate) {
+        if (heartRate > 0) {
+            lastValidHeartRate = heartRate
+        }
+    }
+
     Card(
         modifier = Modifier
             .padding(16.dp),
@@ -44,7 +53,7 @@ fun HeartRateDisplay(
                 style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-                text = "${heartRate.toInt()} bpm",
+                text = "${if (heartRate > 0) heartRate.toInt() else lastValidHeartRate.toInt()} bpm",
                 style = MaterialTheme.typography.h3.copy(fontWeight = FontWeight.Bold)
             )
         }
