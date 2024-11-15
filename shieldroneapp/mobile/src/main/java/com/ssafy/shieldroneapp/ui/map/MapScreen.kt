@@ -26,16 +26,22 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -45,6 +51,7 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.BuildConfig
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
@@ -83,7 +90,6 @@ fun MapScreen(
     safetyMessageSender: SafetyMessageSender,
     mapViewModel: MapViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
-    heartRateState: Double?
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -91,12 +97,7 @@ fun MapScreen(
     // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val mapViewModel: MapViewModel = hiltViewModel()
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
-    val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
-    val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
     val isMapInitialized = remember { mutableStateOf(false) }
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
     val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
@@ -109,7 +110,9 @@ fun MapScreen(
     val keyboardController = rememberKeyboardController()
 
     // 알람
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val heartRate by remember(viewModel) {
+        viewModel.heartRateData
+    }.collectAsStateWithLifecycle()
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
@@ -123,19 +126,13 @@ fun MapScreen(
         }
     )
 
-    // 화면 회전 시 마커 재생성을 위한 Effect
-    LaunchedEffect(configuration.orientation) {
-        if (screenRotation.value != configuration.orientation) {
-            screenRotation.value = configuration.orientation
-            kakaoMap.value?.let { map ->
-                if (state.currentLocation != null) {
-                    updateAllMarkers(map, state)
-                    Log.d("MapScreen", "화면 회전으로 인한 마커 재생성")
-                }
-            }
-        }
+    // 위치 서비스 상태 체크
+    LaunchedEffect(Unit) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(isLocationEnabled))
     }
-
 
     // 위치 권한을 허용받은 후에만 초기 위치를 로드
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -170,10 +167,6 @@ fun MapScreen(
                 updateAllMarkers(map, state)
                 Log.d(
                     TAG,
-                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
-                )
-                Log.d(
-                    "MapScreen",
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
                 )
             }
@@ -227,41 +220,41 @@ fun MapScreen(
     // 지도 영역
     val mapView = remember { MapView(context) } // 기존 MapView
 
-        DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_CREATE -> mapView.start(
-                        object : MapLifeCycleCallback() {
-                            override fun onMapDestroy() {
-                                Log.d("MapScreen", "Map destroyed")
-                            }
-
-                            override fun onMapError(error: Exception) {
-                                Log.e("MapScreen", "Map error: ${error.message}", error)
-                            }
-                        },
-                        object : KakaoMapReadyCallback() {
-                            override fun onMapReady(map: KakaoMap) {
-                                Log.d("MapScreen", "Map ready")
-                                kakaoMap.value = map
-                                if (state.currentLocation != null) {
-                                    setupMap(map, mapViewModel)
-                                    isMapInitialized.value = true
-                                    updateAllMarkers(map, state)  // 명시적으로 마커 업데이트 호출
-                                }
-                            }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.start(
+                    object : MapLifeCycleCallback() {
+                        override fun onMapDestroy() {
+                            Log.d("MapScreen", "Map destroyed")
                         }
-                    )
 
-                    Lifecycle.Event.ON_RESUME -> {
-                        // 화면이 다시 활성화될 때 마커 상태 복원
-                        kakaoMap.value?.let { map ->
+                        override fun onMapError(error: Exception) {
+                            Log.e("MapScreen", "Map error: ${error.message}", error)
+                        }
+                    },
+                    object : KakaoMapReadyCallback() {
+                        override fun onMapReady(map: KakaoMap) {
+                            Log.d("MapScreen", "Map ready")
+                            kakaoMap.value = map
                             if (state.currentLocation != null) {
-                                updateAllMarkers(map, state)
-                                Log.d("MapScreen", "화면 재개로 인한 마커 재생성")
+                                setupMap(map, mapViewModel)
+                                isMapInitialized.value = true
+                                updateAllMarkers(map, state)  // 명시적으로 마커 업데이트 호출
                             }
                         }
                     }
+                )
+
+                Lifecycle.Event.ON_RESUME -> {
+                    // 화면이 다시 활성화될 때 마커 상태 복원
+                    kakaoMap.value?.let { map ->
+                        if (state.currentLocation != null) {
+                            updateAllMarkers(map, state)
+                            Log.d("MapScreen", "화면 재개로 인한 마커 재생성")
+                        }
+                    }
+                }
 
                 else -> {}
             }
@@ -424,16 +417,14 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-    }
-
-    // 심박수
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.TopEnd
-    ) {
-        HeartRateDisplay(
-            heartRate = rememberUpdatedState(heartRateState),
-            modifier = Modifier
-        )
+        // 심박수
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            HeartRateDisplay(
+                heartRate = heartRate
+            )
+        }
     }
 }
