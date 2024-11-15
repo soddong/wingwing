@@ -12,7 +12,6 @@ class DroneController:
             self.box_height = 0
             self.normalized_offset_x = 0
             self.normalized_offset_y = 0
-            self.is_locked = False
 
         def update(self, offset_x, offset_y, movement, box_width, box_height, normalized_offset_x, normalized_offset_y):
             self.offset_x = offset_x
@@ -20,9 +19,8 @@ class DroneController:
             self.movement = movement
             self.box_width = box_width
             self.box_height = box_height
-            self.normalized_offset_x = normalized_offset_x
-            self.normalized_offset_y = normalized_offset_y
-            self.is_locked = True
+            self.normalized_offset_x = 0
+            self.normalized_offset_y = 0
 
         def get(self):
             return {
@@ -33,17 +31,7 @@ class DroneController:
                 'box_height': self.box_height,
                 'normalized_offset_x': self.normalized_offset_x,
                 'normalized_offset_y': self.normalized_offset_y,
-                'is_locked' : self.is_locked
             }
-        
-        def init_zero(self):
-            self.offset_x = 0
-            self.offset_y = 0
-            self.movement = "hover"
-            self.normalized_offset_x = 0
-            self.normalized_offset_y = 0
-            self.is_locked = False
-            
     
     def __init__(self):
         self.is_init = False

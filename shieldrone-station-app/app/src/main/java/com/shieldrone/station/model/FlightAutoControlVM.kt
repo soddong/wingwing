@@ -1,15 +1,9 @@
 package com.shieldrone.station.model
 
-import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_DEGREE
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
 import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
@@ -20,8 +14,6 @@ import dji.v5.common.error.IDJIError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.util.LinkedList
-import java.util.Queue
 
 class FlightAutoControlVM : ViewModel() {
 
@@ -47,6 +39,9 @@ class FlightAutoControlVM : ViewModel() {
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
 
+    // pitch 값을 관리하는 MutableStateFlow 선언
+    private val _pitch = MutableStateFlow(0)
+    val pitch: StateFlow<Int> get() = _pitch.asStateFlow()
     // 2. 필요한 초기화
     init {
         flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
@@ -154,5 +149,24 @@ class FlightAutoControlVM : ViewModel() {
 
     fun adjustYaw(yawDifference: Double) {
         flightControlModel.adjustYaw(yawDifference)
+    }
+    fun setTargetPosition(position: Position) {
+        _targetPosition.value = position
+    }
+
+    // pitch 값을 설정하는 메서드
+    fun setPitch(pitchValue: Int) {
+        _pitch.value = pitchValue
+    }
+    fun moveForward() {
+        // 현재 leftStick과 rightStick의 상태를 가져온 후 필요한 값만 수정
+        val currentControls = flightControlModel.getCurrentStickPositions()
+
+        val updatedControls = Controls(
+            leftStick = currentControls.leftStick, // 기존 leftStick 값 유지
+            rightStick = StickPosition(_pitch.value, currentControls.rightStick.horizontalPosition) // pitch 값을 전진 속도로 설정
+        )
+
+        flightControlModel.setDroneControlValues(updatedControls)
     }
 }

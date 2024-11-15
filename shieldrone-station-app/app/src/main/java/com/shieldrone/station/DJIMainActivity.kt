@@ -28,11 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.StreamController
-import com.shieldrone.station.model.BatteryModel
 import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
@@ -326,6 +326,7 @@ class DJIMainActivity : AppCompatActivity() {
         val intent = Intent(this, FlightControlActivity::class.java)
         startActivity(intent)
     }
+
     private fun navigateToTrackingControl() {
         val intent = Intent(this, TrackingTargetActivity::class.java)
         startActivity(intent)

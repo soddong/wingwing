@@ -63,7 +63,8 @@ class TrackingTargetController(private val viewModel: TrackingTargetViewModel) {
                     boxWidth = data.getDouble("box_width"),
                     boxHeight = data.getDouble("box_height"),
                     normalizedOffsetX = data.getDouble("normalized_offset_x"),
-                    normalizedOffsetY = data.getDouble("normalized_offset_y")
+                    normalizedOffsetY = data.getDouble("normalized_offset_y"),
+                    isLocked = data.getBoolean("is_locked")
                 )
 
                 viewModel.updateTrackingData(trackingData)
