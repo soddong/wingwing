@@ -26,9 +26,9 @@ sealed class MapEvent {
     data class UpdateStartLocationText(val text: String) : MapEvent()
     data class UpdateEndLocationText(val text: String) : MapEvent()
 
-    // 출발지/도착지 검색 창에 텍스트 입력
+    // 출발지/도착지 선택
     data class SetStartLocation(val location: RouteLocation) : MapEvent()
-    data class SetEndLocation(val location: RouteLocation) : MapEvent() // 도착지 설정 이벤트
+    data class SetEndLocation(val location: RouteLocation) : MapEvent()
 
     object RequestDroneAssignment : MapEvent() // 드론 배정 시작
     object BackPressed : MapEvent() // 뒤로 가기
