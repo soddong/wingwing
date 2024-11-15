@@ -48,10 +48,17 @@ class WebSocketSubscriptions @Inject constructor(
 ) : SafetyMessageSender {
     companion object {
         private const val TAG = "모바일: 웹소켓 구독"
+
+        // Message Paths
         private const val PATH_DANGER_ALERT = "/danger_alert"
         private const val PATH_OBJECT_ALERT = "/object_alert"
-        private const val PATH_SAFE_CONFIRMATION = "/safe_confirm"
-        private const val PATH_WATCH_SAFE_CONFIRMATION = "/safe_confirmation"
+        private const val PATH_SAFE_CONFIRMATION = "/safe_confirmation"
+
+        // Message Types
+        private const val TYPE_WARNING_FLAG = "sendWarningFlag"
+        private const val TYPE_OBJECT_FLAG = "sendObjectFlag"
+        private const val TYPE_WATCH_SAFE = "WATCH_ACKNOWLEDGED_SAFE"
+        private const val TYPE_MOBILE_SAFE = "MOBILE_ACKNOWLEDGED_SAFE"
     }
 
     private val messageClient = Wearable.getMessageClient(context)
@@ -68,8 +75,8 @@ class WebSocketSubscriptions @Inject constructor(
                         val confirmationData = gson.fromJson(message, Map::class.java)
                         val type = confirmationData["type"] as? String
 
-                        if (type == "WATCH_ACKNOWLEDGED_SAFE") {
-                            alertHandler.handleWatchSafeConfirmation() 
+                        if (type == TYPE_WATCH_SAFE) {
+                            alertHandler.handleWatchSafeConfirmation()
                             alertService.showSafeConfirmationNotification(
                                 "안전 확인",
                                 "워치에서 '안전' 확인이 되어 알림이 중지됩니다."
@@ -90,20 +97,20 @@ class WebSocketSubscriptions @Inject constructor(
                 Log.d(TAG, "수신된 메시지 타입: $messageType")
 
                 when (messageType) {
-                    "sendWarningFlag" -> {
+                    TYPE_WARNING_FLAG -> {
                         Log.d(TAG, "위험 감지 메시지 수신")
                         val warningData = messageParser.parseWarningMessage(message)
                         if (warningData != null) {
                             Log.d(TAG, "위험 감지 메시지 파싱 성공 - warningFlag: ${warningData.warningFlag}")
                             val isSafeConfirmed =
                                 alertHandler.getSafeConfirmationStatus()
-                            handleWarningAlert(warningData.warningFlag, isSafeConfirmed)
+                            handleWarningAlert(warningData, isSafeConfirmed)
                         } else {
                             Log.e(TAG, "위험 감지 메시지 파싱 실패")
                         }
                     }
 
-                    "sendObjectFlag" -> {
+                    TYPE_OBJECT_FLAG -> {
                         Log.d(TAG, "타인 감지 메시지 수신")
                         val objectData = messageParser.parseObjectMessage(message)
                         if (objectData != null) {
@@ -116,7 +123,7 @@ class WebSocketSubscriptions @Inject constructor(
 
                     PATH_SAFE_CONFIRMATION -> {
                         val confirmationData = Gson().fromJson(message, Map::class.java)
-                        if (confirmationData["type"] == "WATCH_ACKNOWLEDGED_SAFE") {
+                        if (confirmationData["type"] == TYPE_WATCH_SAFE) {
                             handleDetailedWatchSafeConfirmation(confirmationData)
                         }
                     }
@@ -128,26 +135,26 @@ class WebSocketSubscriptions @Inject constructor(
     }
 
     private suspend fun handleWarningAlert(
-        warningFlag: Boolean,
+        warningData: WarningData,
         userConfirmedSafe: Boolean = false,
     ) {
-        if (warningFlag) {
-            Log.d(TAG, "위험 감지 알림 시작")
+        if (warningData.warningFlag) {
+            Log.d(TAG, "위험 감지 알림 시작 ${if (warningData.frame != null) "- 프레임 포함" else ""}")
 
             // UI 업데이트
-            alertHandler.handleWarningBeep(warningFlag)
+            alertHandler.handleWarningBeep(warningData.warningFlag)
             Log.d(TAG, "위험 감지 UI 업데이트 완료")
 
             // 데이터 상태 관리
-            alertRepository.updateWarningAlert()
-            Log.d(TAG, "위험 감지 상태 업데이트 완료")
+            alertRepository.updateWarningAlert(warningData.frame)
+            Log.d(TAG, "위험 감지 상태 업데이트 완료, $warningData.frame")
 
             // 시스템 알림 처리 (소리, 진동 등)
-            alertService.handleWarningBeep(warningFlag)
+            alertService.handleWarningBeep(warningData.warningFlag)
             Log.d(TAG, "위험 감지 알림음 재생 완료")
 
             // 워치로 알림 전송
-            sendDangerAlertToWatch(warningFlag)
+            sendDangerAlertToWatch(warningData)
             Log.d(TAG, "워치로 위험 감지 알림 전송 완료")
 
             // 사용자가 안전상황 버튼을 누른 경우
@@ -197,7 +204,7 @@ class WebSocketSubscriptions @Inject constructor(
         }
     }
 
-    private suspend fun sendDangerAlertToWatch(warningFlag: Boolean) {
+    private suspend fun sendDangerAlertToWatch(warningData: WarningData) {
         try {
             Log.d(TAG, "워치로 위험 감지 알림 전송 시작")
             val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
@@ -207,8 +214,9 @@ class WebSocketSubscriptions @Inject constructor(
             }
 
             val alertData = AlertData(
-                warningFlag = warningFlag,
-                timestamp = System.currentTimeMillis()
+                warningFlag = warningData.warningFlag,
+                timestamp = System.currentTimeMillis(),
+                frame = warningData.frame
             )
 
             val alertJson = gson.toJson(alertData)
@@ -223,7 +231,7 @@ class WebSocketSubscriptions @Inject constructor(
                     ).await(5000)
                     Log.d(
                         TAG,
-                        "워치(${node.displayName})로 위험 감지 알림 전송 성공 - warningFlag: $warningFlag, timestamp: ${alertData.timestamp}"
+                        "워치(${node.displayName})로 위험 감지 알림 전송 성공 - warningFlag: ${warningData.warningFlag}, timestamp: ${alertData.timestamp}"
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "워치(${node.displayName})로 위험 감지 알림 전송 실패", e)
@@ -283,7 +291,7 @@ class WebSocketSubscriptions @Inject constructor(
             if (nodes.isNotEmpty()) {
                 val confirmationData = gson.toJson(
                     mapOf(
-                        "type" to "MOBILE_ACKNOWLEDGED_SAFE",
+                        "type" to TYPE_MOBILE_SAFE,
                         "state" to "CONFIRMED_SAFE",
                         "timestamp" to System.currentTimeMillis(),
                         "shouldCancelTimer" to true,
@@ -315,7 +323,7 @@ class WebSocketSubscriptions @Inject constructor(
             if (nodes.isNotEmpty()) {
                 val confirmationData = gson.toJson(
                     mapOf(
-                        "type" to "WATCH_ACKNOWLEDGED_SAFE",
+                        "type" to TYPE_WATCH_SAFE,
                         "state" to "CONFIRMED_SAFE",
                         "timestamp" to System.currentTimeMillis(),
                         "shouldCancelTimer" to true,
