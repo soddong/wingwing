@@ -138,22 +138,26 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSensorDataRepository(
-        webSocketService: WebSocketService,
-        heartRateViewModel: HeartRateViewModel,
-        heartRateLocalDataSource: HeartRateLocalDataSource,
-
-        ): HeartRateDataRepository {
-        return HeartRateDataRepository(
-            webSocketService,
-            heartRateViewModel,
-            heartRateLocalDataSource
-        )
+    fun provideHeartRateLocalDataSource(
+        @ApplicationContext context: Context
+    ): HeartRateLocalDataSource {
+        return HeartRateLocalDataSource(context)
     }
 
     @Provides
+    @Singleton
+    fun provideHeartRateDataRepository(
+        webSocketService: WebSocketService,
+        heartRateLocalDataSource: HeartRateLocalDataSource,
+        heartRateViewModel: HeartRateViewModel // HeartRateViewModel 주입
+    ): HeartRateDataRepository {
+        return HeartRateDataRepository(webSocketService, heartRateLocalDataSource, heartRateViewModel)
+    }
+
+    @Provides
+    @Singleton
     fun provideHeartRateViewModel(
-        connectionManager: MobileConnectionManager,
+        connectionManager: MobileConnectionManager
     ): HeartRateViewModel {
         return HeartRateViewModel(connectionManager)
     }
