@@ -26,6 +26,7 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,11 +45,13 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
+import com.ssafy.shieldroneapp.ui.components.HeartRateDisplay
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
@@ -87,8 +90,8 @@ fun MapScreen(
 
     // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
-    val isMapInitialized = remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val isMapInitialized = remember { mutableStateOf(false) }
 
     // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
     val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
@@ -101,7 +104,9 @@ fun MapScreen(
     val keyboardController = rememberKeyboardController()
 
     // 알람
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val heartRate by remember(viewModel) {
+        viewModel.heartRateData
+    }.collectAsStateWithLifecycle()
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
@@ -148,18 +153,14 @@ fun MapScreen(
             if (!isMapInitialized.value) {
                 setupMap(map, mapViewModel)
                 isMapInitialized.value = true
-                Log.d("MapScreen", "지도 초기 설정 완료")
+                Log.d(TAG, "지도 초기 설정 완료")
             }
 
             // 현재 위치나 주변 정류장 정보가 있을 때 마커 업데이트
             if (state.currentLocation != null || state.nearbyHives.isNotEmpty()) {
                 updateAllMarkers(map, state)
                 Log.d(
-                    "MapScreen",
-                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
-                )
-                Log.d(
-                    "MapScreen",
+                    TAG,
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
                 )
             }
@@ -220,7 +221,6 @@ fun MapScreen(
                     object : MapLifeCycleCallback() {
                         override fun onMapDestroy() {
                             Log.d("MapScreen", "Map destroyed")
-                            isMapInitialized.value = false
                         }
 
                         override fun onMapError(error: Exception) {
@@ -231,12 +231,6 @@ fun MapScreen(
                         override fun onMapReady(map: KakaoMap) {
                             Log.d("MapScreen", "Map ready")
                             kakaoMap.value = map
-
-                            // 맵 클릭 리스너 추가 : 키보드 숨기기
-                            map.setOnMapClickListener { _, _, _, _ ->
-                                keyboardController.hideKeyboard()
-                            }
-
                             if (state.currentLocation != null) {
                                 setupMap(map, mapViewModel)
                                 isMapInitialized.value = true
@@ -323,7 +317,7 @@ fun MapScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 마커 정보 모달 - 출발지
-            if (state.showStartMarkerModal) {
+            if (state.showStartMarkerModal && state.selectedStartMarker != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -340,11 +334,10 @@ fun MapScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { // 모달 안쪽은 클릭해도 안 닫히도록
-                            }
+                            ) { /* 모달 안쪽은 클릭해도 닫히지 않도록 */ }
                     ) {
                         MapMarkerInfoModal(
-                            routeLocation = state.selectedStartMarker!!,
+                            routeLocation = state.selectedStartMarker,
                             onSelect = {
                                 mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
                                 mapViewModel.handleEvent(MapEvent.CloseModal)
@@ -363,7 +356,7 @@ fun MapScreen(
                 .fillMaxWidth()
                 .height(56.dp)
                 .align(Alignment.BottomCenter),
-            enabled = state.isTrackingLocation,
+            enabled = state.selectedStart != null && state.selectedEnd != null,
         ) {
             Text(
                 text = "드론 배정 요청",
@@ -377,12 +370,11 @@ fun MapScreen(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
                 onItemSelected = { selectedLocation ->
-//                    if (state.searchType == LocationType.START) {
-                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
-//                    } else {
-//                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
-//                    }
-//                    mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                    if (state.searchType == LocationType.START) {
+                        mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+                    } else {
+                        mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
+                    }
                 },
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
             )
@@ -395,6 +387,7 @@ fun MapScreen(
                 {
                     coroutineScope.launch {
                         val success = mapViewModel.sendEmergencyAlert()
+                        Log.d(TAG, "비상상황 요청: $success")
                         if (success) {
                             mapViewModel.showToast()
                         } else {
@@ -417,5 +410,14 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        // 심박수
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            HeartRateDisplay(
+                heartRate = heartRate
+            )
+        }
     }
 }

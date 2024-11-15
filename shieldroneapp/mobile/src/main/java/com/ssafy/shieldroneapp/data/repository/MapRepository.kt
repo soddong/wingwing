@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.data.repository
 import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
+import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 import com.ssafy.shieldroneapp.data.model.response.HiveResponse
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +24,9 @@ interface MapRepository {
     // 출발지(드론 정류장) 목록 조회 및 키워드 검색
     suspend fun getNearbyHives(location: LatLng): Result<List<HiveResponse>>
     suspend fun searchHivesByKeyword(keyword: HiveSearchRequest): Result<List<HiveResponse>>
+
+    // 도착지(집) 키워드 검색 - Kakao API
+    suspend fun searchDestinationByKeyword(kakaoSearchRequest: KakaoSearchRequest): Result<List<RouteLocation>>
 
     // 출발지와 도착지 위치 정보를 로컬에 저장/조회/초기화
     suspend fun saveStartLocation(location: RouteLocation) // 출발지

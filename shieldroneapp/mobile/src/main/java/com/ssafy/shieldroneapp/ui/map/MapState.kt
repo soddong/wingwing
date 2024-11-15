@@ -20,6 +20,7 @@ data class MapState(
 
     // 마커 및 모달
     val selectedStartMarker: RouteLocation? = null, // 선택된 출발지 마커
+    val selectedEndMarker: RouteLocation? = null, // 선택된 도착지 마커
     val showStartMarkerModal: Boolean = false,
     val showEndMarkerModal: Boolean = false,
     val showSearchModal: Boolean = false,
