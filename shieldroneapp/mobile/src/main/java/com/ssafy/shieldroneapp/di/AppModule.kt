@@ -110,12 +110,14 @@ object AppModule {
         audioDataRepository: AudioDataRepository,
         webSocketService: WebSocketService,
         audioAnalyzer: AudioAnalyzer,
+        alertService: AlertService
     ): AudioRecorder {
         return AudioRecorder(
             context,
             audioDataRepository,
             webSocketService,
-            audioAnalyzer
+            audioAnalyzer,
+            alertService
         )
     }
 
