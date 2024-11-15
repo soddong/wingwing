@@ -45,14 +45,30 @@ fun HeartRateDisplay(
         }
     }
 
+    // bpm에 따른 애니메이션 속도와 크기 계산
+    val animationDuration = if (heartRate > 0) {
+        (30000 / heartRate).toInt().coerceIn(200, 800)
+    } else {
+        500
+    }
+
+    // 심박수에 따른 크기 변화 계산
+    val scaleRange = if (heartRate > 0) {
+        val baseScale = 0.15f
+        val additionalScale = (heartRate / 100f) * 0.1f
+        baseScale + additionalScale
+    } else {
+        0.2f
+    }
+
     // 심장 박동 애니메이션
     val infiniteTransition = rememberInfiniteTransition()
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.2f,
+        targetValue = 1f + scaleRange.toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = 500,
+                durationMillis = animationDuration,
                 easing = FastOutSlowInEasing
             ),
             repeatMode = RepeatMode.Reverse
@@ -76,7 +92,7 @@ fun HeartRateDisplay(
             Icon(
                 imageVector = Icons.Default.Favorite,
                 contentDescription = "Heart Icon",
-                tint = Color.Red,
+                tint = if (heartRate >= 100) Color.Red else Color.Red.copy(alpha = 0.8f),
                 modifier = Modifier
                     .size(24.dp)
                     .graphicsLayer {
