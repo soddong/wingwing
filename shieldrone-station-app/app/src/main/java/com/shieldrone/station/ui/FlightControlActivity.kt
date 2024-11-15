@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.asLiveData
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.controller.TrackingTargetController
@@ -113,11 +112,6 @@ class FlightControlActivity : AppCompatActivity() {
         flightControlVM.homeLocation.observe(this) { message ->
             binding.txtHomeLocation.text = message.toString()
         }
-
-        trackingVM.trackingData.asLiveData().observe(this){message ->
-            binding.txtTargetLocationInFrame.text = message.toString()
-        }
-
     }
 
 }

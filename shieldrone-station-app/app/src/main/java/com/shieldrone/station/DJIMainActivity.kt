@@ -37,6 +37,7 @@ import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.service.camera.CameraImageFrameProvider
 import com.shieldrone.station.service.camera.DroneImageFrameProvider
 import com.shieldrone.station.service.route.RouteAdapter
+import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.FlightControlActivity
 import com.shieldrone.station.ui.SimulatorActivity
 import com.shieldrone.station.ui.TrackingTargetActivity
@@ -235,20 +236,20 @@ class DJIMainActivity : AppCompatActivity() {
 
     // 카메라 또는 드론 모드에서 스트리밍 시작
     private fun startStreaming() {
-        Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
-
-        streamController = if (isCameraMode) {
-            StreamController(CameraImageFrameProvider(this))
-        } else {
-            StreamController(DroneImageFrameProvider(this))
-        }
-
-        val routeAdapter = RouteAdapter()
-        routeController = RouteController(routeAdapter)
-
-        streamController.startLive()
-        routeController.startReceivingLocation()
-        isStreaming = true
+//        Log.i("MainActivity", "Starting stream in ${if (isCameraMode) "Camera" else "Drone"} mode")
+//
+//        streamController = if (isCameraMode) {
+//            StreamController(CameraImageFrameProvider(this))
+//        } else {
+//            StreamController(DroneImageFrameProvider(this))
+//        }
+//
+//        val routeAdapter = RouteAdapter()
+//        routeController = RouteController(routeAdapter)
+//
+//        streamController.startLive()
+//        routeController.startReceivingLocation()
+//        isStreaming = true
     }
 
 
@@ -277,8 +278,8 @@ class DJIMainActivity : AppCompatActivity() {
                             Text(text = "Camera Mode")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { onModeSelected(false)
-                            navigateToTrackingControl()
+                        Button(onClick = { onModeSelected(true)
+                            navigateToCameraStreamList()
                         }) {
                             Text(text = "Drone Mode")
                         }
@@ -327,6 +328,10 @@ class DJIMainActivity : AppCompatActivity() {
     }
     private fun navigateToTrackingControl() {
         val intent = Intent(this, TrackingTargetActivity::class.java)
+        startActivity(intent)
+    }
+    private fun navigateToCameraStreamList() {
+        val intent = Intent(this, CameraStreamActivity::class.java)
         startActivity(intent)
     }
 }
