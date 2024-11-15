@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import com.ssafy.shieldroneapp.data.model.DroneMatchingResult
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
@@ -28,8 +29,10 @@ sealed class MapEvent {
     data class SetStartLocation(val location: RouteLocation) : MapEvent()
     data class SetEndLocation(val location: RouteLocation) : MapEvent()
 
-    // 드론 배정 시작
+    // 드론 배정 요청 / 최종 매칭 요청 / 결과 처리
     object RequestDroneAssignment : MapEvent()
+    data class RequestDroneMatching (val droneCode: Int) : MapEvent()
+    data class HandleDroneMatchingResult (val result: DroneMatchingResult) : MapEvent()
 
     // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
     data class UpdateLocationServicesState(val isEnabled: Boolean) : MapEvent()
