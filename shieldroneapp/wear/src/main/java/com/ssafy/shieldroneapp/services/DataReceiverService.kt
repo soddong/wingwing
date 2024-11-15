@@ -13,8 +13,15 @@ import com.google.android.gms.wearable.WearableListenerService
 class DataReceiverService : WearableListenerService() {
     private var isHeartRateVibrating = false
     private var isDangerVibrating = false
+    private lateinit var wakeLockManager: WakeLockManager
+
+    override fun onCreate() {
+        super.onCreate()
+        wakeLockManager = WakeLockManager.getInstance(applicationContext)
+    }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
+        wakeLockManager.acquireWakeLock()
         super.onDataChanged(dataEvents)
         dataEvents.forEach { event ->
             if (event.type == DataEvent.TYPE_CHANGED) {

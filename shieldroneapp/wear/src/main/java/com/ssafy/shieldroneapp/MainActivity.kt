@@ -8,18 +8,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.ssafy.shieldroneapp.receivers.ScreenReceiver
+import com.ssafy.shieldroneapp.services.WakeLockManager
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var wearConnectionManager: WearConnectionManager
 
+    private lateinit var wakeLockManager: WakeLockManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        wakeLockManager = WakeLockManager.getInstance(applicationContext)
+        wakeLockManager.acquireWakeLock()
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setShowWhenLocked(true)
@@ -51,16 +58,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        wakeLockManager.acquireWakeLock()
         wearConnectionManager.onAppStateChange(true)
     }
 
     override fun onPause() {
         super.onPause()
+        // onPause에서도 WakeLock 유지
         wearConnectionManager.onAppStateChange(false)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        wakeLockManager.releaseWakeLock()
         wearConnectionManager.onAppStateChange(false)
         try {
             unregisterReceiver(ScreenReceiver())
