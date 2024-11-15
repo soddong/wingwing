@@ -10,6 +10,16 @@ data class HiveSearchRequest(
 )
 
 /**
+ * 도착지(집) 검색을 위한 카카오 API 요청 모델
+ */
+data class KakaoSearchRequest(
+    val keyword: String,
+    val page: Int = 1,
+    val size: Int = 15,
+    val sort: String = "accuracy"  // "accuracy" or "distance"
+)
+
+/**
  * 기본 도착지(집) 설정 요청 모델
  *
  * @property homeAddress 도로명 주소

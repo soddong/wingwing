@@ -26,22 +26,16 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -51,7 +45,7 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
-import com.ssafy.shieldroneapp.BuildConfig
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
@@ -323,7 +317,7 @@ fun MapScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 마커 정보 모달 - 출발지
-            if (state.showStartMarkerModal) {
+            if (state.showStartMarkerModal && state.selectedStartMarker != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -340,11 +334,10 @@ fun MapScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { // 모달 안쪽은 클릭해도 안 닫히도록
-                            }
+                            ) { /* 모달 안쪽은 클릭해도 닫히지 않도록 */ }
                     ) {
                         MapMarkerInfoModal(
-                            routeLocation = state.selectedStartMarker!!,
+                            routeLocation = state.selectedStartMarker,
                             onSelect = {
                                 mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
                                 mapViewModel.handleEvent(MapEvent.CloseModal)
@@ -363,7 +356,7 @@ fun MapScreen(
                 .fillMaxWidth()
                 .height(56.dp)
                 .align(Alignment.BottomCenter),
-            enabled = state.isTrackingLocation,
+            enabled = state.selectedStart != null && state.selectedEnd != null,
         ) {
             Text(
                 text = "드론 배정 요청",
@@ -377,12 +370,11 @@ fun MapScreen(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
                 onItemSelected = { selectedLocation ->
-//                    if (state.searchType == LocationType.START) {
-                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
-//                    } else {
-//                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
-//                    }
-//                    mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                    if (state.searchType == LocationType.START) {
+                        mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+                    } else {
+                        mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
+                    }
                 },
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
             )
