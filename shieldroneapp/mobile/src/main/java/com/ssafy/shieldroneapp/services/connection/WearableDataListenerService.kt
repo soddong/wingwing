@@ -237,27 +237,38 @@ class WearableDataListenerService : BaseMobileService() {
     private fun processHeartRateData(event: DataEvent) {
         try {
             val dataItem = event.dataItem
-            Log.d(TAG, "데이터 아이템 처리 시작 - URI: ${dataItem.uri}")
-
             val dataMap = DataMapItem.fromDataItem(dataItem).dataMap
-            Log.d(TAG, "데이터맵 키셋: ${dataMap.keySet()}")
 
-            val pulseFlag = dataMap.getBoolean("pulseFlag")
-            val timestamp = dataMap.getLong("timestamp")
-            val sustained = dataMap.getBoolean("sustained", false)
+            val bpm = dataMap.getDouble("bpm", 0.0)
+            val timestamp = dataMap.getLong("timestamp", System.currentTimeMillis())
+            val availability = dataMap.getString("availability", "UNKNOWN")
 
-            Log.d(
-                TAG,
-                "심박수 데이터 파싱 완료 - pulseFlag: $pulseFlag, timestamp: $timestamp, sustained: $sustained"
-            )
-
-            serviceScope.launch {
-                heartRateDataRepository.processHeartRateData(
-                    HeartRateData(
-                        pulseFlag = pulseFlag,
-                        timestamp = timestamp
-                    )
+            if (bpm > 0) {
+                val heartRateData = HeartRateData(
+                    pulseFlag = dataMap.getBoolean("pulseFlag", false),
+                    bpm = bpm,
+                    timestamp = timestamp
                 )
+
+                serviceScope.launch {
+                    heartRateDataRepository.processHeartRateData(heartRateData)
+                    Log.d(TAG, "새로운 심박수 데이터 처리됨: $bpm BPM, timestamp: $timestamp")
+                }
+            } else {
+                val pulseFlag = dataMap.getBoolean("pulseFlag", false)
+                val sustained = dataMap.getBoolean("sustained", false)
+
+                val heartRateData = HeartRateData(
+                    pulseFlag = pulseFlag,
+                    bpm = 0.0,
+                    timestamp = timestamp,
+                    sustained = sustained
+                )
+
+                serviceScope.launch {
+                    heartRateDataRepository.processHeartRateData(heartRateData)
+                    Log.d(TAG, "상태 변경 데이터 처리됨: 심박수 - pulseFlag=$pulseFlag, sustained=$sustained")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "심박수 데이터 처리중 에러 발생", e)

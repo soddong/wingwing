@@ -26,15 +26,22 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -44,11 +51,13 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.BuildConfig
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
+import com.ssafy.shieldroneapp.ui.components.HeartRateDisplay
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
@@ -87,8 +96,8 @@ fun MapScreen(
 
     // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
-    val isMapInitialized = remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val isMapInitialized = remember { mutableStateOf(false) }
 
     // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
     val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
@@ -101,7 +110,9 @@ fun MapScreen(
     val keyboardController = rememberKeyboardController()
 
     // 알람
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val heartRate by remember(viewModel) {
+        viewModel.heartRateData
+    }.collectAsStateWithLifecycle()
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
@@ -148,18 +159,14 @@ fun MapScreen(
             if (!isMapInitialized.value) {
                 setupMap(map, mapViewModel)
                 isMapInitialized.value = true
-                Log.d("MapScreen", "지도 초기 설정 완료")
+                Log.d(TAG, "지도 초기 설정 완료")
             }
 
             // 현재 위치나 주변 정류장 정보가 있을 때 마커 업데이트
             if (state.currentLocation != null || state.nearbyHives.isNotEmpty()) {
                 updateAllMarkers(map, state)
                 Log.d(
-                    "MapScreen",
-                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
-                )
-                Log.d(
-                    "MapScreen",
+                    TAG,
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
                 )
             }
@@ -220,7 +227,6 @@ fun MapScreen(
                     object : MapLifeCycleCallback() {
                         override fun onMapDestroy() {
                             Log.d("MapScreen", "Map destroyed")
-                            isMapInitialized.value = false
                         }
 
                         override fun onMapError(error: Exception) {
@@ -231,12 +237,6 @@ fun MapScreen(
                         override fun onMapReady(map: KakaoMap) {
                             Log.d("MapScreen", "Map ready")
                             kakaoMap.value = map
-
-                            // 맵 클릭 리스너 추가 : 키보드 숨기기
-                            map.setOnMapClickListener { _, _, _, _ ->
-                                keyboardController.hideKeyboard()
-                            }
-
                             if (state.currentLocation != null) {
                                 setupMap(map, mapViewModel)
                                 isMapInitialized.value = true
@@ -395,6 +395,7 @@ fun MapScreen(
                 {
                     coroutineScope.launch {
                         val success = mapViewModel.sendEmergencyAlert()
+                        Log.d(TAG, "비상상황 요청: $success")
                         if (success) {
                             mapViewModel.showToast()
                         } else {
@@ -417,5 +418,14 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        // 심박수
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            HeartRateDisplay(
+                heartRate = heartRate
+            )
+        }
     }
 }
