@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -409,15 +410,20 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
         // 심박수
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopEnd
-        ) {
-            if (connectionState == WatchConnectionState.Connected || connectionState is WatchConnectionState.Connecting) {
-                HeartRateDisplay(
-                    heartRate = heartRate
-                )
+        if (connectionState == WatchConnectionState.Connected || connectionState is WatchConnectionState.Connecting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()  // 전체 너비를 가지도록
+                    .padding(top = 170.dp), // 검색 필드 아래로 위치 조정
+                contentAlignment = Alignment.CenterEnd // Box 내에서 오른쪽 정렬
+            ) {
+                Box(
+                    modifier = Modifier.padding(end = 4.dp) // 오른쪽 여백 추가
+                ) {
+                    HeartRateDisplay(heartRate = heartRate)
+                }
             }
         }
     }
