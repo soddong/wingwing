@@ -3,6 +3,7 @@ package com.ssafy.shieldroneapp.ui.map
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
+import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 
 /**
  * Map 화면에서 발생하는 사용자 동작 및 이벤트를 정의하는 클래스
@@ -11,7 +12,7 @@ sealed class MapEvent {
     // 출발지/도착지 리스트 조회
     object LoadCurrentLocationAndFetchHives : MapEvent() // 현재 위치 로드 및 주변 출발지 조회
     data class SearchHivesByKeyword(val keyword: HiveSearchRequest) : MapEvent() // 키워드로 정류장 검색
-    data class SearchDestination(val destination: String) : MapEvent() // 도착지 검색
+    data class SearchDestination(val destination: KakaoSearchRequest) : MapEvent() // 도착지 검색
 
     // 출발지/도착지 마커 선택 및 모달 관리
     data class StartLocationSelected(val location: RouteLocation) : MapEvent()
@@ -27,6 +28,7 @@ sealed class MapEvent {
 
     // 출발지/도착지 검색 창에 텍스트 입력
     data class SetStartLocation(val location: RouteLocation) : MapEvent()
+    data class SetEndLocation(val location: RouteLocation) : MapEvent() // 도착지 설정 이벤트
 
     object RequestDroneAssignment : MapEvent() // 드론 배정 시작
     object BackPressed : MapEvent() // 뒤로 가기
