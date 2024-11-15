@@ -5,7 +5,6 @@ import com.ssafy.shieldroneapp.data.audio.AudioRecorder
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.services.base.BaseMobileService
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Notification

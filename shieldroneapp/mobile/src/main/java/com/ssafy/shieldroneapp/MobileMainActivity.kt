@@ -146,7 +146,6 @@ class MobileMainActivity : ComponentActivity() {
                     }
                     composable(ROUTE_MAP) {
                         MapScreen(
-                            isAppActive = isAppActive.value,
                             alertHandler = alertHandler,
                             safetyMessageSender = safetyMessageSender,
                             coroutineScope = coroutineScope,

@@ -18,8 +18,7 @@ class HeartRateDataRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "모바일: 심박수 데이터 레포"
-        private const val THRESHOLD_BPM = 75.0
-        private const val SUSTAINED_DURATION = 10000L
+        private const val THRESHOLD_BPM = 90.0
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
