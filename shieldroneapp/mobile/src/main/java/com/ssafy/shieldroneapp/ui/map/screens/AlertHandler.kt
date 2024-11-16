@@ -45,11 +45,32 @@ class AlertHandler @Inject constructor(
     private val _watchConfirmed = mutableStateOf(false)
     val watchConfirmed: State<Boolean> = _watchConfirmed
 
+    fun handleSafeConfirmation() {
+        val currentAlert = alertRepository.alertState.value
+        val hasFrame = currentAlert?.frame != null
+        val wasWarningActive = currentAlert?.warningFlag == true
+
+        _isSafeConfirmed.value = true
+
+        if (wasWarningActive) {
+            if (!hasFrame) {
+                dismissAlert()
+            } else {
+                currentAlert?.let { alert ->
+                    alert.frame?.let { frame ->
+                        alertRepository.updateWarningAlert(frame)
+                        alertRepository.updateSafeConfirmation(true)
+                    }
+                }
+            }
+        }
+    }
+
     fun handleWatchSafeConfirmation() {
         _watchConfirmed.value = true
-        dismissAlert() 
-        _isSafeConfirmed.value = true 
-        alertRepository.updateSafeConfirmation(true) 
+        dismissAlert()
+        _isSafeConfirmed.value = true
+        alertRepository.updateSafeConfirmation(true)
     }
 
     fun resetWatchConfirmation() {
@@ -59,9 +80,9 @@ class AlertHandler @Inject constructor(
     fun isWatchConfirmed(): Boolean = _watchConfirmed.value
 
     fun dismissAlert() {
-        alertState = alertState.copy(isVisible = false) 
+        alertState = alertState.copy(isVisible = false)
         alertJob?.cancel()
-        alertRepository.clearAlert() 
+        alertRepository.clearAlert()
 
         if (_isSafeConfirmed.value) {
             resetSafeConfirmation()
