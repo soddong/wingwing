@@ -30,20 +30,18 @@ data class HiveResponse(
     val availableDrone: Int,
     val drones: List<DroneResponse>
 ) {
-    fun toRouteLocation(): RouteLocation {
-        return RouteLocation(
-            locationType = LocationType.START,
-            locationName = hiveName,
-            distance = distance,
-            lat = lat,
-            lng = lng,
-            hiveId = hiveId,
-            hiveNo = hiveNo,
-            direction = direction,
-            availableDrone = availableDrone,
-            drones = drones,
-        )
-    }
+    fun toRouteLocation() = RouteLocation(
+        locationType = LocationType.START,
+        locationName = hiveName,
+        distance = distance,
+        lat = lat,
+        lng = lng,
+        hiveId = hiveId,
+        hiveNo = hiveNo,
+        direction = direction,
+        availableDrone = availableDrone,
+        drones = drones,
+    )
 }
 
 /**
@@ -68,16 +66,15 @@ data class KakaoSearchResponse(
         @SerializedName("place_url") val placeUrl: String,
         @SerializedName("distance") val distance: String
     ) {
-        fun toRouteLocation(): RouteLocation {
-            return RouteLocation(
-                locationType = LocationType.END,
-                locationName = placeName,
-                distance = distance.toIntOrNull(),
-                lat = y.toDoubleOrNull() ?: 0.0,
-                lng = x.toDoubleOrNull() ?: 0.0,
-                homeAddress = roadAddressName.ifEmpty { addressName }
-            )
-        }
+        fun toRouteLocation() = RouteLocation(
+            locationType = LocationType.END,
+            locationName = placeName,
+            distance = distance.toIntOrNull(),
+            lat = y.toDoubleOrNull() ?: 0.0,
+            lng = x.toDoubleOrNull() ?: 0.0,
+            homeAddress = roadAddressName.ifEmpty { addressName }
+        )
+
         fun toHomeLocationResponse() = HomeLocationResponse(
             homeAddress = roadAddressName.ifEmpty { addressName },
             distance = distance.toInt(),

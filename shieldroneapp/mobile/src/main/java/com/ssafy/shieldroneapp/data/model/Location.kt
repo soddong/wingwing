@@ -25,6 +25,7 @@ enum class LocationType {
  * 출발지/도착지 위치 정보를 통합 관리하는 데이터 클래스
  *
  * @property locationType 위치 유형 (출발지/도착지)
+ *
  * @property locationName 위치 이름
  * @property distance 현재 위치로부터의 거리 (m)
  * @property lat 위도
