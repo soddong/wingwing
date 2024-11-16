@@ -8,14 +8,13 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -30,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.model.CameraStreamVM
@@ -94,8 +94,8 @@ fun TrackingTargetScreen(
     val virtualMessage by flightControlVM.virtualMessage.collectAsState()
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
 
-    var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
-    var maxStickValue by remember { mutableStateOf(220.0) }   // 최대 전진 속도
+    var maxYaw by remember {  mutableStateOf(150.0) }   // 최대 회전 속도
+    var maxStickValue by remember {  mutableStateOf(220.0) }   // 최대 전진 속도
     var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
     var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
@@ -163,7 +163,11 @@ fun TrackingTargetScreen(
 //                Text("속도 X: ${droneState!!.xVelocity}, Y: ${droneState!!.yVelocity},  Z:${droneState!!.zVelocity}")
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // Tracking Data 정보 표시
             Text("Tracking Data:")
@@ -178,11 +182,19 @@ fun TrackingTargetScreen(
             if (virtualMessage != null) {
                 Text("VIRTUAL : ${virtualMessage.toString()}")
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             Text("스트리밍 상태")
             Text("VIRTUAL : $frameInfo")
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
 
             Row {
@@ -197,7 +209,11 @@ fun TrackingTargetScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // Yaw 조정 버튼 추가
             Button(
@@ -208,7 +224,11 @@ fun TrackingTargetScreen(
             }
 
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // 이륙, 착륙, 가상 스틱 모드 제어 버튼 추가
             Row(
@@ -226,7 +246,11 @@ fun TrackingTargetScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -239,7 +263,11 @@ fun TrackingTargetScreen(
                     Text("Disable Virtual Stick")
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // Slider (Compose의 SeekBar 대체)
             Text("Kp 조절:")
@@ -254,7 +282,11 @@ fun TrackingTargetScreen(
                     .padding(horizontal = 10.dp)
             )
             Text("현재 Kp: $KpValue")
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             Text("고도 속도 조절:")
             Slider(
@@ -264,13 +296,17 @@ fun TrackingTargetScreen(
                     flightControlVM.updateAltitude(altitudeValue) // 슬라이더 조정 시 altitude 값 업데이트
                     flightControlVM.adjustAltitude()
                 },
-                valueRange = -100f..200f,
+                valueRange = 0f..200f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)
             )
             Text("현재 Altitude: $altitudeValue")
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             Text("Yaw 조절:")
             Slider(
@@ -284,7 +320,11 @@ fun TrackingTargetScreen(
                     .padding(horizontal = 10.dp)
             )
             Text("현재 Yaw: $maxYaw")
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // 두 번째 슬라이더 (maxStickValue 조절)
             Text("Stick 조절:")
@@ -293,13 +333,17 @@ fun TrackingTargetScreen(
                 onValueChange = { value ->
                     maxStickValue = value.toDouble()
                 },
-                valueRange = 0f..660f,
+                valueRange = 0f..110f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)
             )
             Text("현재 Stick Value: $maxStickValue")
-            Spacer(modifier = Modifier.height(10.dp))
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
             // targetPosition 정보 표시
             Text("목표 위치:")
             if (targetPosition != null) {

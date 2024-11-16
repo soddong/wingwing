@@ -2,6 +2,7 @@ package com.shieldrone.station.model
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.shieldrone.station.constant.TrackingContstant
 import com.shieldrone.station.data.TrackingDataDiff
 import com.shieldrone.station.data.TrackingData
 import kotlinx.coroutines.CoroutineScope
@@ -22,10 +23,6 @@ class TrackingDataVM : ViewModel() {
     val trackingDataDiffFlow: StateFlow<TrackingDataDiff?> get() = _trackingDataDiffFlow
 
     private var previousData: TrackingData? = null
-
-    companion object {
-        private const val PORT = 11435
-    }
 
     fun updateTrackingData(newData: TrackingData, isLocked: Boolean) {
         if(previousData != null && !isLocked) {//중간에 목표락이 풀리고 다시 락온이 됐을 때.
@@ -59,7 +56,7 @@ class TrackingDataVM : ViewModel() {
     private suspend fun receiveDataOverUDP() {
         try {
             val buffer = ByteArray(1024)
-            udpSocket = DatagramSocket(PORT)
+            udpSocket = DatagramSocket(TrackingContstant.PORT)
 
             while (true) {
                 val packet = DatagramPacket(buffer, buffer.size)
