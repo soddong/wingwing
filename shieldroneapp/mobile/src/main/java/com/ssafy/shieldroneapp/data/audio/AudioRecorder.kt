@@ -91,7 +91,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-    // 녹음을 시작하는 함수
     fun startRecording() {
         if (!checkAudioPermission()) {
             Log.e(TAG, "RECORD_AUDIO 권한 없음")
@@ -125,7 +124,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-    // 오디오 데이터를 수집 및 전송
     private suspend fun collectAndSendAudioData() {
         try {
             val buffer = ByteArray(bufferSize)
@@ -135,25 +133,27 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
-                        val isWarning = audioAnalyzer.analyzeAudioData(buffer)
-                        val audioData = AudioData(
-                            time = System.currentTimeMillis(),
-                            dbFlag = isWarning
+                        val analysisResult = audioAnalyzer.analyzeAudioData(
+                            buffer = buffer,
+                            enableDetailedAnalysis = true 
                         )
-                        Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $isWarning")
 
-                        if (isWarning) {
+                        if (analysisResult.shouldShowToast) {
                             alertService.showSafeConfirmationNotification(
                                 "주변에 소음 발생!",
                                 "안전에 유의하세요."
                             )
                         }
 
+                        val audioData = AudioData(
+                            time = System.currentTimeMillis(),
+                            dbFlag = analysisResult.shouldSendToServer
+                        )
+
                         try {
                             audioDataRepository.processAudioData(audioData)
                         } catch (e: Exception) {
                             Log.e(TAG, "오디오 데이터 처리 실패", e)
-                            // 실패해도 녹음은 계속 진행
                         }
                     }
 
