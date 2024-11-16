@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
-import com.shieldrone.station.controller.StreamController
 import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.FlightControlActivity
@@ -42,9 +41,7 @@ import org.opencv.android.OpenCVLoader
 
 class DJIMainActivity : AppCompatActivity() {
 
-    private lateinit var streamController: StreamController
     private lateinit var routeController: RouteController
-    private var isStreaming by mutableStateOf(false)
 
 
     companion object {
@@ -114,9 +111,6 @@ class DJIMainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isStreaming) {
-            streamController.stopLive()
-        }
         routeController.stopReceivingLocation()
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
