@@ -8,12 +8,13 @@ import javax.inject.Singleton
 
 data class WarningData(
     val time: String,
-    val warningFlag: Boolean
+    val warningFlag: Boolean,
+    val frame: String? = null,
 )
 
 data class ObjectData(
     val time: String,
-    val objectFlag: Boolean
+    val objectFlag: Boolean,
 )
 
 @Singleton
@@ -35,12 +36,14 @@ class WebSocketMessageParser @Inject constructor() {
 
                 val time = jsonObject.get("time").asString
                 val warningFlag = jsonObject.get("warningFlag").asBoolean
+                val frame = if (jsonObject.has("frame")) jsonObject.get("frame").asString else null
 
                 Log.d(TAG, "경고음 메시지 파싱 성공 - time: $time, warningFlag: $warningFlag")
 
                 WarningData(
                     time,
-                    warningFlag
+                    warningFlag,
+                    frame
                 )
             } else {
                 Log.d(TAG, "sendWarningFlag 타입이 아니거나 필수 필드 누락")
@@ -60,7 +63,8 @@ class WebSocketMessageParser @Inject constructor() {
             Log.d(TAG, "파싱 시도 중인 메시지: $message")
 
             if (jsonObject.has("type") &&
-                jsonObject.get("type").asString == "sendObjectFlag") {
+                jsonObject.get("type").asString == "sendObjectFlag"
+            ) {
 
                 val time = jsonObject.get("time").asString
                 val objectFlag = jsonObject.get("objectFlag").asBoolean
