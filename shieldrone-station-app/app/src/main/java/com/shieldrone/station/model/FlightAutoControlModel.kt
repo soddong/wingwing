@@ -268,7 +268,7 @@ class FlightAutoControlModel {
         setRightStick(rightStick)
     }
 
-    fun adjustAltitude(altitude: Int, height: Double) {
+    fun adjustAltitude(altitude: Int) {
 
         val leftStick = LeftStick().apply {
             verticalPosition = altitude

@@ -6,60 +6,63 @@ import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.shieldrone.station.constant.CameraConstant
+import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import kotlin.system.measureTimeMillis
 
 class CameraStreamController {
 
-    companion object {
-        private const val HOST = "192.168.107.191"
-        private const val PORT = 65432
-        private const val MTU_SIZE = 1500 // MTU를 고려한 최대 패킷 크기 제한
-        private const val JPEG_QUALITY = 25 // JPEG 압축 품질 (0 ~ 100)
-    }
-
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
     private var udpSocket: DatagramSocket? = null
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
+    // 마지막으로 전송된 프레임의 타임스탬프
+    private var lastSentTime = System.currentTimeMillis()
+
+    // 전송 간격 (30fps의 모든 프레임을 보내지 않기 위해 샘플링)
+    private val frameIntervalMs = 100 // 100ms 간격으로 전송 (약 10fps)
 
     init {
+        initializeSocket()
+    }
+
+    private fun initializeSocket() {
         try {
-            udpSocket = DatagramSocket()
-            Log.i("StreamController", "UDP Socket created")
+            if (udpSocket == null || udpSocket?.isClosed == true) {
+                udpSocket = DatagramSocket()
+                Log.i("StreamController", "UDP Socket created")
+            }
         } catch (e: Exception) {
             Log.e("StreamController", "Error creating UDP socket: ${e.message}")
         }
     }
 
     /**
-     * NV21 형식의 프레임 데이터를 JPEG로 압축한 후 UDP로 전송합니다.
+     * NV21 형식의 프레임 데이터를 JPEG로 압축한 후 일정 주기로 UDP로 전송합니다.
      */
     fun sendFrameDataOverUDP(frameData: ByteArray, originalWidth: Int, originalHeight: Int) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastSentTime < frameIntervalMs) {
+            return // 전송 주기 내에서는 전송하지 않음
+        }
+        lastSentTime = currentTime
+
         coroutineScope.launch {
+            val jpegData = convertNV21ToJPEG(frameData, originalWidth, originalHeight)
+            if (jpegData.isEmpty()) return@launch
+
             try {
-                // NV21 데이터를 JPEG로 압축
-                val jpegData = convertNV21ToJPEG(frameData, originalWidth, originalHeight)
-
-                // 압축된 데이터가 MTU를 초과하면 전송하지 않음
-                if (jpegData.size > MTU_SIZE) {
-                    Log.w("StreamController", "JPEG data exceeds MTU limit, size: ${jpegData.size} bytes")
-//                    return@launch
-                }
-
-                // UDP 패킷 생성 및 전송
                 val packet = DatagramPacket(
                     jpegData,
                     jpegData.size,
-                    InetAddress.getByName(HOST),
-                    PORT
+                    InetAddress.getByName(CameraConstant.HOST),
+                    CameraConstant.PORT
                 )
-
                 udpSocket?.send(packet)
-                Log.i("StreamController", "Frame sent over UDP to $HOST:$PORT, size: ${jpegData.size} bytes")
+                Log.d("StreamController", "Frame sent to ${CameraConstant.HOST}:${CameraConstant.PORT}, size: ${jpegData.size} bytes")
             } catch (e: Exception) {
                 Log.e("StreamController", "Error sending UDP packet: ${e.message}")
             }
@@ -67,30 +70,29 @@ class CameraStreamController {
     }
 
     /**
-     * NV21 형식의 데이터를 JPEG로 변환하는 함수
+     * NV21 형식의 데이터를 JPEG로 변환하고 압축합니다.
      */
     private fun convertNV21ToJPEG(data: ByteArray, width: Int, height: Int): ByteArray {
-        return try {
-            val yuvImage = YuvImage(data, ImageFormat.NV21, width, height, null)
-            val outputStream = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, width, height), JPEG_QUALITY, outputStream)
-            val jpegData = outputStream.toByteArray()
+        return ByteArrayOutputStream().use { outputStream ->
+            try {
+                val yuvImage = YuvImage(data, ImageFormat.NV21, width, height, null)
+                yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, outputStream)
 
-            // 2. JPEG 데이터를 Bitmap으로 디코딩
-            val bitmap = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
+                val jpegData = outputStream.toByteArray()
+                val bitmap = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
+                val resizedBitmap = Bitmap.createScaledBitmap(
+                    bitmap, CameraConstant.RESIZED_WIDTH, CameraConstant.RESIZED_HEIGHT, true
+                )
 
-            // 3. Bitmap을 640x480 해상도로 리사이즈
-            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 640, 480, true)
-
-            // 4. 리사이즈된 Bitmap을 다시 JPEG로 압축
-            val resizedOutputStream = ByteArrayOutputStream()
-            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 20, resizedOutputStream)
-
-            // 5. 최종 JPEG 데이터를 반환
-            resizedOutputStream.toByteArray()
-        } catch (e: Exception) {
-            Log.e("StreamController", "Error converting NV21 to JPEG: ${e.message}")
-            ByteArray(0)
+                ByteArrayOutputStream().use { resizedOutputStream ->
+                    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, CameraConstant.JPEG_QUALITY, resizedOutputStream)
+                    resizedBitmap.recycle()
+                    return resizedOutputStream.toByteArray()
+                }
+            } catch (e: Exception) {
+                Log.e("StreamController", "Error converting NV21 to JPEG: ${e.message}")
+                ByteArray(0)
+            }
         }
     }
 

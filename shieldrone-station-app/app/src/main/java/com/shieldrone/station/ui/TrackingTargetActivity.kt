@@ -1,6 +1,7 @@
 package com.shieldrone.station.ui
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -41,19 +42,23 @@ import kotlin.math.sign
 
 class TrackingTargetActivity : ComponentActivity() {
     private val trackingVM: TrackingDataVM by viewModels()
-    private val flightControlVM: FlightAutoControlVM by viewModels() // FlightControlVM 추가
+    private val flightControlVM: FlightAutoControlVM by viewModels()
     private val cameraStreamVM: CameraStreamVM by viewModels()
     private lateinit var routeAdapter: RouteAdapter
     private lateinit var routeController: RouteController
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i("TrackingTargetActivity", "Activity created")
+
         // 카메라 인덱스 설정
-        cameraStreamVM.setCameraIndex(ComponentIndexType.LEFT_OR_MAIN)
+        cameraStreamVM.setCameraModeAndIndex(ComponentIndexType.LEFT_OR_MAIN)
+        Log.i("TrackingTargetActivity", "Camera index set to LEFT_OR_MAIN")
+
         setContent {
             TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM)
         }
+    }
 //        val routeListener = object : RouteAdapter.RouteListener {
 //            override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
 //                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
@@ -67,12 +72,11 @@ class TrackingTargetActivity : ComponentActivity() {
 //        routeController = RouteController(routeAdapter)
 //        routeController.startReceivingLocation()
 
-
-    }
-
     override fun onDestroy() {
         super.onDestroy()
+        Log.i("TrackingTargetActivity", "Activity destroyed")
         cameraStreamVM.removeFrameListener()
+        Log.i("TrackingTargetActivity", "Camera frame listener removed")
     }
 }
 
@@ -91,28 +95,30 @@ fun TrackingTargetScreen(
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
 
     var maxYaw by remember {  mutableStateOf(150.0) }   // 최대 회전 속도
-    var maxStickValue by remember {  mutableStateOf(220.0) }   // 최대 회전 속도
-    var altitudeValue by remember { mutableStateOf(0) }
-    // Yaw 조정 시작/중지를 위한 상태 추가
-    var isAdjustingYaw by remember { mutableStateOf(false) }
-
+    var maxStickValue by remember {  mutableStateOf(220.0) }   // 최대 전진 속도
+    var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
+    var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
     var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
 
 
     // Yaw 조정 기능 (버튼 클릭 시에만 작동)
     LaunchedEffect(isAdjustingYaw) {
         if (isAdjustingYaw) {
-            while (isAdjustingYaw && trackingData != null) {
+            Log.i("TrackingTargetActivity", "Yaw adjustment started")
+            while (isAdjustingYaw) {
                 val threshold = 0.3
                 val minYaw = 10.0    // 최소 회전 속도
                 val offsetX = trackingData!!.newData.normalizedOffsetX
                 val absOffsetX = abs(offsetX)
+
+                Log.d("TrackingTargetActivity", "OffsetX: $offsetX, AbsOffsetX: $absOffsetX")
 
                 if (absOffsetX > threshold) {
                     // 임계값을 초과한 부분을 0부터 1 사이로 정규화
                     val scaledOffset = (absOffsetX - threshold) / (1.0 - threshold)
                     // 최소 및 최대 회전 속도 사이에서 보간
                     val adjustmentValue = scaledOffset * (maxYaw - minYaw) + minYaw
+                    Log.d("TrackingTargetActivity", "adjustmentValue: $adjustmentValue")
                     // 방향에 따라 부호 적용
                     flightControlVM.adjustYaw(adjustmentValue * sign(offsetX))
                 } else {
@@ -124,6 +130,7 @@ fun TrackingTargetScreen(
                 val vY = -KpValue * eYFuture
 
                 val vYLimited = vY.coerceIn(-1.0, 1.0)* maxStickValue
+                Log.d("TrackingTargetActivity", "vYLimited: $vYLimited")
                 // 100ms 간격으로 업데이트
                 flightControlVM.updatePitch(vYLimited.toInt())
                 flightControlVM.adjustPitch()
@@ -211,6 +218,9 @@ fun TrackingTargetScreen(
             ) {
                 Button(onClick = { flightControlVM.startTakeOff() }) {
                     Text("Take Off")
+                }
+                Button(onClick = { flightControlVM.ascendToCruiseAltitude(altitudeValue) }) {
+                    Text("Cruising altitude")
                 }
                 Button(onClick = { flightControlVM.startLanding() }) {
                     Text("Land")

@@ -90,8 +90,10 @@ class TrackingDataVM : ViewModel() {
                     Log.i("TrackingController", "UDP Socket closed")
                 }
             }
-            if(coroutineScope.isActive)
+            if(coroutineScope.isActive) {
+                Log.i("TrackingController", "tracking coroutineScope cancel")
                 coroutineScope.cancel()
+            }
         } catch (e: Exception) {
             Log.e("TrackingController", "Error closing UDP socket: ${e.message}")
         } finally {

@@ -25,7 +25,7 @@ class CameraStreamActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // 카메라 인덱스 설정
-        viewModel.setCameraIndex(ComponentIndexType.LEFT_OR_MAIN)
+        viewModel.setCameraModeAndIndex(ComponentIndexType.LEFT_OR_MAIN)
 
         setContent {
             CameraStreamScreen(viewModel)

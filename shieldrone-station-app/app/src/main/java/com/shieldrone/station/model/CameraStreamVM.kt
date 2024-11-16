@@ -5,7 +5,10 @@ import android.view.Surface
 import androidx.lifecycle.ViewModel
 import com.shieldrone.station.controller.CameraStreamController
 import dji.sdk.keyvalue.key.CameraKey
+import dji.sdk.keyvalue.value.camera.CameraMode
 import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.v5.common.callback.CommonCallbacks
+import dji.v5.common.error.IDJIError
 import dji.v5.et.create
 import dji.v5.et.listen
 import dji.v5.manager.KeyManager
@@ -41,10 +44,7 @@ class CameraStreamVM : ViewModel() {
             height: Int,
             format: FrameFormat
         ) {
-
-            // 프레임 데이터를 UDP로 전송
             streamController.sendFrameDataOverUDP(frameData, width, height)
-
             Log.d(TAG, "Frame received: $length bytes, Resolution: ${width}x$height")
             CoroutineScope(Dispatchers.Main).launch {
                 _frameInfo.value = "Frame: ${width}x$height, Format: $format"
@@ -59,7 +59,38 @@ class CameraStreamVM : ViewModel() {
         streamController.closeSocket()
     }
 
-    fun setCameraIndex(cameraIndex: ComponentIndexType) {
+    /**
+     * 비동기적으로 카메라 모드를 PHOTO_NORMAL로 설정한 후 카메라 인덱스를 설정하는 함수
+     */
+    fun setCameraModeAndIndex(cameraIndex: ComponentIndexType) {
+        setCameraModeToPhotoNormal {
+            // 카메라 모드가 변경된 후, 인덱스를 설정합니다.
+            setCameraIndex(cameraIndex)
+        }
+    }
+
+    /**
+     * 카메라 모드를 PHOTO_NORMAL로 설정하고 완료 시 콜백을 호출합니다.
+     */
+    private fun setCameraModeToPhotoNormal(onComplete: () -> Unit) {
+        val keyCameraMode = CameraKey.KeyCameraMode.create()
+        KeyManager.getInstance().setValue(
+            keyCameraMode,
+            CameraMode.PHOTO_NORMAL,
+            object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(TAG, "Camera mode set to PHOTO_NORMAL successfully.")
+                    onComplete()
+                }
+
+                override fun onFailure(error: IDJIError) {
+                    Log.e(TAG, "Failed to set camera mode: ${error.description()}")
+                }
+            }
+        )
+    }
+
+    private fun setCameraIndex(cameraIndex: ComponentIndexType) {
         this.cameraIndex = cameraIndex
         KeyManager.getInstance().cancelListen(this)
         listenCameraType()
@@ -71,7 +102,6 @@ class CameraStreamVM : ViewModel() {
             _cameraName.value = result?.toString() ?: "Not Supported"
         }
     }
-
 
     fun putCameraStreamSurface(surface: Surface, width: Int, height: Int, scaleType: ScaleType) {
         try {
