@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationCompat
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import com.ssafy.shieldroneapp.utils.await
 import com.ssafy.shieldroneapp.viewmodels.AlertViewModel
@@ -29,6 +30,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AlertScreen(
+    alertHandler: AlertHandler,
     alertViewModel: AlertViewModel,
     modifier: Modifier = Modifier,
     wearConnectionManager: WearConnectionManager,
@@ -38,9 +40,10 @@ fun AlertScreen(
     var timeLeft by remember { mutableStateOf(5) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
-    val confirmedFromMobile by alertViewModel.confirmedFromMobile.collectAsState()
     val isSafeConfirmed by alertViewModel.isSafeConfirmed.collectAsState()
     val context = LocalContext.current
+
+    val confirmedFromMobile by alertViewModel.confirmedFromMobile.collectAsState()
 
     if (currentAlert == null) {
         return
@@ -74,19 +77,6 @@ fun AlertScreen(
         notificationManager.notify(1, notification)
     }
 
-    fun handleSafeConfirmation() {
-        isTimerRunning = false
-        if (currentAlert?.frame != null) {
-            showImage = true
-        } else {
-            alertViewModel.clearAlert()
-        }
-        CoroutineScope(Dispatchers.IO).launch {
-            wearConnectionManager.sendSafeConfirmationToMobile()
-        }
-    }
-
-
     @Composable
     fun EmergencyNotificationScreen() {
         Column(
@@ -110,22 +100,6 @@ fun AlertScreen(
                 style = MaterialTheme.typography.body2,
                 textAlign = TextAlign.Center
             )
-        }
-    }
-
-    suspend fun sendSafeConfirmationToMobile() {
-        val messageClient = Wearable.getMessageClient(context)
-        try {
-            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
-            nodes.forEach { node ->
-                messageClient.sendMessage(
-                    node.id,
-                    "/safe_confirmation",
-                    "WATCH_CONFIRMED_SAFE".toByteArray()
-                ).await(5000)
-            }
-        } catch (e: Exception) {
-            Log.e("AlertScreen", "Failed to send safe confirmation to mobile", e)
         }
     }
 
@@ -159,7 +133,16 @@ fun AlertScreen(
     } else if (showEmergencyNotification) {
         EmergencyNotificationScreen()
     } else if (isSafeConfirmed) {
-        SafeConfirmedScreen(confirmedFromMobile = confirmedFromMobile)
+        AlertConfirmScreen(
+            message = if (confirmedFromMobile) {
+                "모바일 앱에서 '안전'이 확인되었습니다."
+            } else {
+                "워치에서 '안전'이 확인되어 알림이 중지됩니다."
+            },
+            onDismiss = {
+                alertViewModel.clearAlert()
+            }
+        )
     } else {
         Column(
             modifier = modifier
@@ -193,7 +176,14 @@ fun AlertScreen(
 
             PrimaryButton(
                 text = "안전 확인",
-                onClick = { handleSafeConfirmation() }
+                onClick = {
+                    alertHandler.updateSafeConfirmation(true)
+                    Log.d("이거", "alertHandler 눌림")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        wearConnectionManager.sendSafeConfirmationToMobile()
+                        Log.d("이거", "wearConnectionManager 눌림")
+                    }
+                }
             )
         }
     }
@@ -208,11 +198,7 @@ fun SafeConfirmedScreen(confirmedFromMobile: Boolean = false) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (confirmedFromMobile) {
-                "모바일 앱에서 안전함이 확인되어\n알림이 중지됩니다"
-            } else {
-                "워치에서 안전함이 확인되어\n알림이 중지됩니다"
-            },
+            text = "모바일 앱에서 안전함이 확인되어\n알림이 중지됩니다",
             style = MaterialTheme.typography.body2,
             color = Color.White,
             textAlign = TextAlign.Center,
