@@ -7,6 +7,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.receivers.ScreenReceiver
 import com.ssafy.shieldroneapp.services.WakeLockManager
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
@@ -18,6 +19,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var wearConnectionManager: WearConnectionManager
+
+    @Inject
+    lateinit var alertHandler: AlertHandler
 
     private lateinit var wakeLockManager: WakeLockManager
 
@@ -51,7 +55,8 @@ class MainActivity : ComponentActivity() {
             WearApp(
                 sensorRepository = sensorRepository,
                 dataRepository = dataRepository,
-                wearConnectionManager = wearConnectionManager
+                wearConnectionManager = wearConnectionManager,
+                alertHandler = alertHandler
             )
         }
     }
