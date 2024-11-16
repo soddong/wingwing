@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -274,8 +273,8 @@ fun MapScreen(
                     indication = null
                 ) {
                     keyboardController.hideKeyboard()
-                    if (state.showSearchModal || state.showStartMarkerModal) {
-                        mapViewModel.handleEvent(MapEvent.CloseModal)
+                    if (state.showSearchResultsModal || state.showStartMarkerModal || state.showEndMarkerModal || state.showDroneMatchResultModal) {
+                        mapViewModel.handleEvent(MapEvent.CloseAllModals)
                     }
                 },
         )
@@ -325,7 +324,7 @@ fun MapScreen(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            mapViewModel.handleEvent(MapEvent.CloseModal)
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
                         },
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -340,7 +339,7 @@ fun MapScreen(
                             routeLocation = state.selectedStartMarker,
                             onSelect = {
                                 mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
-                                mapViewModel.handleEvent(MapEvent.CloseModal)
+                                mapViewModel.handleEvent(MapEvent.CloseAllModals)
                             }
                         )
                     }
@@ -365,7 +364,7 @@ fun MapScreen(
         }
 
         // 3. 검색 결과 모달 (최상단 레이어)
-        if (state.showSearchModal) {
+        if (state.showSearchResultsModal) {
             SearchResultsModal(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
@@ -376,7 +375,7 @@ fun MapScreen(
                         mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
                     }
                 },
-                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
             )
         }
 
