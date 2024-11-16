@@ -84,12 +84,15 @@ class Server:
         """
         time = data.get("time", datetime.now().isoformat())
         location = data.get("location", {})
+        dest_location = data.get("dest_location", {})
         lat = location.get("lat")
         lng = location.get("lng")
-        print(f"[유저 위치 전송] 시간: {time}, 위도: {lat}, 경도: {lng}")
+        dest_lat = dest_location.get("lat")
+        dest_lng = dest_location.get("lng")
+        print(f"[유저 위치 전송] 시간: {time}, 현재 위도: {lat}, 현재 경도: {lng}, 목적지 위도: {dest_lat}, 목적지 경도: {dest_lng}")
 
         # 위치 정보를 RouteDecision에 직접 전달
-        self.route_decision.handle_position_update(lat, lng)
+        self.route_decision.handle_position_update(lat, lng, dest_lat, dest_lng)
 
     def camera_data_thread(self, loop):
         """
