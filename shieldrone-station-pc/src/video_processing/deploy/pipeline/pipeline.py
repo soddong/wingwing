@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 from datetime import datetime
 import json
 import os
@@ -210,6 +211,7 @@ class PipePredictor(object):
         tracker_config = mot_cfg['tracker_config']
         batch_size = mot_cfg['batch_size']
         skip_frame_num = mot_cfg.get('skip_frame_num', -1)
+        self.target_frame_tolerance = mot_cfg['target_frame_tolerance']
         basemode = self.basemode['MOT']
         self.modebase[basemode] = True
         self.mot_predictor = SDE_Detector(
@@ -234,7 +236,8 @@ class PipePredictor(object):
         self.spatial_info_tracker = SpatialInfoTracker()
         # TODO : arg로 변경
         # 앱서버의 ip와 port로 변경하고 사용
-        self.res_sender = ResultSendHandler("192.168.0.7", 23456)
+        self.res_sender = ResultSendHandler("192.168.107.236", 11435)
+        
 
     def set_file_name(self, path):
         if type(path) == int:
@@ -369,6 +372,8 @@ class PipePredictor(object):
         socket_camera.bind("tcp://127.0.0.1:5580")  # 송신자 주소를 지정 (예: 포트 5555)
         socket_camera.setsockopt(zmq.SNDTIMEO, 5000)  # 5초 타임아웃 설정
 
+        no_detected_target_frames = 0
+        target_prev_bbox = None
         while (1):
             if framequeue.empty():
                 if self.input_type == "file":
@@ -383,7 +388,7 @@ class PipePredictor(object):
             frame_rgb = frame_data["frame"]
 
             # 프레임 크기 축소
-            scale_percent = 50 
+            scale_percent = 20
             width = int(frame_rgb.shape[1] * scale_percent / 100)
             height = int(frame_rgb.shape[0] * scale_percent / 100)
             dim = (width, height)
@@ -441,6 +446,18 @@ class PipePredictor(object):
                 if frame_id > self.warmup_frame:
                     self.pipe_timer.img_num += 1
                     self.pipe_timer.total_time.end()
+                if target_prev_bbox is not None:
+                    if no_detected_target_frames <= self.target_frame_tolerance:
+                        no_detected_target_frames+=1
+                        self.drone_controller.adjust_drone(target_prev_bbox)
+                        self.drone_controller.visualize_control(frame_rgb)
+                        control_res = self.drone_controller.get_control_value()
+                        resultqueue.put(control_res.get())
+                    else:
+                        self.target_id=None
+                        self.drone_controller.control_value.init_zero()
+                        no_detected_target_frames=0
+                        target_prev_bbox=None
                 if self.cfg['visual']:
                     im = self.visualize_video(
                         frame_rgb, mot_res, frame_id, self.video_handler.fps, records, center_traj,  latency = frame_time)  # visualize
@@ -455,8 +472,17 @@ class PipePredictor(object):
             self.pipeline_res.update(mot_res, 'mot')
 
             # update target
-            if self.target_id is not None and not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)):
-                self.target_id=None
+            if self.target_id is not None:
+                if not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)) :
+                    if no_detected_target_frames <= self.target_frame_tolerance:
+                        no_detected_target_frames+=1
+                    else:
+                        self.target_id=None
+                        self.drone_controller.control_value.init_zero()
+                        no_detected_target_frames=0
+                        target_prev_bbox=None
+                else:
+                    no_detected_target_frames=0
             if self.target_id is None:
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
@@ -483,16 +509,18 @@ class PipePredictor(object):
 
             if self.target_id is not None:
                 boxes = mot_res['boxes']
-
-                target_mot_res = boxes[boxes[:, 0].astype(int) == self.target_id]
+                if 0 < no_detected_target_frames:
+                    target_mot_res = target_prev_bbox
+                else:
+                    target_mot_res = boxes[boxes[:, 0].astype(int) == self.target_id][0]
                 other_mot_res = boxes[boxes[:, 0].astype(int) != self.target_id]
 
-                self.drone_controller.adjust_drone(target_mot_res[0])
+                self.drone_controller.adjust_drone(target_mot_res)
                 self.drone_controller.visualize_control(frame_rgb)
                 control_res = self.drone_controller.get_control_value()
                 resultqueue.put(control_res.get())
 
-                spatial_info = self.spatial_info_tracker.run(target_mot_res[0], other_mot_res, self.video_handler.fps)
+                spatial_info = self.spatial_info_tracker.run(target_mot_res, other_mot_res, self.video_handler.fps)
                 is_danger = False
                 for other_id, info in spatial_info["others"].items():
                     if info["is_near"] and info["getting_closer_quickly"]:
@@ -506,6 +534,7 @@ class PipePredictor(object):
                 #     self.send_danger_signal(socket_camera, frame_rgb, False)
                 
                 self.spatial_info_tracker.visualize(frame_rgb, spatial_info, other_mot_res)
+                target_prev_bbox = target_mot_res
 
 
 

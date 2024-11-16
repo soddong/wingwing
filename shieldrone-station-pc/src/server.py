@@ -2,6 +2,8 @@
 import json
 import os
 import sys
+import time
+import zmq
 from datetime import datetime
 from flask import Flask
 import asyncio
@@ -11,6 +13,7 @@ import threading
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from decision.route.route_decision import RouteDecision
 from decision.danger.danger_decision import DangerDecision
+
 class Server:
     def __init__(self):
         """
@@ -25,8 +28,11 @@ class Server:
         self.route_decision = RouteDecision()
         self.danger_decision = DangerDecision()
 
-        # DangerDecision의 카메라 데이터 수신 스레드 실행
-        threading.Thread(target=self.danger_decision.receive_camera_data, daemon=True).start()
+        # ZeroMQ 소켓 설정
+        self.context = zmq.Context()
+        self.socket_camera = self.context.socket(zmq.SUB)
+        self.socket_camera.connect("tcp://127.0.0.1:5580")
+        self.socket_camera.setsockopt_string(zmq.SUBSCRIBE, "")
 
     async def websocket_handler(self, websocket, path):
         """
@@ -63,7 +69,8 @@ class Server:
         message = json.dumps({
             "type": "sendWarningFlag",
             "time": datetime.now().isoformat(),
-            "warningFlag": True
+            "warningFlag": True,
+            "frame": self.frame
         })
         for client in self.ws_clients:
             try:
@@ -84,6 +91,40 @@ class Server:
         # 위치 정보를 RouteDecision에 직접 전달
         self.route_decision.handle_position_update(lat, lng)
 
+    def camera_data_thread(self, loop):
+        """
+        별도 스레드에서 카메라 데이터를 수신하여 asyncio 루프에 전달.
+        """
+        asyncio.set_event_loop(loop)  # Set the event loop for this thread
+        while True:
+            try:
+                message = self.socket_camera.recv_string(flags=zmq.NOBLOCK)
+                data = json.loads(message)
+                self.frame = data.get("frame")
+                self.danger_decision.set_camera_flag_trigger(True)
+                print("[카메라 데이터 수신] Frame 데이터 업데이트됨.")
+
+                # Send the data update to the event loop
+                asyncio.run_coroutine_threadsafe(self.update_clients_with_frame(), loop)
+
+            except zmq.Again:
+                time.sleep(0.1)  # 데이터가 없을 경우 잠시 대기
+
+    async def update_clients_with_frame(self):
+        """
+        WebSocket 클라이언트에 업데이트된 카메라 프레임을 전송.
+        """
+        message = json.dumps({
+            "type": "updateFrame",
+            "time": datetime.now().isoformat(),
+            "frame": self.frame
+        })
+        for client in self.ws_clients:
+            try:
+                await client.send(message)
+            except websockets.ConnectionClosed:
+                print("클라이언트가 연결 해제됨.")
+
     def run_flask(self):
         self.app.run(host="0.0.0.0", port=5000)
 
@@ -98,7 +139,15 @@ class Server:
     def start(self):
         flask_thread = threading.Thread(target=self.run_flask)
         flask_thread.start()
-        asyncio.run(self.run_websocket())
+
+        # Set up the main event loop
+        loop = asyncio.get_event_loop()
+        
+        # Start the camera data thread with access to the main loop
+        threading.Thread(target=self.camera_data_thread, args=(loop,), daemon=True).start()
+
+        # Run WebSocket server in the main event loop
+        loop.run_until_complete(self.run_websocket())
 
 if __name__ == "__main__":
     server = Server()

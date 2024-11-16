@@ -139,9 +139,6 @@ class SpatialInfoTracker:
             "world_coords": (target_world_x, target_world_y),
         }
 
-        # 목표 사람의 위치를 이전 위치로 저장
-        self.prev_positions[obj_id] = (target_world_x, target_world_y)
-
         # 다른 사람들의 상대 위치 계산
         for box in other_bboxes:
             obj_id_other, obj_class_other, score_other, xmin_other, ymin_other, xmax_other, ymax_other = box

@@ -13,6 +13,7 @@ MOT:
   batch_size: 1
   skip_frame_num: 2 # preferably no more than 3
   enable: True
+  target_frame_tolerance: 5 # 목표가 지정된 후 목표가 해제되기까지의 미식별 프레임 수
 
 KPT:
   model_dir: https://bj.bcebos.com/v1/paddledet/models/pipeline/dark_hrnet_w32_256x192.zip
