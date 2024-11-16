@@ -55,13 +55,12 @@ class DroneLocalDataSourceImpl @Inject constructor(
      * @param newState 업데이트할 드론 상태
      */
     override suspend fun updateDroneState(newState: DroneState) {
-        val currentState = getDroneState() ?: DroneState(
-            droneId = newState.droneId
-        )
+        val currentState = getDroneState() ?: DroneState(droneId = newState.droneId)
+        // 새로운 값이 있으면 덮어씌우고, 없으면 기존 값을 유지
         val updatedState = currentState.copy(
             stationIP = newState.stationIP ?: currentState.stationIP,
-            isAssigned = newState.isAssigned,
-            isMatched = newState.isMatched,
+            matchStatus = newState.matchStatus,
+            battery = newState.battery ?: currentState.battery,
             estimatedTime = newState.estimatedTime ?: currentState.estimatedTime,
             distance = newState.distance ?: currentState.distance,
             assignedTime = newState.assignedTime ?: currentState.assignedTime
