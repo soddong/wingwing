@@ -31,9 +31,10 @@ import kotlinx.coroutines.launch
 fun AlertScreen(
     alertViewModel: AlertViewModel,
     modifier: Modifier = Modifier,
-    wearConnectionManager: WearConnectionManager
+    wearConnectionManager: WearConnectionManager,
 ) {
     val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
+    var showImage by remember { mutableStateOf(false) }
     var timeLeft by remember { mutableStateOf(5) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
@@ -41,8 +42,6 @@ fun AlertScreen(
     val isSafeConfirmed by alertViewModel.isSafeConfirmed.collectAsState()
     val context = LocalContext.current
 
-
-    // 현재 알림이 없으면 빈 화면 반환
     if (currentAlert == null) {
         return
     }
@@ -75,6 +74,19 @@ fun AlertScreen(
         notificationManager.notify(1, notification)
     }
 
+    fun handleSafeConfirmation() {
+        isTimerRunning = false
+        if (currentAlert?.frame != null) {
+            showImage = true
+        } else {
+            alertViewModel.clearAlert()
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            wearConnectionManager.sendSafeConfirmationToMobile()
+        }
+    }
+
+
     @Composable
     fun EmergencyNotificationScreen() {
         Column(
@@ -101,7 +113,6 @@ fun AlertScreen(
         }
     }
 
-    // 안전 확인 메시지를 모바일로 전송하는 함수
     suspend fun sendSafeConfirmationToMobile() {
         val messageClient = Wearable.getMessageClient(context)
         try {
@@ -124,25 +135,28 @@ fun AlertScreen(
             timeLeft--
         }
 
-        when {
-            isSafeConfirmed -> {
-                isTimerRunning = false
-                timeLeft = 0
+        if (timeLeft == 0 && !isSafeConfirmed) {
+            showEmergencyAlert()
+            showEmergencyNotification = true
+            delay(5000L)
+            showEmergencyNotification = false
+            if (currentAlert?.frame != null) {
+                showImage = true
+            } else {
                 alertViewModel.clearAlert()
-            }
-            timeLeft == 0 && !isSafeConfirmed -> {
-                showEmergencyAlert()
-                showEmergencyNotification = true
-                delay(2000L)
-                alertViewModel.clearAlert()
-            }
-            else -> {
-                isTimerRunning = false
             }
         }
     }
 
-    if (showEmergencyNotification) {
+    if (showImage && currentAlert?.frame != null) {
+        ImageScreen(
+            jsonMessage = currentAlert?.frame,
+            onTimeout = {
+                showImage = false
+                alertViewModel.clearAlert()
+            }
+        )
+    } else if (showEmergencyNotification) {
         EmergencyNotificationScreen()
     } else if (isSafeConfirmed) {
         SafeConfirmedScreen(confirmedFromMobile = confirmedFromMobile)
@@ -179,13 +193,7 @@ fun AlertScreen(
 
             PrimaryButton(
                 text = "안전 확인",
-                onClick = {
-                    isTimerRunning = false
-                    alertViewModel.clearAlert()
-                    CoroutineScope(Dispatchers.IO).launch {
-                        wearConnectionManager.sendSafeConfirmationToMobile()
-                    }
-                }
+                onClick = { handleSafeConfirmation() }
             )
         }
     }

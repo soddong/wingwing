@@ -5,4 +5,5 @@ data class AlertData(
     val warningFlag: Boolean,
     val objectFlag: Boolean,
     val isProcessed: Boolean = false,
+    val frame: String? = null
 )

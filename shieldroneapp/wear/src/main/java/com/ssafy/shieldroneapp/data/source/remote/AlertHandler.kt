@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,15 +25,23 @@ class AlertHandler @Inject constructor(
 
     fun handleDangerAlert(alertJson: String) {
         try {
-            val alertData = gson.fromJson(alertJson, AlertData::class.java)
-            Log.d(TAG, "위험 알림 수신 및 변환 성공 - time: ${alertData.time}, warning: ${alertData.warningFlag}")
+            val jsonObject = JSONObject(alertJson)
+            val alertData = AlertData(
+                time = jsonObject.optLong("time", System.currentTimeMillis()),
+                warningFlag = jsonObject.optBoolean("warningFlag", false),
+                objectFlag = jsonObject.optBoolean("objectFlag", false),
+                isProcessed = false,
+                frame = if (jsonObject.has("frame")) alertJson else null
+            )
+
+            Log.d(TAG, "위험 알림 수신 및 변환 성공 - time: ${alertData.time}, warning: ${alertData.warningFlag}, frame: ${if (alertData.frame != null) "있음" else "없음"}")
 
             scope.launch {
                 if (alertData.warningFlag) {
                     alertRepository.processDangerAlert(alertData)
                     alertRepository.updateSafeConfirmation(false)
                 } else {
-                    alertRepository.clearAlert()
+                    handleAlertClear(alertData.frame != null)
                 }
             }
         } catch (e: Exception) {
@@ -50,7 +59,7 @@ class AlertHandler @Inject constructor(
                 if (alertData.objectFlag) {
                     alertRepository.processObjectAlert(alertData)
                 } else {
-                    alertRepository.clearAlert()
+                    handleAlertClear(false)
                 }
             }
         } catch (e: Exception) {
@@ -61,9 +70,24 @@ class AlertHandler @Inject constructor(
 
     fun updateSafeConfirmation(isConfirmed: Boolean) {
         if (isConfirmed) {
-            dismissAlert()
+            val currentAlert = alertRepository.currentAlert.value
+            if (currentAlert?.frame != null) {
+                scope.launch {
+                    alertRepository.updateSafeConfirmation(true)
+                }
+            } else {
+                dismissAlert()
+                scope.launch {
+                    alertRepository.updateSafeConfirmation(true)
+                }
+            }
+        }
+    }
+
+    private fun handleAlertClear(hasFrame: Boolean) {
+        if (!hasFrame) {
             scope.launch {
-                alertRepository.updateSafeConfirmation(true)
+                alertRepository.clearAlert()
             }
         }
     }
