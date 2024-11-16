@@ -89,8 +89,6 @@ class DroneController:
 
     def visualize_control(self, frame):
         value = self.control_value.get()
-        offset_x = value['offset_x']
-        offset_y = value['offset_y']
         movement = value['movement']
         normalized_offset_x = value["normalized_offset_x"]
         normalized_offset_y = value["normalized_offset_y"]
@@ -101,8 +99,8 @@ class DroneController:
         arrow_length_y = int(max_arrow_length * normalized_offset_y)
 
         # 화살표 끝 좌표 계산
-        end_x = int(self.frame_center_x + arrow_length_x * (1 if offset_x > 0 else -1))
-        end_y = int(self.frame_center_y + arrow_length_y * (1 if offset_y > 0 else -1))
+        end_x = int(self.frame_center_x + arrow_length_x )
+        end_y = int(self.frame_center_y + arrow_length_y )
 
         # 화살표 그리기 (화면 중심에서 오프셋 방향으로)
         cv2.arrowedLine(frame, (int(self.frame_center_x), int(self.frame_center_y)), (end_x, end_y),
