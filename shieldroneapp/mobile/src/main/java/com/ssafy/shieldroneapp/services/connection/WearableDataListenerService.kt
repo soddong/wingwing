@@ -49,7 +49,6 @@ class WearableDataListenerService : BaseMobileService() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "WearableDataListenerService 생성됨")
         dataClient = Wearable.getDataClient(this)
         heartRateDataRepository.startSendingLocalHeartRateData()
         checkExistingData()

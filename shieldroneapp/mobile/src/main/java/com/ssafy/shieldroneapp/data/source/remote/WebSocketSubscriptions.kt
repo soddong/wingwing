@@ -1,25 +1,13 @@
 package com.ssafy.shieldroneapp.data.source.remote
 
-/**
- * WebSocket을 통해 서버로부터 수신하는 알림 및 메시지를 구독하고 처리하는 클래스.
- *
- * 주로 위험 상황 알림을 단계별로 처리하며, 각 단계에 맞는 UI 동작을 수행
- *
- * 주요 메서드
- * - subscribeToDangerAlerts(): 위험 상황 알림을 구독하고 처리
- *
- * 알림 처리 방식:
- * - 1단계, 2단계: 알림을 표시하고 5초 후 자동으로 닫힘
- * - 3단계: 알림을 표시하며, 사용자가 '괜찮습니다. 위험하지 않습니다.'를 선택할 경우,
- *   서버에 응답을 전송하는 로직이 필요 (이 부분은 WebSocketMessageSender에서 처리)
- *
- * 이 클래스는 WebSocketService에 의해 import되어 사용됩니다.
- * 또한 WebSocketMessageParser를 import하여 수신한 메시지를 파싱합니다.
- */
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.wearable.Wearable
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.ssafy.shieldroneapp.data.model.AlertData
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.services.alert.AlertService
@@ -58,7 +46,6 @@ class WebSocketSubscriptions @Inject constructor(
         private const val TYPE_WARNING_FLAG = "sendWarningFlag"
         private const val TYPE_OBJECT_FLAG = "sendObjectFlag"
         private const val TYPE_WATCH_SAFE = "WATCH_ACKNOWLEDGED_SAFE"
-        private const val TYPE_MOBILE_SAFE = "MOBILE_ACKNOWLEDGED_SAFE"
     }
 
     private val messageClient = Wearable.getMessageClient(context)
@@ -67,26 +54,61 @@ class WebSocketSubscriptions @Inject constructor(
 
 
     fun setupWatchMessageListener() {
-        Wearable.getMessageClient(context).addListener { messageEvent ->
-            when (messageEvent.path) {
+        Wearable.getMessageClient(context).addListener { event ->
+            when (event.path) {
                 PATH_SAFE_CONFIRMATION -> {
-                    val message = String(messageEvent.data)
+                    val message = String(event.data)
                     try {
-                        val confirmationData = gson.fromJson(message, Map::class.java)
-                        val type = confirmationData["type"] as? String
+                        val confirmationData = Gson().fromJson(message, JsonObject::class.java)
+                        val type = confirmationData.get("type")?.asString
+                        val shouldCancelTimer = confirmationData.get("shouldCancelTimer")?.asBoolean ?: false
 
-                        if (type == TYPE_WATCH_SAFE) {
-                            alertHandler.handleWatchSafeConfirmation()
-                            alertService.showSafeConfirmationNotification(
-                                "안전 확인",
-                                "워치에서 '안전' 확인이 되어 알림이 중지됩니다."
-                            )
+                        if (type == TYPE_WATCH_SAFE && shouldCancelTimer) {
+                            handleSafeConfirmation(confirmationData)
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "워치 안전 확인 메시지 처리 실패", e)
                     }
                 }
             }
+        }
+    }
+
+    private fun handleSafeConfirmation(confirmationData: JsonObject) {
+        try {
+            val type = confirmationData.get("type")?.asString
+            val shouldCancelTimer = confirmationData.get("shouldCancelTimer")?.asBoolean ?: false
+
+            if (type == TYPE_WATCH_SAFE && shouldCancelTimer) {
+                alertHandler.handleWatchSafeConfirmation()
+                alertService.showSafeConfirmationNotification(
+                    "안전 확인",
+                    "워치로부터 안전을 확인되었습니다."
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "워치 안전 확인 메시지 처리 중 오류 발생", e)
+        }
+    }
+
+    private fun JsonObject.asMap(): Map<String, Any> {
+        val map = HashMap<String, Any>()
+        for (entry in this.entrySet()) {
+            map[entry.key] = entry.value.toPrimitive()
+        }
+        return map
+    }
+
+    private fun JsonElement.toPrimitive(): Any {
+        return when (this) {
+            is JsonPrimitive -> {
+                if (this.isBoolean) this.asBoolean
+                else if (this.isNumber) this.asNumber
+                else this.asString
+            }
+            is JsonObject -> this.asMap()
+            is JsonArray -> this.map { it.toPrimitive() }
+            else -> throw IllegalArgumentException("지원되지 않는 JSON 요소 타입: $this")
         }
     }
 
@@ -118,13 +140,6 @@ class WebSocketSubscriptions @Inject constructor(
                             handleObjectAlert(objectData.objectFlag)
                         } else {
                             Log.e(TAG, "타인 감지 메시지 파싱 실패")
-                        }
-                    }
-
-                    PATH_SAFE_CONFIRMATION -> {
-                        val confirmationData = Gson().fromJson(message, Map::class.java)
-                        if (confirmationData["type"] == TYPE_WATCH_SAFE) {
-                            handleDetailedWatchSafeConfirmation(confirmationData)
                         }
                     }
                 }
@@ -215,6 +230,7 @@ class WebSocketSubscriptions @Inject constructor(
 
             val alertData = AlertData(
                 warningFlag = warningData.warningFlag,
+                objectFlag = false,
                 timestamp = System.currentTimeMillis(),
                 frame = warningData.frame
             )
@@ -289,26 +305,20 @@ class WebSocketSubscriptions @Inject constructor(
         try {
             val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
             if (nodes.isNotEmpty()) {
-                val confirmationData = gson.toJson(
-                    mapOf(
-                        "type" to TYPE_MOBILE_SAFE,
-                        "state" to "CONFIRMED_SAFE",
-                        "timestamp" to System.currentTimeMillis(),
-                        "shouldCancelTimer" to true,
-                        "message" to "모바일 앱에서 안전이 확인되었습니다"
-                    )
+                val messageData = mapOf(
+                    "type" to "MOBILE_SAFE",
+                    "state" to "SAFE_CONFIRMED",
+                    "timestamp" to System.currentTimeMillis(),
+                    "shouldDismiss" to true
                 )
 
+                val confirmationJson = gson.toJson(messageData)
                 nodes.forEach { node ->
-                    try {
-                        messageClient.sendMessage(
-                            node.id,
-                            PATH_SAFE_CONFIRMATION,
-                            confirmationData.toByteArray()
-                        ).await(5000)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "워치(${node.displayName})로 안전 확인 메시지 전송 실패", e)
-                    }
+                    messageClient.sendMessage(
+                        node.id,
+                        PATH_SAFE_CONFIRMATION,
+                        confirmationJson.toByteArray()
+                    ).await(5000)
                 }
             }
         } catch (e: Exception) {
@@ -316,14 +326,13 @@ class WebSocketSubscriptions @Inject constructor(
         }
     }
 
-    // 안전 확인 메시지를 워치에서 모바일로 전송
     override suspend fun sendSafeConfirmationToMobile() {
         try {
             val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
             if (nodes.isNotEmpty()) {
                 val confirmationData = gson.toJson(
                     mapOf(
-                        "type" to TYPE_WATCH_SAFE,
+                        "type" to "WATCH_ACKNOWLEDGED_SAFE",
                         "state" to "CONFIRMED_SAFE",
                         "timestamp" to System.currentTimeMillis(),
                         "shouldCancelTimer" to true,
@@ -345,38 +354,6 @@ class WebSocketSubscriptions @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "안전 확인 메시지 전송 중 오류 발생", e)
-        }
-    }
-
-    // 단순 메시지
-    private fun handleSimpleWatchSafeConfirmation() {
-        try {
-            alertHandler.setSafeConfirmation(true)
-
-            alertService.showSafeConfirmationNotification(
-                "안전 확인",
-                "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "워치 안전 확인 처리 중 오류 발생", e)
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun handleDetailedWatchSafeConfirmation(confirmationData: Map<*, *>) {
-        try {
-            val typedData = confirmationData as Map<String, Any>
-
-            alertHandler.dismissAlert()
-
-            alertService.showSafeConfirmationNotification(
-                "안전 확인",
-                typedData["message"] as String? ?: "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
-            )
-
-            alertHandler.setSafeConfirmation(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "워치 안전 확인 처리 중 오류 발생", e)
         }
     }
 }

@@ -6,13 +6,16 @@ import com.ssafy.shieldroneapp.ui.screens.MainScreen
 import com.ssafy.shieldroneapp.ui.theme.ShieldroneappTheme
 import com.ssafy.shieldroneapp.data.repository.SensorRepository
 import com.ssafy.shieldroneapp.data.repository.DataRepository
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import javax.inject.Inject
 
 @Composable
 fun WearApp(
     sensorRepository: SensorRepository,
     dataRepository: DataRepository,
-    wearConnectionManager: WearConnectionManager
+    wearConnectionManager: WearConnectionManager,
+    alertHandler: AlertHandler,
 ) {
     ShieldroneappTheme {
         Layout(
@@ -21,7 +24,8 @@ fun WearApp(
             MainScreen(
                 sensorRepository = sensorRepository,
                 dataRepository = dataRepository,
-                wearConnectionManager = wearConnectionManager
+                wearConnectionManager = wearConnectionManager,
+                alertHandler= alertHandler,
             )
         }
     }

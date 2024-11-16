@@ -393,13 +393,12 @@ fun MapScreen(
                         } else {
                             // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
                         }
-
                     }
                     true
                 }
             } else null,
             onSafeConfirm = {
-                mapViewModel.handleSafeConfirmation()
+                mapViewModel.updateWatchConfirmation(true) 
                 mapViewModel.dismissAlert()
             },
             alertHandler = alertHandler,
