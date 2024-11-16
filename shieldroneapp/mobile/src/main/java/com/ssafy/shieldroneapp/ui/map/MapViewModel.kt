@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
-import com.ssafy.shieldroneapp.data.model.DroneMatchingResult
 import com.ssafy.shieldroneapp.data.model.DroneState
+import com.ssafy.shieldroneapp.data.model.DroneStatus
 import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
@@ -48,6 +48,8 @@ class MapViewModel @Inject constructor(
 ) : ViewModel() {
     companion object {
         private const val TAG = "MapViewModel 모바일: 맵 뷰모델"
+        private const val TIMER_DURATION_MS = 10 * 60 * 1000L // 10분
+        private const val SEARCH_DEBOUNCE_MS = 300L // 300ms 디바운스
     }
 
     private val _state = MutableStateFlow(MapState())
@@ -74,10 +76,14 @@ class MapViewModel @Inject constructor(
             is MapEvent.SearchHivesByKeyword -> searchHivesByKeyword(event.keyword) // 출발지 검색
             is MapEvent.SearchDestination ->  searchDestinationByKeyword(event.destination) // 도착지 검색
 
-            // 출발지/도착지 마커 선택 및 모달 관리
+            // 출발지/도착지 마커 선택
             is MapEvent.StartLocationSelected -> selectStartLocation(event.location) // 출발지 마커 선택
-            is MapEvent.EndLocationSelected -> TODO() // 도착지 마커 선택
-            is MapEvent.CloseModal -> dismissModal() // 모달 닫기
+            is MapEvent.EndLocationSelected -> selectEndLocation(event.location) // 도착지 마커 선택
+
+            // 모달 관리
+            is MapEvent.OpenModal -> openModal(event.modalType)
+            is MapEvent.CloseModal -> closeModal(event.modalType)
+            is MapEvent.CloseAllModals -> closeAllModals()
 
             // 출발지/도착지 검색 입력 필드 클릭 / 텍스트 입력 시
             is MapEvent.SearchFieldClicked -> clickSearchField(event.type) // 검색 입력 필드 클릭 (출발/도착 공통)
@@ -116,7 +122,6 @@ class MapViewModel @Inject constructor(
                 val location = mapRepository.getCurrentLocation() // 현재 위치 (LatLng)
                 _state.update { it.copy(currentLocation = location) }
                 Log.d(TAG, "현재 위치 확인: $location")
-
                 fetchNearbyHives(location) // LatLng 값을 통해 주변 출발지 (드론 정류장) 조회
             } catch (e: Exception) {
                 setError("MapViewModel: 현재 위치를 불러오는 중 오류가 발생했습니다.")
@@ -131,7 +136,6 @@ class MapViewModel @Inject constructor(
      * */
     private fun fetchNearbyHives(location: LatLng) {
         viewModelScope.launch {
-            Log.d(TAG, "위도, 경도 값: ${location.lat}, ${location.lng}")
             mapRepository.getNearbyHives(location)
                 .onSuccess { hives ->
                     // HiveResponse 목록을 RouteLocation 목록으로 변환
@@ -143,7 +147,6 @@ class MapViewModel @Inject constructor(
                 .onFailure { error ->
                     setError("주변 출발지를 불러오는 중 오류가 발생했습니다: ${error.message}")
                     Log.d(TAG, "초기 근처 정류장 목록 불러오기 오류: $error.message")
-
                 }
         }
     }
@@ -159,7 +162,7 @@ class MapViewModel @Inject constructor(
                     val routeLocations = hives.map { it.toRouteLocation() }
                     _state.update { it.copy(
                         searchResults = routeLocations,
-                        showSearchModal = true, // 검색 결과 모달 표시
+                        showSearchResultsModal = true, // 검색 결과 모달 표시
                         error = null
                     ) }
                     Log.d(TAG, "출발지 검색 결과, 정류장 리스트: $routeLocations")
@@ -184,7 +187,7 @@ class MapViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             searchResults = searchResults,
-                            showSearchModal = true, // 검색 결과 모달 표시
+                            showSearchResultsModal = true, // 검색 결과 모달 표시
                             isLoading = false,
                             error = null,
                         )
@@ -205,7 +208,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selectedStartMarker = location,
-                showStartMarkerModal = true
+                showStartMarkerModal = true,
             )
         }
         Log.d(TAG,"출발지 마커 모달 표시됨: ${location}")
@@ -214,63 +217,96 @@ class MapViewModel @Inject constructor(
     /**
      * 5. TODO: 도착지 마커 - 선택
      * */
-    private fun selectEndLocation() {}
+    private fun selectEndLocation(location: RouteLocation) {}
 
     /**
-     * 6. 모달 닫기
-     * */
-    private fun dismissModal() {
-        _state.update { it.copy(
-            showStartMarkerModal = false,
-            showSearchModal = false,
-        ) }
+     * 6. 특정 모달 열기
+     */
+    private fun openModal(modalType: ModalType) {
+        _state.update {
+            when (modalType) {
+                ModalType.SEARCH_RESULTS -> it.copy(showSearchResultsModal = true)
+                ModalType.START_MARKER_INFO -> it.copy(showStartMarkerModal = true)
+                ModalType.END_MARKER_INFO -> it.copy(showEndMarkerModal = true)
+                ModalType.DRONE_MATCH_RESULT -> it.copy(showDroneMatchResultModal = true)
+                else -> it
+            }
+        }
     }
 
     /**
-     * 7. 출발지/도착지 검색 입력 필드 클릭
+     * 7. 특정 모달 닫기
+     */
+    private fun closeModal(modalType: ModalType) {
+        _state.update {
+            when (modalType) {
+                ModalType.SEARCH_RESULTS -> it.copy(showSearchResultsModal = false)
+                ModalType.START_MARKER_INFO -> it.copy(showStartMarkerModal = false)
+                ModalType.END_MARKER_INFO -> it.copy(showEndMarkerModal = false)
+                ModalType.DRONE_MATCH_RESULT -> it.copy(showDroneMatchResultModal = false)
+                else -> it
+            }
+        }
+    }
+
+    /**
+     * 8. 전체 모달 닫기
+     */
+    private fun closeAllModals() {
+        _state.update {
+            it.copy(
+                showSearchResultsModal = false,
+                showStartMarkerModal = false,
+                showEndMarkerModal = false,
+                showDroneMatchResultModal = false
+            )
+        }
+    }
+
+    /**
+     * 9. 출발지/도착지 검색 입력 필드 클릭
      * */
     private fun clickSearchField(type: LocationType) {
         Log.d(TAG, "searchType 아 진짜 왜저래: $type")
-        _state.update { it.copy(
-            searchType = type,
-            showStartMarkerModal = false,
-        ) }
+        _state.update { it.copy(searchType = type,) }
+        closeAllModals()
     }
 
     /**
-     * 8. 출발지 검색 - 텍스트 입력 시 처리
+     * 10. 출발지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchStartLocation(text: String) {
         _state.update { it.copy(startSearchText = text) }
         if (text.trim() == "") {
             _state.update { it.copy(selectedStart = null) }
-            dismissModal()
+            closeAllModals()
         } else {
             searchHivesByKeyword(HiveSearchRequest(text))
         }
     }
 
     /**
-     * 9. 도착지 검색 - 텍스트 입력 시 처리
+     * 11. 도착지 검색 - 텍스트 입력 시 처리
      * */
     private fun searchEndLocation(text: String) {
         _state.update { it.copy(endSearchText = text) }
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(300) // 300ms 디바운스
+            delay(SEARCH_DEBOUNCE_MS) // 300ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
                 _state.update { it.copy(selectedEnd = null) }
-                dismissModal()
+                closeAllModals()
                 return@launch
+            } else {
+                searchDestinationByKeyword(KakaoSearchRequest(trimmedText))
             }
-            searchDestinationByKeyword(KakaoSearchRequest(trimmedText))
         }
     }
 
     /**
-     * 10. 출발지 선택
+     * 12. 출발지 선택
      * */
     private fun setStartLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -280,7 +316,7 @@ class MapViewModel @Inject constructor(
                         selectedStart = location,
                         startSearchText = location.locationName ?: "",
                         showStartMarkerModal = true,
-                        showSearchModal = false,
+                        showSearchResultsModal = false,
                     )
                 }
 //                mapRepository.saveStartLocation(location)
@@ -293,7 +329,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 11. 도착지 선택
+     * 13. 도착지 선택
      * */
     private fun setEndLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -303,7 +339,7 @@ class MapViewModel @Inject constructor(
                         selectedEnd = location,
                         endSearchText = location.locationName ?: "",
                         showEndMarkerModal = true,
-                        showSearchModal = false,
+                        showSearchResultsModal = false,
                     )
                 }
 //                mapRepository.saveEndLocation(location)
@@ -316,7 +352,7 @@ class MapViewModel @Inject constructor(
     }
     
     /**
-     * 12-1. 드론 배정 요청
+     * 14-1. 드론 배정 요청
      * */
     private fun requestDroneAssignment() {
         val startLocation = _state.value.selectedStart
@@ -353,24 +389,24 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 12-2. 드론 배정 후, 타이머 시작 (10분)
+     * 14-2. 드론 배정 후, 타이머 시작 (10분)
      * */
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             delay(10 * 60 * 1000L) // 10분 타이머
-            handleMatchingResult(DroneMatchingResult.TIMEOUT)
+            handleMatchingResult(DroneStatus.MATCHING_TIMEOUT)
         }
     }
 
     /**
-     * 13. 10분 경과 하면, 드론 배정 취소 요청
+     * 15. 10분 경과 하면, 드론 배정 취소 요청
      * */
     private fun requestDroneCancel(droneId: DroneCancelRequest) {
     }
 
     /**
-     * 14. 드론 최종 매칭 요청
+     * 16. 드론 최종 매칭 요청
      * */
     private fun requestDroneMatching(droneCode: Int) {
 //        viewModelScope.launch {
@@ -383,9 +419,9 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 15. 드론 매칭 결과 별, 이벤트 처리
+     * 17. 드론 매칭 결과 별, 이벤트 처리
      */
-    private fun handleMatchingResult(result: DroneMatchingResult) {
+    private fun handleMatchingResult(result: DroneStatus) {
 //        when (result) {
 //            DroneMatchingResult.SUCCESS -> {
 //                _state.update { it.copy(droneState = DroneState.MATCHED) }
@@ -410,14 +446,14 @@ class MapViewModel @Inject constructor(
 //    }
 
     /**
-     * 16. 위치 서비스 활성화 상태 업데이트
+     * 18. 위치 서비스 활성화 상태 업데이트
      * */
     fun updateLocationServicesState(isEnabled: Boolean) {
         _locationServicesEnabled.value = isEnabled
     }
 
     /**
-     * 17. 실시간 위치 추적을 시작
+     * 19. 실시간 위치 추적을 시작
      * */
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
@@ -437,14 +473,14 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 18. TODO: 실시간 위치 추적을 중지 (필요 시)
+     * 20. TODO: 실시간 위치 추적을 중지 (필요 시)
      * */
     private fun stopTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = false) }
     }
 
     /**
-     * 19. 오류 메시지 설정
+     * 21. 오류 메시지 설정
      * */
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }
