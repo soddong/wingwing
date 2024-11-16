@@ -33,10 +33,13 @@ class WebSocketMessageParser @Inject constructor() {
             if (jsonObject.has("type") &&
                 jsonObject.get("type").asString == "sendWarningFlag"
             ) {
-
                 val time = jsonObject.get("time").asString
                 val warningFlag = jsonObject.get("warningFlag").asBoolean
-                val frame = if (jsonObject.has("frame")) jsonObject.get("frame").asString else null
+                val frame = if (jsonObject.has("frame") && !jsonObject.get("frame").isJsonNull) {
+                    jsonObject.get("frame").asString
+                } else {
+                    null
+                }
 
                 Log.d(TAG, "경고음 메시지 파싱 성공 - time: $time, warningFlag: $warningFlag")
 
