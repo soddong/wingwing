@@ -524,15 +524,4 @@ class MapViewModel @Inject constructor(
     fun hideToast() {
         _showToast.value = false
     }
-
-    fun handleSafeConfirmation() {
-        viewModelScope.launch {
-            try {
-                Log.d(TAG, "안전 확인 처리 완료")
-            } catch (e: Exception) {
-                Log.e(TAG, "안전 확인 처리 실패", e)
-            }
-        }
-    }
-
 }

@@ -1,23 +1,15 @@
 package com.ssafy.shieldroneapp.data.repository
 
 import android.content.Context
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.util.Log
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.data.model.AlertData
 import com.ssafy.shieldroneapp.utils.await
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +22,6 @@ class AlertRepository @Inject constructor(
         private const val KEY_TIMESTAMP = "timestamp"
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _currentAlert = MutableStateFlow<AlertData?>(null)
     val currentAlert: StateFlow<AlertData?> = _currentAlert.asStateFlow()
 
@@ -109,7 +100,6 @@ class AlertRepository @Inject constructor(
         _isSafeConfirmed.value = isConfirmed
         if (isConfirmed) {
             _currentAlert.value = null 
-            _isSafeConfirmed.value = false
         }
     }
 }
