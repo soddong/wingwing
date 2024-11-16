@@ -6,10 +6,10 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_DEGREE
-import com.shieldrone.station.constant.FlightContstant.Companion.INPUT_VELOCITY
-import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
+import com.shieldrone.station.constant.FlightConstant.Companion.BTN_DELAY
+import com.shieldrone.station.constant.FlightConstant.Companion.INPUT_DEGREE
+import com.shieldrone.station.constant.FlightConstant.Companion.INPUT_VELOCITY
+import com.shieldrone.station.constant.FlightConstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State

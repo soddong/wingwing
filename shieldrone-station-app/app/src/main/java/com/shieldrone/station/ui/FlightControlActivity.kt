@@ -7,7 +7,7 @@ import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
+import com.shieldrone.station.constant.FlightConstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.databinding.FlightControlActivityBinding

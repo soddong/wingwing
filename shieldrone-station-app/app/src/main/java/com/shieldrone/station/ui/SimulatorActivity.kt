@@ -2,13 +2,10 @@ package com.shieldrone.station.ui
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.controller.RouteController
-import com.shieldrone.station.data.Position
 import com.shieldrone.station.databinding.SimulatorActivityBinding
 import com.shieldrone.station.model.SimulatorVM
 import com.shieldrone.station.service.route.RouteAdapter

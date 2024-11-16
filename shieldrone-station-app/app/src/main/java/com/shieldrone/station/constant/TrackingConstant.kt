@@ -1,6 +1,6 @@
 package com.shieldrone.station.constant
 
-class TrackingContstant {
+class TrackingConstant {
     companion object {
         const val PORT = 11435
     }

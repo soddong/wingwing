@@ -1,6 +1,6 @@
 package com.shieldrone.station.constant
 
-class FlightContstant {
+class FlightConstant {
     companion object {
         const val MAX_DEGREE = 360
         const val MAX_STICK_VALUE = 660

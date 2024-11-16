@@ -93,9 +93,10 @@ fun TrackingTargetScreen(
     val targetPosition by flightControlVM.targetPosition.collectAsState()
     val virtualMessage by flightControlVM.virtualMessage.collectAsState()
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
+    val virtualStickState by flightControlVM.virtualStickState.collectAsState()
 
-    var maxYaw by remember {  mutableStateOf(150.0) }   // 최대 회전 속도
-    var maxStickValue by remember {  mutableStateOf(220.0) }   // 최대 전진 속도
+    var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
+    var maxStickValue by remember { mutableStateOf(110.0) }   // 최대 전진 속도
     var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
     var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
@@ -168,6 +169,17 @@ fun TrackingTargetScreen(
                 thickness = 2.dp,   // 구분선의 두께 조절
                 modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
             )
+            // Virtual Stick 상태 정보 표시
+            Text("Virtual Stick 상태:")
+            if (virtualStickState != null) {
+                Text(virtualStickState!!)
+            }
+
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
 
             // Tracking Data 정보 표시
             Text("Tracking Data:")
@@ -179,9 +191,6 @@ fun TrackingTargetScreen(
             } else {
                 Text("추적 데이터가 존재하지 않습니다.")
             }
-            if (virtualMessage != null) {
-                Text("VIRTUAL : ${virtualMessage.toString()}")
-            }
             Divider(
                 color = Color.Gray, // 원하는 색상으로 변경 가능
                 thickness = 2.dp,   // 구분선의 두께 조절
@@ -189,7 +198,7 @@ fun TrackingTargetScreen(
             )
 
             Text("스트리밍 상태")
-            Text("VIRTUAL : $frameInfo")
+            Text("Streaming : $frameInfo")
             Divider(
                 color = Color.Gray, // 원하는 색상으로 변경 가능
                 thickness = 2.dp,   // 구분선의 두께 조절

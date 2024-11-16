@@ -7,14 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +41,9 @@ class FlightAutoControlVM : ViewModel() {
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
 
+    private val _virtualStickState = MutableStateFlow<String?>(null)
+    val virtualStickState: StateFlow<String?> get() = _virtualStickState.asStateFlow()
+
     var altitude: Int by mutableStateOf(0)
         private set
     var pitch: Int by mutableStateOf(0)
@@ -57,7 +58,9 @@ class FlightAutoControlVM : ViewModel() {
         flightControlModel.subscribeDroneState { state ->
             _droneState.value = state
         }
-
+        flightControlModel.subscribeVirtualStickState { stickState ->
+            _virtualStickState.value = stickState.toString()
+        }
     }
 
     // 3. 생명주기 관리

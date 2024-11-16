@@ -3,10 +3,10 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
-import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
-import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
-import com.shieldrone.station.constant.FlightContstant.Companion.VIRTUAL_STICK_TAG
+import com.shieldrone.station.constant.FlightConstant.Companion.BTN_DELAY
+import com.shieldrone.station.constant.FlightConstant.Companion.FLIGHT_CONTROL_TAG
+import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
+import com.shieldrone.station.constant.FlightConstant.Companion.VIRTUAL_STICK_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.LeftStick
 import com.shieldrone.station.data.RightStick
@@ -17,6 +17,7 @@ import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.value.common.LocationCoordinate2D
 import dji.sdk.keyvalue.value.common.LocationCoordinate3D
 import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
+import dji.sdk.keyvalue.value.flightcontroller.FlightControlAuthorityChangeReason
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.ErrorType
 import dji.v5.common.error.IDJIError
@@ -25,6 +26,8 @@ import dji.v5.et.get
 import dji.v5.manager.KeyManager
 import dji.v5.manager.aircraft.virtualstick.IStick
 import dji.v5.manager.aircraft.virtualstick.VirtualStickManager
+import dji.v5.manager.aircraft.virtualstick.VirtualStickState
+import dji.v5.manager.aircraft.virtualstick.VirtualStickStateListener
 
 class FlightAutoControlModel {
 
@@ -105,6 +108,7 @@ class FlightAutoControlModel {
 
     fun disableVirtualStickMode(callback: CommonCallbacks.CompletionCallback) {
         Log.d(TAG, "[Model] disableVirtualStickMode 시작")
+
         virtualStickManager.disableVirtualStick(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 isVirtualStickEnabled = false
@@ -119,6 +123,41 @@ class FlightAutoControlModel {
         })
     }
 
+    fun subscribeVirtualStickState(onUpdate: (String) -> Unit) {
+        var virtualStickState: String? = null
+        var changeReason: String? = null
+
+        virtualStickManager.setVirtualStickStateListener(object : VirtualStickStateListener {
+            override fun onVirtualStickStateUpdate(stickState: VirtualStickState) {
+                Log.d(TAG, "subscribeVirtualStickState: VirtualStickState 업데이트 $stickState")
+                virtualStickState = """
+                가상 스틱 상태: ${stickState.currentFlightControlAuthorityOwner.name}
+                가상 스틱 활성화 여부: ${stickState.isVirtualStickEnable}
+            """.trimIndent()
+                updateCombinedState()
+            }
+
+            override fun onChangeReasonUpdate(reason: FlightControlAuthorityChangeReason) {
+                Log.d(TAG, "subscribeVirtualStickState: ChangeReason 업데이트 $reason")
+                changeReason = """
+                가상 스틱 상태 변경 이유: ${reason.name}
+            """.trimIndent()
+                updateCombinedState()
+            }
+
+            private fun updateCombinedState() {
+                val combinedState = """
+                VirtualStickState:
+                ${virtualStickState ?: "N/A"}
+
+                ChangeReason:
+                ${changeReason ?: "N/A"}
+            """.trimIndent()
+
+                onUpdate(combinedState)
+            }
+        })
+    }
 
     // 4. Drone: Setting
 

@@ -1,6 +1,6 @@
 package com.shieldrone.station.data
 
-import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
+import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
 import dji.v5.manager.aircraft.virtualstick.IStick
 
 
