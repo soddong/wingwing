@@ -6,7 +6,6 @@ import android.util.Log
 import com.shieldrone.station.constant.FlightContstant.Companion.BTN_DELAY
 import com.shieldrone.station.constant.FlightContstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.MAX_STICK_VALUE
-import com.shieldrone.station.constant.FlightContstant.Companion.SIMULATOR_TAG
 import com.shieldrone.station.constant.FlightContstant.Companion.VIRTUAL_STICK_TAG
 import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.LeftStick
@@ -32,6 +31,7 @@ class FlightAutoControlModel {
     // 1. field, companion object
     var isVirtualStickEnabled = false
     private val handler = Handler(Looper.getMainLooper())
+    private val TAG = "FlightAutoControlModel"
 
     companion object {
         val keyConnection by lazy { KeyTools.createKey(FlightControllerKey.KeyConnection) }
@@ -88,29 +88,32 @@ class FlightAutoControlModel {
      * Virtual Stick 모드 활성화
      */
     fun enableVirtualStickMode(callback: CommonCallbacks.CompletionCallback) {
+        Log.d(TAG, "[Model] enableVirtualStickMode 시작")
         virtualStickManager.enableVirtualStick(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 isVirtualStickEnabled = true
+                Log.d(TAG, "[Model] enableVirtualStickMode 성공")
                 callback.onSuccess()
             }
 
             override fun onFailure(error: IDJIError) {
+                Log.d(TAG, "[Model] enableVirtualStickMode 실패: ${error.description()}")
                 callback.onFailure(error)
             }
         })
     }
 
-    /**
-     * Virtual Stick 모드 비활성화
-     */
     fun disableVirtualStickMode(callback: CommonCallbacks.CompletionCallback) {
+        Log.d(TAG, "[Model] disableVirtualStickMode 시작")
         virtualStickManager.disableVirtualStick(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 isVirtualStickEnabled = false
+                Log.d(TAG, "[Model] disableVirtualStickMode 성공")
                 callback.onSuccess()
             }
 
             override fun onFailure(error: IDJIError) {
+                Log.d(TAG, "[Model] disableVirtualStickMode 실패: ${error.description()}")
                 callback.onFailure(error)
             }
         })
@@ -124,7 +127,9 @@ class FlightAutoControlModel {
      * 이륙 시작 함수
      */
     fun startTakeOff(callback: CommonCallbacks.CompletionCallback) {
+        Log.d(TAG, "[Model] startTakeOff 시작")
         if (!checkPreconditionsForTakeoff()) {
+            Log.d(TAG, "[Model] startTakeOff 실패: 이륙 조건 불충족")
             callback.onFailure(object : IDJIError {
                 override fun errorType() = ErrorType.UNKNOWN
                 override fun errorCode() = "TAKE_OFF_FAILED"
@@ -132,15 +137,16 @@ class FlightAutoControlModel {
                 override fun hint() = "이륙에 실패했습니다."
                 override fun description() = "이륙에 실패했습니다. 이륙 조건을 확인해보세요."
                 override fun isError(p0: String?) = true
-
             })
             return
         }
 
         KeyManager.getInstance().run {
             keyStartTakeoff.action({
-
+                Log.d(TAG, "[Model] startTakeOff 성공")
+                callback.onSuccess()
             }, { e: IDJIError ->
+                Log.d(TAG, "[Model] startTakeOff 실패: ${e.description()}")
                 callback.onFailure(e)
             })
         }
@@ -150,26 +156,18 @@ class FlightAutoControlModel {
      * 착륙 시작 함수
      */
     fun startLanding(callback: CommonCallbacks.CompletionCallback) {
-        callback.onFailure(object : IDJIError {
-            override fun errorType() = ErrorType.UNKNOWN
-            override fun errorCode() = "LANDING_FAILED"
-            override fun innerCode() = "LANDING_FAILED"
-            override fun hint() = "착륙 시도 횟수를 초과했습니다."
-            override fun description() = "착륙에 반복 실패하였습니다."
-            override fun isError(p0: String?) = true
-        })
+        Log.d(TAG, "[Model] startLanding 시작")
         KeyManager.getInstance().run {
-            keyStartAutoLanding
-                .action({
-                    onDestroy()
-                    callback.onSuccess()
-                }, { e: IDJIError ->
-
-                    callback.onFailure(e)
-                })
+            keyStartAutoLanding.action({
+                Log.d(TAG, "[Model] startLanding 성공")
+                callback.onSuccess()
+            }, { e: IDJIError ->
+                Log.d(TAG, "[Model] startLanding 실패: ${e.description()}")
+                callback.onFailure(e)
+            })
         }
-
     }
+
 
     /**
      * 이륙 전 조건 검사
@@ -246,69 +244,98 @@ class FlightAutoControlModel {
     // 7. Calculate Help
     // 드론의 Yaw 값을 조정하여 방향 전환
     fun adjustYaw(yawDifference: Double) {
+        Log.d(TAG, "[Model] adjustYaw 시작")
         val yawRate =
-            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble())
-                .toInt() // Yaw 속도 제한 (deg/s)
-        val leftStick = LeftStick(
-            StickPosition(0, yawRate), // Throttle, Yaw Rate
-        )
+            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        val leftStick = LeftStick(StickPosition(0, yawRate))
         setLeftStick(leftStick)
-        Log.d(SIMULATOR_TAG, "Adjusting yaw with yawRate: $yawRate")
+        Log.d(TAG, "[Model] adjustYaw 성공: yawRate=$yawRate")
     }
+
 
     /**
      * 드론을 전진시키는 메서드 (Pitch 값 조정)
      * rightStick만 제어하기
      */
     fun adjustPitch(pitch: Int) {
+        Log.d(TAG, "[Model] adjustPitch 시작")
         val rightStick = RightStick().apply {
             verticalPosition = pitch
             horizontalPosition = 0
         }
         setRightStick(rightStick)
+        Log.d(TAG, "[Model] adjustPitch 성공: pitch=$pitch")
     }
 
     fun adjustAltitude(altitude: Int) {
-
+        Log.d(TAG, "[Model] adjustAltitude 시작")
         val leftStick = LeftStick().apply {
             verticalPosition = altitude
             horizontalPosition = 0
         }
-        setLeftStick(leftStick)
+        try {
+            setLeftStick(leftStick)
+            Log.d(TAG, "[Model] adjustAltitude 성공: altitude=$altitude")
+        } catch (e: Exception) {
+            Log.d(TAG, "[Model] adjustAltitude 실패: ${e.message}")
+        }
     }
 
     private fun setLeftStick(leftStick: IStick) {
-        virtualStickManager.leftStick.verticalPosition = leftStick.verticalPosition
-        virtualStickManager.leftStick.horizontalPosition = leftStick.horizontalPosition
-
-        Log.d(VIRTUAL_STICK_TAG, "left stick values set: ${virtualStickManager.leftStick}")
-
+        Log.d(TAG, "[Model] setLeftStick 시작")
+        try {
+            virtualStickManager.leftStick.verticalPosition = leftStick.verticalPosition
+            virtualStickManager.leftStick.horizontalPosition = leftStick.horizontalPosition
+            Log.d(
+                TAG,
+                "[Model] setLeftStick 성공: verticalPosition=${leftStick.verticalPosition}, horizontalPosition=${leftStick.horizontalPosition}"
+            )
+        } catch (e: Exception) {
+            Log.d(TAG, "[Model] setLeftStick 실패: ${e.message}")
+        }
     }
 
     private fun setRightStick(rightStick: IStick) {
-        virtualStickManager.rightStick.verticalPosition = rightStick.verticalPosition
-        virtualStickManager.rightStick.horizontalPosition = rightStick.horizontalPosition
-
-        Log.d(VIRTUAL_STICK_TAG, "right stick values set: ${virtualStickManager.rightStick}")
+        Log.d(TAG, "[Model] setRightStick 시작")
+        try {
+            virtualStickManager.rightStick.verticalPosition = rightStick.verticalPosition
+            virtualStickManager.rightStick.horizontalPosition = rightStick.horizontalPosition
+            Log.d(
+                TAG,
+                "[Model] setRightStick 성공: verticalPosition=${rightStick.verticalPosition}, horizontalPosition=${rightStick.horizontalPosition}"
+            )
+        } catch (e: Exception) {
+            Log.d(TAG, "[Model] setRightStick 실패: ${e.message}")
+        }
     }
 
 
     fun subscribeDroneGpsLevel(onUpdate: (Int) -> Unit) {
-        var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
-        handler.post(object : Runnable {
-            override fun run() {
-                val newGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
+        Log.d(TAG, "[Model] subscribeDroneGpsLevel 시작")
+        try {
+            var currentGPSLevel = KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
+            handler.post(object : Runnable {
+                override fun run() {
+                    val newGPSLevel =
+                        KeyManager.getInstance().getValue(keyGPSSignalLevel)?.value() ?: 0
 
-                if (currentGPSLevel != newGPSLevel) {
-                    currentGPSLevel = newGPSLevel
-                    onUpdate(newGPSLevel)
-                    Log.d(FLIGHT_CONTROL_TAG, "GPS Signal Level updated: $newGPSLevel")
+                    if (currentGPSLevel != newGPSLevel) {
+                        currentGPSLevel = newGPSLevel
+                        onUpdate(newGPSLevel)
+                        Log.d(
+                            TAG,
+                            "[Model] subscribeDroneGpsLevel 성공: GPS Signal Level updated: $newGPSLevel"
+                        )
+                    }
+
+                    handler.postDelayed(this, BTN_DELAY)
                 }
-
-                handler.postDelayed(this, BTN_DELAY)
-            }
-        })
+            })
+        } catch (e: Exception) {
+            Log.d(TAG, "[Model] subscribeDroneGpsLevel 실패: ${e.message}")
+        }
     }
+
 
     // 6. State, Location Helper
     fun getCurrentStickPositions(): Controls {

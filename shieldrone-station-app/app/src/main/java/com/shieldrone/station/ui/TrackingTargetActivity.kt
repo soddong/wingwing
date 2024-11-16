@@ -94,8 +94,8 @@ fun TrackingTargetScreen(
     val virtualMessage by flightControlVM.virtualMessage.collectAsState()
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
 
-    var maxYaw by remember {  mutableStateOf(150.0) }   // 최대 회전 속도
-    var maxStickValue by remember {  mutableStateOf(220.0) }   // 최대 전진 속도
+    var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
+    var maxStickValue by remember { mutableStateOf(220.0) }   // 최대 전진 속도
     var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
     var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
@@ -129,7 +129,7 @@ fun TrackingTargetScreen(
 
                 val vY = -KpValue * eYFuture
 
-                val vYLimited = vY.coerceIn(-1.0, 1.0)* maxStickValue
+                val vYLimited = vY.coerceIn(-1.0, 1.0) * maxStickValue
                 Log.d("TrackingTargetActivity", "vYLimited: $vYLimited")
                 // 100ms 간격으로 업데이트
                 flightControlVM.updatePitch(vYLimited.toInt())
@@ -168,15 +168,14 @@ fun TrackingTargetScreen(
             // Tracking Data 정보 표시
             Text("Tracking Data:")
             if (trackingData != null) {
-                    Text("Box Width: ${trackingData!!.newData.boxWidth}, Box Height: ${trackingData!!.newData.boxHeight}")
-                    Text("Normalized Offset X: ${trackingData!!.newData.normalizedOffsetX}")
-                    Text("Normalized Offset Y: ${trackingData!!.newData.normalizedOffsetY}")
+                Text("Box Width: ${trackingData!!.newData.boxWidth}, Box Height: ${trackingData!!.newData.boxHeight}")
+                Text("Normalized Offset X: ${trackingData!!.newData.normalizedOffsetX}")
+                Text("Normalized Offset Y: ${trackingData!!.newData.normalizedOffsetY}")
 
-                }
-            else{
+            } else {
                 Text("추적 데이터가 존재하지 않습니다.")
             }
-            if(virtualMessage != null) {
+            if (virtualMessage != null) {
                 Text("VIRTUAL : ${virtualMessage.toString()}")
             }
             Spacer(modifier = Modifier.height(10.dp))

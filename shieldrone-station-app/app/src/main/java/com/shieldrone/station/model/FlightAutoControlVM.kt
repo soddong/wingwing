@@ -2,6 +2,7 @@ package com.shieldrone.station.model
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class FlightAutoControlVM : ViewModel() {
-
+    private val TAG = "FlightAutoControlVM"
     // 1. 라이브데이터 및 필요한 필드
     private val flightControlModel = FlightAutoControlModel()
     private val handler = Handler(Looper.getMainLooper())
@@ -61,90 +62,81 @@ class FlightAutoControlVM : ViewModel() {
 
     // 3. 생명주기 관리
 
-    /**
-     * ViewModel이 해제될 때 호출되는 메서드로 리소스를 정리
-     */
+    // 생명주기 관리
     override fun onCleared() {
+        Log.d(TAG, "[ViewModel] onCleared 시작")
         super.onCleared()
         handler.removeCallbacksAndMessages(null)
+        Log.d(TAG, "[ViewModel] onCleared 성공")
     }
 
     // 4. 드론 이륙 및 착륙
-    // 이륙 시작
+
     fun startTakeOff() {
+        Log.d(TAG, "[ViewModel] startTakeOff 시작")
         flightControlModel.startTakeOff(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 _message.value = "이륙이 시작되었습니다."
+                Log.d(TAG, "[ViewModel] startTakeOff 성공")
                 flightControlModel.monitorTakeoffStatus()
             }
 
             override fun onFailure(error: IDJIError) {
                 _message.value = "이륙 실패: ${error.description()}"
+                Log.d(TAG, "[ViewModel] startTakeOff 실패: ${error.description()}")
             }
         })
     }
 
     // 순항 고도로 상승
-    fun ascendToCruiseAltitude(
-        altitudeSpeed: Int,
-        targetAltitude: Float = 3.2f // 기본 목표 고도 (예: 3200m)
-    ) {
-        // 코루틴을 사용해 비동기로 드론 상승을 조정
+    fun ascendToCruiseAltitude(altitudeSpeed: Int, targetAltitude: Float = 3.2f) {
+        Log.d(TAG, "[ViewModel] ascendToCruiseAltitude 시작")
         CoroutineScope(Dispatchers.Default).launch {
-            adjustAltitudeCoroutine(altitudeSpeed, targetAltitude)
+            try {
+                adjustAltitudeCoroutine(altitudeSpeed, targetAltitude)
+                Log.d(TAG, "[ViewModel] ascendToCruiseAltitude 성공")
+            } catch (e: Exception) {
+                Log.d(TAG, "[ViewModel] ascendToCruiseAltitude 실패: ${e.message}")
+            }
         }
     }
 
-    suspend fun adjustAltitudeCoroutine(
-        altitudeSpeed: Int,
-        targetAltitude: Float
-    ) {
-        while (true) {
-            // 현재 드론 고도를 가져옴
-            val currentAltitude = _droneState.value!!.altitude!!
+    suspend fun adjustAltitudeCoroutine(altitudeSpeed: Int, targetAltitude: Float) {
+        Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 시작")
+        try {
+            while (true) {
+                val currentAltitude = _droneState.value!!.altitude!!
+                if (currentAltitude >= targetAltitude) {
+                    Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 성공: 목표 고도 도달")
+                    break
+                }
 
-            // 목표 고도에 도달했는지 확인
-            if (currentAltitude >= targetAltitude) {
-                println("Reached cruise altitude.")
-                break
+                val altitudeRatio = currentAltitude / targetAltitude
+                val adjustmentSpeed = when {
+                    altitudeRatio < 0.2 -> (altitudeSpeed * 0.3).toLong()
+                    altitudeRatio < 0.8 -> altitudeSpeed
+                    else -> (altitudeSpeed * 0.5).toLong()
+                }
+
+                flightControlModel.adjustAltitude(adjustmentSpeed.toInt())
+                delay(100L)
             }
-
-            // 목표 고도 대비 현재 고도의 비율을 계산 (0.0 ~ 1.0)
-            val altitudeRatio = currentAltitude / targetAltitude
-
-            // 상승 속도를 동적으로 조절
-            val adjustmentSpeed = when {
-                altitudeRatio < 0.2 -> {
-                    // 목표 고도의 20% 미만에서는 천천히 상승
-                    (altitudeSpeed * 0.3).toLong()
-                }
-                altitudeRatio < 0.8 -> {
-                    // 목표 고도의 20% ~ 80% 구간에서는 최대 속도로 상승
-                    altitudeSpeed
-                }
-                else -> {
-                    // 목표 고도의 80% 이상에서는 속도를 줄여 부드럽게 도달
-                    (altitudeSpeed * 0.5).toLong()
-                }
-            }
-
-            // 고도 조정 (동기 함수 호출)
-            flightControlModel.adjustAltitude(adjustmentSpeed.toInt())
-
-            // 잠시 대기 (0.5초 대기 후 다시 확인)
-            delay(100L)
+        } catch (e: Exception) {
+            Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 실패: ${e.message}")
         }
     }
 
-    // 착륙 시작
     fun startLanding() {
+        Log.d(TAG, "[ViewModel] startLanding 시작")
         flightControlModel.startLanding(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
                 _message.value = "착륙이 시작되었습니다."
+                Log.d(TAG, "[ViewModel] startLanding 성공")
             }
 
             override fun onFailure(error: IDJIError) {
                 _message.value = "착륙 실패: ${error.description()}"
+                Log.d(TAG, "[ViewModel] startLanding 실패: ${error.description()}")
             }
         })
     }
@@ -156,54 +148,78 @@ class FlightAutoControlVM : ViewModel() {
      * Virtual Stick 모드 활성화
      */
     fun enableVirtualStickMode() {
+        Log.d(TAG, "[ViewModel] enableVirtualStickMode 시작")
         flightControlModel.enableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-//                _message.value = "Virtual Stick 모드가 활성화되었습니다."
                 _virtualMessage.value = "VIRTUAL 활성화"
+                Log.d(TAG, "[ViewModel] enableVirtualStickMode 성공")
             }
 
             override fun onFailure(error: IDJIError) {
                 _message.value = "Virtual Stick 활성화 실패: ${error.description()}"
-                
+                Log.d(TAG, "[ViewModel] enableVirtualStickMode 실패: ${error.description()}")
             }
         })
     }
 
-    /**
-     * Virtual Stick 모드 비 활성화
-     */
     fun disableVirtualStickMode() {
+        Log.d(TAG, "[ViewModel] disableVirtualStickMode 시작")
         flightControlModel.disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-//                _message.value = "Virtual Stick 모드가 비활성화되었습니다."
-                _virtualMessage.value = "VIRTUAL 비활성화"
-                
+                Log.d(TAG, "[ViewModel] disableVirtualStickMode 성공")
             }
 
             override fun onFailure(error: IDJIError) {
-                _message.value = "Virtual Stick 비활성화 실패: ${error.description()}"
+                Log.d(TAG, "[ViewModel] disableVirtualStickMode 실패: ${error.description()}")
             }
         })
     }
 
     fun adjustYaw(yawDifference: Double) {
-        flightControlModel.adjustYaw(yawDifference)
+        Log.d(TAG, "[ViewModel] adjustYaw 시작")
+        try {
+            flightControlModel.adjustYaw(yawDifference)
+//            Log.d(TAG, "[ViewModel] adjustYaw 성공")
+        } catch (e: Exception) {
+            Log.d(TAG, "[ViewModel] adjustYaw 실패: ${e.message}")
+        }
     }
+
     fun setTargetPosition(position: Position) {
+        Log.d(TAG, "[ViewModel] setTargetPosition 시작")
         _targetPosition.value = position
+        Log.d(TAG, "[ViewModel] setTargetPosition 성공: position=$position")
     }
 
     fun updatePitch(value: Int) {
+        Log.d(TAG, "[ViewModel] updatePitch 시작")
         pitch = value
+        Log.d(TAG, "[ViewModel] updatePitch 성공: pitch=$value")
     }
 
     fun adjustPitch() {
-        flightControlModel.adjustPitch(pitch)
+        Log.d(TAG, "[ViewModel] adjustPitch 시작")
+        try {
+            flightControlModel.adjustPitch(pitch)
+//            Log.d(TAG, "[ViewModel] adjustPitch 성공")
+        } catch (e: Exception) {
+            Log.d(TAG, "[ViewModel] adjustPitch 실패: ${e.message}")
+        }
     }
+
     fun updateAltitude(value: Int) {
+        Log.d(TAG, "[ViewModel] updateAltitude 시작")
         altitude = value
+        Log.d(TAG, "[ViewModel] updateAltitude 성공: altitude=$value")
     }
+
     fun adjustAltitude() {
-        flightControlModel.adjustAltitude(altitude)
+        Log.d(TAG, "[ViewModel] adjustAltitude 시작")
+        try {
+            flightControlModel.adjustAltitude(altitude)
+//            Log.d(TAG, "[ViewModel] adjustAltitude 성공")
+        } catch (e: Exception) {
+            Log.d(TAG, "[ViewModel] adjustAltitude 실패: ${e.message}")
+        }
     }
 }
