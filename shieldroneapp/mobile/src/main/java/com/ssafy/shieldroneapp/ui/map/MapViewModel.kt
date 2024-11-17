@@ -380,6 +380,17 @@ class MapViewModel @Inject constructor(
             return
         }
 
+        // 드론 상태 확인
+        val currentDroneState = _state.value.droneState
+
+        // MATCHING_ASSIGNED 상태인 경우
+        if (currentDroneState != null && currentDroneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+            _state.update { it.copy(showDroneAssignmentSuccessModal = true) }
+            Log.d(TAG, "드론이 이미 배정됨. 성공 모달 표시")
+            return
+        }
+
+        // MATCHING_NONE인 경우에만 요청
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
