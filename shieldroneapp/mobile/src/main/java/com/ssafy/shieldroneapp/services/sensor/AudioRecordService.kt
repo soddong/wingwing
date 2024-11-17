@@ -31,9 +31,6 @@ class AudioRecordService : BaseMobileService() {
         const val NOTIFICATION_ID = 1
     }
 
-    private val reconnectionJob = Job()
-    private val reconnectionScope = CoroutineScope(Dispatchers.IO + reconnectionJob)
-
     @Inject
     lateinit var audioRecorder: AudioRecorder
 
@@ -51,7 +48,7 @@ class AudioRecordService : BaseMobileService() {
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "백그라운드에서 음성을 감지하는 서비스입니다"
-                setShowBadge(false) // 앱 아이콘에 뱃지 표시 안 함
+                setShowBadge(false)
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java)
@@ -60,7 +57,6 @@ class AudioRecordService : BaseMobileService() {
         }
     }
 
-    // 포그라운드 서비스 알림 생성
     private fun createNotification(): Notification {
         Log.d(TAG, "포그라운드 서비스 알림 생성")
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -68,7 +64,7 @@ class AudioRecordService : BaseMobileService() {
             .setContentText("백그라운드에서 음성을 감지하고 있습니다")
             .setSmallIcon(R.drawable.record_ic)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true) // 사용자가 쉽게 지울 수 없도록 설정
+            .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
     }
@@ -76,25 +72,6 @@ class AudioRecordService : BaseMobileService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        setupWebSocketConnection()
-    }
-
-    private fun setupWebSocketConnection() {
-        reconnectionScope.launch {
-            while (true) {
-                try {
-                    if (!webSocketService.getConnectionState()) { 
-                        Log.d(TAG, "WebSocket 연결 시도")
-                        webSocketService.initialize()
-                    }
-                     // 5초마다 연결 상태 확인
-                    delay(5000)
-                } catch (e: Exception) {
-                    Log.e(TAG, "WebSocket 연결 실패, 재시도 예정", e)
-                    delay(1000)
-                }
-            }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -132,19 +109,17 @@ class AudioRecordService : BaseMobileService() {
         }
     }
 
-
     private fun stopRecording() {
         Log.d(TAG, "녹음 중지")
         isRecording = false
         audioRecorder.stopRecording()
-        webSocketService.shutdown() 
+        webSocketService.shutdown()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        reconnectionJob.cancel()
         stopRecording()
     }
 }
