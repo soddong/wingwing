@@ -59,18 +59,7 @@ class TrackingTargetActivity : ComponentActivity() {
             TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM)
         }
     }
-//        val routeListener = object : RouteAdapter.RouteListener {
-//            override fun onRouteUpdate(latitude: Double, longitude: Double, altitude: Double) {
-//                val position = Position(latitude = latitude, longitude = longitude, altitude = 1.2)
-//                Log.d(FLIGHT_CONTROL_TAG, "Updated Route to: $latitude, $longitude")
-//                flightControlVM.setTargetPosition(position)
-//
-//            }
-//        }
 
-//        routeAdapter = RouteAdapter(routeListener)
-//        routeController = RouteController(routeAdapter)
-//        routeController.startReceivingLocation()
 
     override fun onDestroy() {
         super.onDestroy()

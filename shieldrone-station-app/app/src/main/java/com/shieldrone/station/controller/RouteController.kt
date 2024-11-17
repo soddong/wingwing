@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 
-class RouteController (private val routeAdapter: RouteAdapter) {
+class RouteController(private val routeAdapter: RouteAdapter) {
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
     private var udpSocket: DatagramSocket? = null
@@ -45,13 +45,25 @@ class RouteController (private val routeAdapter: RouteAdapter) {
                 val message = String(packet.data, 0, packet.length, Charsets.UTF_8)
                 val data = JSONObject(message)  // JSON 데이터로 변환
 
-                val latitude = data.getDouble("lat")
-                val longitude = data.getDouble("lng")
+                // location 추출
+                val location = data.getJSONObject("location")
+                val locationLat = location.optDouble("lat", Double.NaN)
+                val locationLng = location.optDouble("lng", Double.NaN)
 
+                // dest_location 추출
+                val destLocation = data.getJSONObject("dest_location")
+                val destLat = destLocation.optDouble("lat", Double.NaN)
+                val destLng = destLocation.optDouble("lng", Double.NaN)
 
-                routeAdapter.process(latitude, longitude)
+                // 데이터 처리
+                routeAdapter.process(locationLat, locationLng, destLat, destLng)
+
                 // 수신한 데이터 출력
-                Log.i("RouteController", "Received Location: lat=$latitude, lng=$longitude")
+                Log.i(
+                    "RouteController",
+                    "Received Locations: location(lat=$locationLat, lng=$locationLng), " +
+                            "dest_location(lat=$destLat, lng=$destLng)"
+                )
             }
 
         } catch (e: Exception) {

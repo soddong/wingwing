@@ -10,8 +10,6 @@ import androidx.lifecycle.ViewModel
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.service.route.RouteAdapter
-import dji.sdk.keyvalue.value.common.LocationCoordinate2D
-import dji.sdk.keyvalue.value.flightcontroller.FCGoHomeState
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import kotlinx.coroutines.CoroutineScope
@@ -23,24 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-class FlightControlVM : ViewModel() {
-
-    private val TAG = "FlightControlVM"
-
-    // 1. 라이브데이터 및 필요한 필드
-    private val flightControlModel = FlightControlModel()
+class FlightControlGPSVM : ViewModel() {
+    private val TAG = "FlightControlGPSVM"
     private val handler = Handler(Looper.getMainLooper())
-
-    private var isMoving = false
-
-    private val _virtualMessage = MutableStateFlow<String?>(null)
-    val virtualMessage: StateFlow<String?> get() = _virtualMessage.asStateFlow()
-
-    private val _gpsSignalLevel = MutableStateFlow<Int?>(null)
-    val gpsSignalLevel: StateFlow<Int?> get() = _gpsSignalLevel.asStateFlow()
-
-    private val _targetPosition = MutableStateFlow<Position?>(null)
-    val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
+    private val flightControlGPSModel = FlightControlGPSModel()
 
     private val _droneState = MutableStateFlow<State?>(null)
     val droneState: StateFlow<State?> = _droneState.asStateFlow()
@@ -57,12 +41,6 @@ class FlightControlVM : ViewModel() {
     private val _destinationLocation = MutableStateFlow(Position(0.0, 0.0, 0.0))
     val destinationLocation: StateFlow<Position> = _destinationLocation.asStateFlow()
 
-    private var _goHomeState = MutableStateFlow(FCGoHomeState.UNKNOWN)
-    val goHomeState: StateFlow<FCGoHomeState> = _goHomeState.asStateFlow()
-
-    private val _homeLocation =
-        MutableStateFlow(LocationCoordinate2D(0.0, 0.0))
-    val homeLocation: StateFlow<LocationCoordinate2D> = _homeLocation.asStateFlow()
     var altitude: Int by mutableStateOf(0)
         private set
     var pitch: Int by mutableStateOf(0)
@@ -103,33 +81,30 @@ class FlightControlVM : ViewModel() {
     val routeModel: RouteModel = RouteModel(routeListener)
 
     init {
-        flightControlModel.apply {
+        flightControlGPSModel.apply {
             subscribeDroneState { _droneState.value = it }
             subscribeVirtualStickState { _virtualStickState.value = it }
-            subscribeGoHomeState { _goHomeState.value = it }
         }
-
-        flightControlModel.subscribeGoHomeState { state ->
-            _goHomeState.value = state
-        }
-
-        flightControlModel.subscribeHomeLocation { location ->
-            _homeLocation.value = location
-        }
-
     }
 
     fun startReceivingLocation() = routeModel.startReceivingLocation()
     fun stopReceivingLocation() = routeModel.stopReceivingLocation()
 
+    override fun onCleared() {
+        super.onCleared()
+        handler.removeCallbacksAndMessages(null)
+        Log.d(TAG, "[ViewModel] 리소스 해제")
+    }
+
+
     fun startTakeOff() {
         val callback = createCompletionCallback("이륙 시작", "이륙 실패")
-        flightControlModel.startTakeOff(callback)
+        flightControlGPSModel.startTakeOff(callback)
     }
 
     fun startLanding() {
         val callback = createCompletionCallback("착륙 시작", "착륙 실패")
-        flightControlModel.startLanding(callback)
+        flightControlGPSModel.startLanding(callback)
     }
 
     fun ascendToCruiseAltitude(altitudeSpeed: Int, targetAltitude: Float = 3.2f) {
@@ -150,7 +125,7 @@ class FlightControlVM : ViewModel() {
             val altitudeRatio = currentAltitude / targetAltitude
             val adjustmentSpeed = calculateSpeed(altitudeSpeed, altitudeRatio)
 
-            flightControlModel.adjustAltitude(adjustmentSpeed)
+            flightControlGPSModel.adjustAltitude(adjustmentSpeed)
             delay(100L)
         }
     }
@@ -165,18 +140,18 @@ class FlightControlVM : ViewModel() {
 
     fun enableVirtualStickMode() {
         val callback = createCompletionCallback("VIRTUAL 활성화", "Virtual Stick 활성화 실패")
-        flightControlModel.enableVirtualStickMode(callback)
+        flightControlGPSModel.enableVirtualStickMode(callback)
     }
 
     fun disableVirtualStickMode() {
         val callback = createCompletionCallback("VIRTUAL 비활성화", "Virtual Stick 비활성화 실패")
-        flightControlModel.disableVirtualStickMode(callback)
+        flightControlGPSModel.disableVirtualStickMode(callback)
     }
 
 
     fun adjustYaw(yawDifference: Double) {
         try {
-            flightControlModel.adjustYaw(yawDifference)
+            flightControlGPSModel.adjustYaw(yawDifference)
         } catch (e: Exception) {
             Log.e(TAG, "Yaw 조정 실패: ${e.message}")
         }
@@ -184,7 +159,7 @@ class FlightControlVM : ViewModel() {
 
     fun adjustPitch() {
         try {
-            flightControlModel.adjustPitch(pitch)
+            flightControlGPSModel.adjustPitch(pitch)
         } catch (e: Exception) {
             Log.e(TAG, "Pitch 조정 실패: ${e.message}")
         }
@@ -192,7 +167,7 @@ class FlightControlVM : ViewModel() {
 
     fun adjustAltitude() {
         try {
-            flightControlModel.adjustAltitude(altitude)
+            flightControlGPSModel.adjustAltitude(altitude)
         } catch (e: Exception) {
             Log.e(TAG, "Altitude 조정 실패: ${e.message}")
         }
@@ -219,7 +194,7 @@ class FlightControlVM : ViewModel() {
 
     private fun startReturnToHome() {
         val callback = createCompletionCallback("홈으로 복귀 시작", "홈으로 복귀 실패")
-        flightControlModel.startReturnToHome(callback)
+        flightControlGPSModel.startReturnToHome(callback)
     }
 
     private fun startTimerForReturnToHome() {
@@ -255,12 +230,4 @@ class FlightControlVM : ViewModel() {
             }
         }
     }
-
-
-    override fun onCleared() {
-        super.onCleared()
-        handler.removeCallbacksAndMessages(null)
-    }
-
-
 }

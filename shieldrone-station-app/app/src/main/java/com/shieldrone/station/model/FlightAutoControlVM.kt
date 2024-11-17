@@ -59,7 +59,7 @@ class FlightAutoControlVM : ViewModel() {
             _droneState.value = state
         }
         flightControlModel.subscribeVirtualStickState { stickState ->
-            _virtualStickState.value = stickState.toString()
+            _virtualStickState.value = stickState
         }
     }
 
