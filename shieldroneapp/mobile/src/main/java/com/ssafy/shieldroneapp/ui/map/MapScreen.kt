@@ -394,9 +394,10 @@ fun MapScreen(
                         .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
                         .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
                         .clickable {
-                            state.droneState?.droneId?.let { droneId ->
+                            state.droneState.droneId.let { droneId ->
                                 mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId)))
                                 mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
+                                mapViewModel.handleEvent(MapEvent.ClearLocationData) // 출발/도착지 정보 초기화
                             }
                         },
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), // 회색 텍스트
@@ -420,7 +421,7 @@ fun MapScreen(
                         style = MaterialTheme.typography.h5
                     )
                 }
-            } else if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+            } else if (state.droneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 // [버튼] 드론 배정 성공 모달 열기
                 Button(
                     onClick = { mapViewModel.handleEvent(MapEvent.HandleDroneMatchingResult(DroneStatus.MATCHING_ASSIGNED)) },
