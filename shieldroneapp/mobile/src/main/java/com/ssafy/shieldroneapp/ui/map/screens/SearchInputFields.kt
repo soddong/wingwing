@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ fun SearchInputFields(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+            // 출발지 입력 필드
             TextField(
                 value = startText,
                 onValueChange = onStartTextChange,
@@ -45,6 +47,15 @@ fun SearchInputFields(
                     },
                 label = { Text("출발지 검색") },
                 colors = TextFieldDefaults.textFieldColors(backgroundColor = MaterialTheme.colors.background),
+                trailingIcon = {
+                    if (startText.isNotEmpty()) {
+                        TextButton (
+                            onClick = { onStartTextChange("") }
+                        ) {
+                            Text("X")
+                        }
+                    }
+                },
                 singleLine = true,  // 한 줄로 설정
                 keyboardActions = KeyboardActions(
                     onDone = {
@@ -54,6 +65,7 @@ fun SearchInputFields(
                 ),
             )
 
+            // 도착지 입력 필드
             TextField(
                 value = endText,
                 onValueChange = onEndTextChange,
@@ -67,6 +79,15 @@ fun SearchInputFields(
                     },
                 label = { Text("도착지 검색") },
                 colors = TextFieldDefaults.textFieldColors(backgroundColor = MaterialTheme.colors.background),
+                trailingIcon = {
+                    if (endText.isNotEmpty()) {
+                        TextButton(
+                            onClick = { onEndTextChange("") }
+                        ) {
+                            Text("X")
+                        }
+                    }
+                },
                 singleLine = true,  // 한 줄로 설정
                 keyboardActions = KeyboardActions(
                     onDone = {
