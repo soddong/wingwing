@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.ssafy.shieldron.global.exception.ErrorCode.DRONE_NOT_AVAILABLE;
+import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_CODE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_DRONE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_HIVE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_USER;
@@ -72,7 +73,7 @@ public class DroneService {
             throw new CustomException(DRONE_NOT_AVAILABLE);
         }
 
-        drone.updateStatus(DroneStatus.RESERVED);
+//        drone.updateStatus(DroneStatus.RESERVED);
 
         createDroneUser(drone, user);
 
@@ -101,12 +102,12 @@ public class DroneService {
         User user = getUserOrThrow(phoneNumber);
         Drone drone = getDroneOrThrow(droneId);
 
-        if (drone.getStatus() != DroneStatus.RESERVED) {
-            throw new CustomException(INVALID_DRONE);
-        }
+//        if (drone.getStatus() != DroneStatus.RESERVED) {
+//            throw new CustomException(INVALID_DRONE);
+//        }
 
-        droneUserRepository.findByUserAndDrone(user, drone)
-                .orElseThrow(() -> new CustomException(INVALID_DRONE));
+//        droneUserRepository.findByUserAndDrone(user, drone)
+//                .orElseThrow(() -> new CustomException(INVALID_DRONE));
 
 
         Hive hive = drone.getHive();
@@ -115,10 +116,10 @@ public class DroneService {
         }
 
         if (!Objects.equals(drone.getDroneCode(), droneCode)) {
-            throw new CustomException(INVALID_DRONE);
+            throw new CustomException(INVALID_CODE);
         }
 
-        drone.updateStatus(DroneStatus.IN_USE);
+//        drone.updateStatus(DroneStatus.IN_USE);
 
         String hiveIp = hive.getHiveIp();
         return new DroneMatchResponse(droneId, hiveIp);
@@ -168,7 +169,7 @@ public class DroneService {
                 .drone(drone)
                 .user(user)
                 .build();
-        droneUserRepository.save(droneUser);
+//        droneUserRepository.save(droneUser);
     }
 
     private double calculateDistanceBetweenHiveAndEndLocation(Hive hive, DroneAssignmentRequest droneAssignmentRequest) {
