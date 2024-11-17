@@ -67,6 +67,11 @@ class WearableDataListenerService : BaseMobileService() {
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (!isDataListeningEnabled) {
+            Log.d(TAG, "데이터 수신이 비활성화되어 있어 메시지 무시: ${messageEvent.path}")
+            return
+        }
+
         super.onMessageReceived(messageEvent)
         Log.d(TAG, "메시지 수신됨: ${messageEvent.path}")
 
@@ -179,6 +184,11 @@ class WearableDataListenerService : BaseMobileService() {
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
+        if (!isDataListeningEnabled) {
+            Log.d(TAG, "데이터 수신이 비활성화되어 있어 데이터 변경 무시")
+            return
+        }
+
         Log.d(TAG, "onDataChanged 호출됨, 이벤트 수: ${dataEvents.count}")
 
         try {

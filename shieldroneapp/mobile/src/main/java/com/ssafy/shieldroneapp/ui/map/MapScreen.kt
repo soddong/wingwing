@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,6 +53,8 @@ import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
 import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.services.base.BaseMobileService
+import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -103,7 +106,7 @@ fun MapScreen(
 
     // 화면 회전 감지를 위한 Configuration 변경 감지
     val configuration = LocalConfiguration.current
-    val screenRotation = remember { mutableStateOf(configuration.orientation) }
+    val screenRotation = remember { mutableIntStateOf(configuration.orientation) }
 
     // 키보드 매니저 생성 (맵 클릭 시, 키보드 숨기기 위해)
     val keyboardController = rememberKeyboardController()
@@ -124,6 +127,24 @@ fun MapScreen(
             )
         }
     )
+
+    LaunchedEffect(Unit) {
+        // 맵 화면 진입 시 데이터 수신 활성화
+        Intent(context, WearableDataListenerService::class.java).apply {
+            action = BaseMobileService.ACTION_ENABLE_DATA_LISTENING
+            context.startService(this)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            // 맵 화면 종료 시 데이터 수신 비활성화
+            Intent(context, WearableDataListenerService::class.java).apply {
+                action = BaseMobileService.ACTION_DISABLE_DATA_LISTENING
+                context.startService(this)
+            }
+        }
+    }
 
     // 위치 서비스 상태 체크
     LaunchedEffect(Unit) {

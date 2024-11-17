@@ -20,9 +20,13 @@ abstract class BaseMobileService : WearableListenerService() {
 
     companion object {
         private const val TAG = "모바일: 베이스 서비스"
+        const val ACTION_ENABLE_DATA_LISTENING = "com.ssafy.shieldroneapp.ACTION_ENABLE_DATA_LISTENING"
+        const val ACTION_DISABLE_DATA_LISTENING = "com.ssafy.shieldroneapp.ACTION_DISABLE_DATA_LISTENING"
     }
 
     protected val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    protected var isDataListeningEnabled = false
 
     override fun onCreate() {
         super.onCreate()
@@ -32,7 +36,21 @@ abstract class BaseMobileService : WearableListenerService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Service onStartCommand: ${this.javaClass.simpleName}")
+
+        // 워치에서 모바일로 데이터 수신 제어 액션 처리
+        when (intent?.action) {
+            ACTION_ENABLE_DATA_LISTENING -> {
+                isDataListeningEnabled = true
+                Log.d(TAG, "데이터 수신 활성화")
+            }
+            ACTION_DISABLE_DATA_LISTENING -> {
+                isDataListeningEnabled = false
+                Log.d(TAG, "데이터 수신 비활성화")
+            }
+        }
+
         handleStart(intent)
+
         // 서비스가 강제 종료되면 재시작하도록
         return Service.START_STICKY
     }
