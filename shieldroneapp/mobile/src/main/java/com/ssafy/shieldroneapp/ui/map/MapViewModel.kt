@@ -10,11 +10,13 @@ import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.model.request.DroneRouteRequest
 import com.ssafy.shieldroneapp.data.model.request.EmergencyRequest
 import com.ssafy.shieldroneapp.data.model.request.EndLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
+import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
@@ -97,7 +99,7 @@ class MapViewModel @Inject constructor(
             // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
             is MapEvent.RequestDroneAssignment -> requestDroneAssignment() // 드론 배정 요청
             is MapEvent.RequestDroneCancel -> requestDroneCancel(event.droneId) // 배정 취소
-            is MapEvent.RequestDroneMatching -> requestDroneMatching(event.droneCode) // 드론 최종 매칭 요청
+            is MapEvent.RequestDroneMatching -> requestDroneMatching(event.request) // 드론 최종 매칭 요청
             is MapEvent.HandleDroneMatchingResult -> handleMatchingResult(event.result) // 드론 매칭 결과 별 이벤트 처리
 
             // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
@@ -258,7 +260,10 @@ class MapViewModel @Inject constructor(
                 showSearchResultsModal = false,
                 showStartMarkerModal = false,
                 showEndMarkerModal = false,
-                showDroneMatchResultModal = false
+                showDroneMatchResultModal = false,
+                showDroneAssignmentSuccessModal = false,
+                showDroneAssignmentFailureModal = false,
+                showCancelSuccessModal = false,
             )
         }
     }
@@ -373,15 +378,10 @@ class MapViewModel @Inject constructor(
 
             droneRepository.requestDrone(request)
                 .onSuccess { response ->
-                    Log.d(TAG, "드론 배정 요청 성공 response: $response")
-                    _state.update { it.copy(
-                        droneState = DroneState.createDroneStateFromResponse(response),
-                        error = null
-                    )}
-                    startTimer() // 배정 완료 후, 매칭까지 10분 타이머 시작
+                    handleDroneAssignmentSuccess(response)
                 }.onFailure { error ->
-                    setError(error.message ?: "드론 배정 요청 중 오류 발생")
-                    Log.d(TAG, "드론 배정 요청 실패: ${error.message}")
+                    val errorMessage = error.message ?: "드론 배정 요청 중 오류 발생"
+                    handleDroneAssignmentFailure(errorMessage)
                 }
 
             _state.update { it.copy(isLoading = false) }
@@ -389,7 +389,36 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 14-2. 드론 배정 후, 타이머 시작 (10분)
+     * 14-2. 드론 배정 요청 성공 시 결과를 처리
+     */
+    private fun handleDroneAssignmentSuccess(response: DroneRouteResponse) {
+        _state.update { currentState ->
+            currentState.copy(
+                droneState = DroneState.createDroneStateFromResponse(response),
+                showDroneAssignmentSuccessModal = true, // 성공 모달 표시
+                error = null,
+            )
+        }
+        startTimer() // 배정 완료 후, 매칭까지 10분 타이머 시작
+        Log.d(TAG, "드론 배정 성공: $response")
+    }
+
+    /**
+     * 14-3. 드론 배정 요청 실패 시 에러 메시지를 처리
+     */
+    private fun handleDroneAssignmentFailure(errorMessage: String) {
+        _state.update { currentState ->
+            currentState.copy(
+                droneAssignmentError = errorMessage,
+                showDroneAssignmentFailureModal = true, // 실패 모달 표시
+            )
+        }
+        setError(errorMessage)
+        Log.e(TAG, "드론 배정 실패: $errorMessage")
+    }
+
+    /**
+     * 14-4. 드론 배정 후, 타이머 시작 (10분)
      * */
     private fun startTimer() {
         timerJob?.cancel()
@@ -403,19 +432,64 @@ class MapViewModel @Inject constructor(
      * 15. 10분 경과 하면, 드론 배정 취소 요청
      * */
     private fun requestDroneCancel(droneId: DroneCancelRequest) {
+        viewModelScope.launch {
+            try {
+                _state.update { it.copy(isLoading = true) }
+
+                droneRepository.cancelDrone(droneId)
+                    .onSuccess {
+                        Log.d(TAG, "드론 배정 취소 성공: 드론 ID - ${droneId.droneId}")
+                        _state.update { it.copy(
+                            droneState = null,
+                            droneMatchResult = null, // 매칭 결과 초기화
+                            showCancelSuccessModal = true, // 취소 성공 알림 표시
+                            error = null
+                        ) }
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "드론 배정 취소 실패: ${error.message}")
+                        setError("드론 배정 취소 중 오류 발생: ${error.message}")
+                    }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "드론 배정 취소 요청 중 오류 발생", e)
+                setError("드론 배정 취소 요청 중 오류가 발생했습니다.")
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
     }
 
     /**
      * 16. 드론 최종 매칭 요청
      * */
-    private fun requestDroneMatching(droneCode: Int) {
-//        viewModelScope.launch {
-//            val droneId = _state.value.droneId ?: return@launch
-//            val isMatched = mapRepository.verifyDroneCode(droneId, code)
-//
-//            val result = if (isMatched) DroneMatchingResult.SUCCESS else DroneMatchingResult.FAILURE
-//            handleMatchingResult(result)
-//        }
+    private fun requestDroneMatching(request: DroneMatchRequest) {
+        viewModelScope.launch {
+            Log.e(TAG, "드론 최종 매칭 요청")
+            _state.update { it.copy(isLoading = true) }
+
+            droneRepository.matchDrone(request)
+                .onSuccess { response ->
+                    _state.update {
+                        it.copy(
+                            droneMatchResult = response, // 매칭 결과 저장
+                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
+                            error = null,
+                            isLoading = false
+                        )
+                    }
+                    Log.d(TAG, "드론 매칭 성공: $response")
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            error = "드론 매칭 요청 실패: ${error.message}",
+                            isLoading = false
+                        )
+                    }
+                    Log.e(TAG, "드론 매칭 실패: ${error.message}")
+                }
+        }
     }
 
     /**
