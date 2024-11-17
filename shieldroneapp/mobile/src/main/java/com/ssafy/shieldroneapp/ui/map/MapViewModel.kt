@@ -75,6 +75,7 @@ class MapViewModel @Inject constructor(
     // 앱 실행 시 로컬 드론 상태 로드
     init {
         handleEvent(MapEvent.LoadDroneState)
+        handleEvent(MapEvent.LoadStartAndEndLocations)
     }
 
     // 전체 이벤트 핸들러
@@ -123,6 +124,12 @@ class MapViewModel @Inject constructor(
             is MapEvent.LoadDroneState -> loadDroneState() // 드론 상태 가져오기
             is MapEvent.SaveDroneState -> saveDroneState(event.droneState) // 드론 상태 저장
             is MapEvent.ClearDroneState -> clearDroneState() // 드론 상태 초기화
+
+            // [로컬 저장소] 출발지/도착치 관리
+            is MapEvent.LoadStartAndEndLocations -> loadStartAndEndLocations() // 출발지, 도착지 가져오기
+            is MapEvent.SaveStartLocation -> saveStartLocation(event.location) // 출발지 저장
+            is MapEvent.SaveEndLocation -> saveEndLocation(event.location) // 도착지 저장
+            is MapEvent.ClearLocationData -> clearLocationData() // 초기화
         }
     }
 
@@ -380,6 +387,16 @@ class MapViewModel @Inject constructor(
             return
         }
 
+        // 드론 상태 확인
+//        val currentDroneState = _state.value.droneState
+
+//        // MATCHING_ASSIGNED 상태인 경우
+//        if (currentDroneState != null && currentDroneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+//            _state.update { it.copy(showDroneAssignmentSuccessModal = true) }
+//            Log.d(TAG, "드론이 이미 배정됨. 성공 모달 표시")
+//            return
+//        }
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
@@ -480,7 +497,7 @@ class MapViewModel @Inject constructor(
      * */
     private fun requestDroneMatching(request: DroneMatchRequest) {
         viewModelScope.launch {
-            Log.e(TAG, "드론 최종 매칭 요청")
+            Log.e(TAG, "드론 최종 매칭 요청 : $request")
             _state.update { it.copy(isLoading = true) }
 
             droneRepository.matchDrone(request)
@@ -498,7 +515,9 @@ class MapViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(
-                            error = "드론 매칭 요청 실패: ${error.message}",
+                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
+                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
+//                            error = "드론 매칭 요청 실패: ${error.message}",
                             isLoading = false
                         )
                     }
@@ -511,21 +530,24 @@ class MapViewModel @Inject constructor(
      * 17. 드론 매칭 결과 별, 이벤트 처리
      */
     private fun handleMatchingResult(result: DroneStatus) {
-//        when (result) {
-//            DroneMatchingResult.SUCCESS -> {
-//                _state.update { it.copy(droneState = DroneState.MATCHED) }
-//                showSuccessAlert()
-//            }
-//            DroneMatchingResult.FAILURE -> {
-//                setError("드론 코드가 틀렸습니다.")
-//            }
-//            DroneMatchingResult.TIMEOUT -> {
-//                viewModelScope.launch {
-//                    mapRepository.cancelDroneAssignment(_state.value.droneId!!)
-//                }
-//                setError("드론 배정 시간이 초과되었습니다.")
-//            }
-//        }
+        when (result) {
+            DroneStatus.MATCHING_ASSIGNED -> {
+                _state.update { it.copy(showDroneAssignmentSuccessModal = true) }
+                Log.d(TAG, "드론 배정 성공 모달 활성화")
+            }
+            DroneStatus.MATCHING_FAILED -> {
+                _state.update { it.copy(error = "드론 매칭 실패: 코드 오류") }
+                Log.e(TAG, "드론 매칭 실패")
+            }
+            DroneStatus.MATCHING_COMPLETE -> {
+                _state.update { it.copy(error = null) }
+                Log.d(TAG, "드론 매칭 완료")
+            }
+            // 필요에 따라 다른 상태 추가 처리
+            else -> {
+                Log.d(TAG, "매칭 결과 처리: $result")
+            }
+        }
     }
 
     // 결과 처리에서 이것까지 해야 함? ======> 성공 알림 및 애니메이션 시작
@@ -604,7 +626,108 @@ class MapViewModel @Inject constructor(
     private fun clearDroneState() {
         viewModelScope.launch {
             droneLocalDataSource.clearDroneState()
-            _state.update { it.copy(droneState = null) }
+            _state.update {
+                it.copy(
+                    droneState = DroneState(
+                        droneId = -1, // 기본 드론 ID
+                        matchStatus = DroneStatus.MATCHING_NONE // 상태 초기화
+                    ),
+                    showCancelSuccessModal = true // 배정 취소 모달 표시
+                )
+            }
+            Log.d(TAG, "드론 상태 초기화 및 matchStatus: ${DroneStatus.MATCHING_NONE}")
+        }
+    }
+
+    /**
+     * 25. 로컬에서 출발지, 도착지 가져오기
+     * */
+    private fun loadStartAndEndLocations() {
+        viewModelScope.launch {
+            try {
+                val startLocation = mapRepository.getStartLocation()
+                val endLocation = mapRepository.getEndLocation()
+
+                _state.update { currentState ->
+                    currentState.copy(
+                        selectedStart = startLocation,
+                        startSearchText = startLocation?.locationName ?: "",
+                        selectedEnd = endLocation,
+                        endSearchText = endLocation?.locationName ?: ""
+                    )
+                }
+
+                Log.d(TAG, "로컬 저장소에서 출발지와 도착지 로드 성공")
+            } catch (e: Exception) {
+                Log.e(TAG, "로컬 저장소에서 위치 로드 실패", e)
+            }
+        }
+    }
+
+    /**
+     * 26. 로컬에서 출발지 저장
+     * */
+    private fun saveStartLocation(location: RouteLocation) {
+        viewModelScope.launch {
+            try {
+                mapRepository.saveStartLocation(location)
+                _state.update { currentState ->
+                    currentState.copy(
+                        selectedStart = location,
+                        startSearchText = location.locationName ?: ""
+                    )
+                }
+
+                Log.d(TAG, "출발지 로컬 저장 성공: $location")
+            } catch (e: Exception) {
+                Log.e(TAG, "출발지 로컬 저장 실패", e)
+            }
+        }
+    }
+
+
+    /**
+     * 27. 로컬에서 도착지 저장
+     * */
+    private fun saveEndLocation(location: RouteLocation) {
+        viewModelScope.launch {
+            try {
+                mapRepository.saveEndLocation(location)
+                _state.update { currentState ->
+                    currentState.copy(
+                        selectedEnd = location,
+                        endSearchText = location.locationName ?: ""
+                    )
+                }
+
+                Log.d(TAG, "도착지 로컬 저장 성공: $location")
+            } catch (e: Exception) {
+                Log.e(TAG, "도착지 로컬 저장 실패", e)
+            }
+        }
+    }
+
+
+    /**
+     * 27. 로컬에서 출발/도착지 초기화
+     * */
+    private fun clearLocationData() {
+        viewModelScope.launch {
+            try {
+                mapRepository.clearLocationData()
+                _state.update { currentState ->
+                    currentState.copy(
+                        selectedStart = null,
+                        startSearchText = "",
+                        selectedEnd = null,
+                        endSearchText = ""
+                    )
+                }
+
+                Log.d(TAG, "로컬에서 출발지와 도착지 초기화 성공")
+            } catch (e: Exception) {
+                Log.e(TAG, "로컬에서 위치 초기화 실패", e)
+            }
         }
     }
 
