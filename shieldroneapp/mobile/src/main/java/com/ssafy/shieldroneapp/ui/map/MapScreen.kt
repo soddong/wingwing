@@ -361,11 +361,11 @@ fun MapScreen(
             }
         }
 
-        // 2-2) 드론 배정 취소/요청 버튼
+        // 2-2) 드론 관련 버튼 - 배정 취소/배정 요청/배정 성공 모달
         Box(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
         ) {
-            // 드론 배정 취소 버튼
+            // [버튼] 드론 배정 취소
             if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 Text(
                     text = "드론 배정 취소",
@@ -383,21 +383,40 @@ fun MapScreen(
                 )
             }
 
-            // 드론 배정 요청 버튼
-            Button(
-                onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
-                shape = RoundedCornerShape(0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .align(Alignment.BottomCenter),
-                enabled = state.selectedStart != null && state.selectedEnd != null,
-            ) {
-                Text(
-                    text = "드론 배정 요청",
-                    style = MaterialTheme.typography.h5
-                )
+//            if (state.droneState?.matchStatus == DroneStatus.MATCHING_NONE) {
+                // [버튼] 드론 배정 요청
+                Button(
+                    onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
+                    shape = RoundedCornerShape(0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .align(Alignment.BottomCenter),
+                    enabled = (state.selectedStart != null && state.selectedEnd != null),
+                ) {
+                    Text(
+                        text = "드론 배정 요청",
+                        style = MaterialTheme.typography.h5
+                    )
+                }
+//            } else
+                if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+                // [버튼] 드론 배정 성공 모달 열기
+                Button(
+                    onClick = { mapViewModel.handleEvent(MapEvent.HandleDroneMatchingResult(DroneStatus.MATCHING_ASSIGNED)) },
+                    shape = RoundedCornerShape(0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .align(Alignment.BottomCenter),
+                ) {
+                    Text(
+                        text = "최종 매칭 요청",
+                        style = MaterialTheme.typography.h5
+                    )
+                }
             }
+         
         }
 
         // 3. 최상단 레이어
@@ -424,6 +443,8 @@ fun MapScreen(
         if (state.showDroneAssignmentSuccessModal && state.droneState != null) {
             DroneAssignmentSuccessModal (
                 droneState = state.droneState,
+                selectedStart = state.selectedStart?.locationName ?: "",
+                selectedEnd  = state.selectedEnd?.locationName ?: "",
                 onDroneCodeInput = { code ->
                     mapViewModel.handleEvent(
                         MapEvent.RequestDroneMatching(
@@ -446,8 +467,6 @@ fun MapScreen(
                         )
                 },
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) },
-//                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) },
-                matchResult = state.droneMatchResult
             )
         }
 
