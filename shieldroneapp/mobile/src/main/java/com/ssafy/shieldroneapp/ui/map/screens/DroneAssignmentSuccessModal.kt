@@ -32,7 +32,7 @@ fun DroneAssignmentSuccessModal(
     selectedStart: String, // 시작 경로 텍스트 추가
     selectedEnd: String,   // 도착 경로 텍스트 추가
     onDroneCodeInput: (Int) -> Unit,
-    onRequestMatching: () -> Unit,
+    onRequestMatching: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val codeInputs = remember { mutableStateOf(List(6) { "" }) }
@@ -111,7 +111,7 @@ fun DroneAssignmentSuccessModal(
                     val droneCode = codeInputs.value.joinToString("")
                     if (droneCode.length == 6 && droneCode.all { it.isDigit() }) {
                         onDroneCodeInput(droneCode.toInt())
-                        onRequestMatching()
+                        onRequestMatching(droneCode.toInt())
                     } else {
                         Log.e("DroneAssignmentSuccessModal", "Invalid drone code: $droneCode")
                     }

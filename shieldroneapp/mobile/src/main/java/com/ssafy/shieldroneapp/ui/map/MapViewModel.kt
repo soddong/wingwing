@@ -497,7 +497,7 @@ class MapViewModel @Inject constructor(
      * */
     private fun requestDroneMatching(request: DroneMatchRequest) {
         viewModelScope.launch {
-            Log.e(TAG, "드론 최종 매칭 요청")
+            Log.e(TAG, "드론 최종 매칭 요청 : $request")
             _state.update { it.copy(isLoading = true) }
 
             droneRepository.matchDrone(request)
@@ -515,7 +515,9 @@ class MapViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(
-                            error = "드론 매칭 요청 실패: ${error.message}",
+                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
+                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
+//                            error = "드론 매칭 요청 실패: ${error.message}",
                             isLoading = false
                         )
                     }
