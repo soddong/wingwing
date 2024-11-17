@@ -309,11 +309,21 @@ class MapViewModel @Inject constructor(
      * */
     private fun searchStartLocation(text: String) {
         _state.update { it.copy(startSearchText = text) }
-        if (text.trim() == "") {
-            _state.update { it.copy(selectedStart = null) }
-            closeAllModals()
-        } else {
-            searchHivesByKeyword(HiveSearchRequest(text))
+        viewModelScope.launch {
+            if (text.trim() == "") {
+                // 배정된 상태가 아닌 경우에만 로컬 데이터를 지움
+                val droneState = _state.value.droneState
+                if (droneState?.matchStatus != DroneStatus.MATCHING_ASSIGNED) {
+                    _state.update { it.copy(selectedStart = null) }
+                    mapRepository.clearStartLocation()
+                    Log.d(TAG, "출발지 정보 로컬에서 삭제")
+                } else {
+                    Log.d(TAG, "드론이 배정된 상태이므로 출발지 정보를 유지")
+                }
+                closeAllModals()
+            } else {
+                searchHivesByKeyword(HiveSearchRequest(text))
+            }
         }
     }
 
@@ -328,7 +338,15 @@ class MapViewModel @Inject constructor(
             delay(SEARCH_DEBOUNCE_MS) // 150ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
-                _state.update { it.copy(selectedEnd = null) }
+                // 배정된 상태가 아닌 경우에만 로컬 데이터를 지움
+                val droneState = _state.value.droneState
+                if (droneState?.matchStatus != DroneStatus.MATCHING_ASSIGNED) {
+                    _state.update { it.copy(selectedEnd = null) }
+                    mapRepository.clearEndLocation()
+                    Log.d(TAG, "도착지 정보 로컬에서 삭제")
+                } else {
+                    Log.d(TAG, "드론이 배정된 상태이므로 도착지 정보를 유지")
+                }
                 closeAllModals()
                 return@launch
             } else {
@@ -395,16 +413,6 @@ class MapViewModel @Inject constructor(
             setError("출발지와 도착지를 모두 설정해야 합니다.")
             return
         }
-
-        // 드론 상태 확인
-//        val currentDroneState = _state.value.droneState
-
-//        // MATCHING_ASSIGNED 상태인 경우
-//        if (currentDroneState != null && currentDroneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
-//            _state.update { it.copy(showDroneAssignmentSuccessModal = true) }
-//            Log.d(TAG, "드론이 이미 배정됨. 성공 모달 표시")
-//            return
-//        }
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -480,14 +488,20 @@ class MapViewModel @Inject constructor(
                 droneRepository.cancelDrone(droneId)
                     .onSuccess {
                         Log.d(TAG, "드론 배정 취소 성공: 드론 ID - ${droneId.droneId}")
-                        _state.update {
-                            it.copy(
-                                droneState = null,
-                                droneMatchResult = null, // 매칭 결과 초기화
-                                showCancelSuccessModal = true, // 취소 성공 알림 표시
-                                error = null
-                            )
-                        }
+                        _state.update { it.copy(
+                            selectedStart = null,
+                            selectedEnd = null,
+                            selectedStartMarker = null,
+                            selectedEndMarker = null,
+                            startSearchText = "",
+                            endSearchText = "",
+                            searchResults = emptyList(),
+                            droneState = null,
+                            droneMatchResult = null, // 매칭 결과 초기화
+                            droneAssignmentError = null,
+                            showCancelSuccessModal = true, // 취소 성공 알림 표시
+                            error = null,
+                        ) }
                     }
                     .onFailure { error ->
                         Log.e(TAG, "드론 배정 취소 실패: ${error.message}")
@@ -644,7 +658,12 @@ class MapViewModel @Inject constructor(
                 it.copy(
                     droneState = DroneState(
                         droneId = -1, // 기본 드론 ID
-                        matchStatus = DroneStatus.MATCHING_NONE // 상태 초기화
+                        stationIP = null,
+                        matchStatus = DroneStatus.MATCHING_NONE, // 상태 초기화
+                        battery = null,
+                        estimatedTime = null,
+                        distance = null,
+                        assignedTime = null,
                     ),
                     showCancelSuccessModal = true // 배정 취소 모달 표시
                 )
@@ -728,7 +747,8 @@ class MapViewModel @Inject constructor(
     private fun clearLocationData() {
         viewModelScope.launch {
             try {
-                mapRepository.clearLocationData()
+                mapRepository.clearStartLocation()
+                mapRepository.clearEndLocation()
                 _state.update { currentState ->
                     currentState.copy(
                         selectedStart = null,

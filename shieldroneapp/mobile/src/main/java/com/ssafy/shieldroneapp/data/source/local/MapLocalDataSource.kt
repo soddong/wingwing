@@ -12,9 +12,9 @@ interface MapLocalDataSource {
 
     suspend fun saveStartLocation(location: RouteLocation)
     suspend fun getStartLocation(): RouteLocation?
+    suspend fun clearStartLocation()
 
     suspend fun saveEndLocation(location: RouteLocation)
     suspend fun getEndLocation(): RouteLocation?
-
-    suspend fun clearLocationData()
+    suspend fun clearEndLocation()
 }

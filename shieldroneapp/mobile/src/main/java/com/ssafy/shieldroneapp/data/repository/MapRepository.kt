@@ -31,7 +31,9 @@ interface MapRepository {
     // 출발지와 도착지 위치 정보를 로컬에 저장/조회/초기화
     suspend fun saveStartLocation(location: RouteLocation) // 출발지
     suspend fun getStartLocation(): RouteLocation?
+    suspend fun clearStartLocation()
+
     suspend fun saveEndLocation(location: RouteLocation) // 도착지
     suspend fun getEndLocation(): RouteLocation?
-    suspend fun clearLocationData()
+    suspend fun clearEndLocation()
 }
