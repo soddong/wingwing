@@ -537,7 +537,12 @@ fun MapScreen(
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) }) {
+                    TextButton(
+                        onClick = {
+                            mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT))
+                            mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_ASSIGNMENT_SUCCESS))
+                        }
+                    ) {
                         Text("확인")
                     }
                 }
