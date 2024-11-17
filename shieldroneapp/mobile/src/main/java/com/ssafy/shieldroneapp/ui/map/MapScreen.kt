@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -26,6 +27,7 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,13 +46,19 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
+import com.ssafy.shieldroneapp.ui.components.HeartRateDisplay
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentFailureModal
+import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentSuccessModal
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.ui.map.screens.SearchResultsModal
@@ -75,7 +83,6 @@ private const val TAG = "모바일: 맵 화면"
 
 @Composable
 fun MapScreen(
-    isAppActive: Boolean,
     viewModel: HeartRateViewModel = hiltViewModel(),
     alertHandler: AlertHandler,
     safetyMessageSender: SafetyMessageSender,
@@ -87,8 +94,8 @@ fun MapScreen(
 
     // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
-    val isMapInitialized = remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val isMapInitialized = remember { mutableStateOf(false) }
 
     // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
     val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
@@ -101,7 +108,9 @@ fun MapScreen(
     val keyboardController = rememberKeyboardController()
 
     // 알람
-    val heartRateState = viewModel.heartRateData.collectAsStateWithLifecycle().value
+    val heartRate by remember(viewModel) {
+        viewModel.heartRateData
+    }.collectAsStateWithLifecycle()
     val connectionState = viewModel.watchConnectionState.collectAsStateWithLifecycle().value
     val alertState = mapViewModel.alertState.collectAsStateWithLifecycle().value
 
@@ -148,18 +157,14 @@ fun MapScreen(
             if (!isMapInitialized.value) {
                 setupMap(map, mapViewModel)
                 isMapInitialized.value = true
-                Log.d("MapScreen", "지도 초기 설정 완료")
+                Log.d(TAG, "지도 초기 설정 완료")
             }
 
             // 현재 위치나 주변 정류장 정보가 있을 때 마커 업데이트
             if (state.currentLocation != null || state.nearbyHives.isNotEmpty()) {
                 updateAllMarkers(map, state)
                 Log.d(
-                    "MapScreen",
-                    "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
-                )
-                Log.d(
-                    "MapScreen",
+                    TAG,
                     "마커 업데이트 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}"
                 )
             }
@@ -220,7 +225,6 @@ fun MapScreen(
                     object : MapLifeCycleCallback() {
                         override fun onMapDestroy() {
                             Log.d("MapScreen", "Map destroyed")
-                            isMapInitialized.value = false
                         }
 
                         override fun onMapError(error: Exception) {
@@ -231,12 +235,6 @@ fun MapScreen(
                         override fun onMapReady(map: KakaoMap) {
                             Log.d("MapScreen", "Map ready")
                             kakaoMap.value = map
-
-                            // 맵 클릭 리스너 추가 : 키보드 숨기기
-                            map.setOnMapClickListener { _, _, _, _ ->
-                                keyboardController.hideKeyboard()
-                            }
-
                             if (state.currentLocation != null) {
                                 setupMap(map, mapViewModel)
                                 isMapInitialized.value = true
@@ -280,8 +278,16 @@ fun MapScreen(
                     indication = null
                 ) {
                     keyboardController.hideKeyboard()
-                    if (state.showSearchModal || state.showStartMarkerModal) {
-                        mapViewModel.handleEvent(MapEvent.CloseModal)
+                    // 모달 닫기 처리
+                    if (state.showSearchResultsModal ||
+                        state.showStartMarkerModal ||
+                        state.showEndMarkerModal ||
+                        state.showDroneMatchResultModal ||
+                        state.showDroneAssignmentSuccessModal ||
+                        state.showDroneAssignmentFailureModal ||
+                        state.showCancelSuccessModal
+                        ) {
+                        mapViewModel.handleEvent(MapEvent.CloseAllModals)
                     }
                 },
         )
@@ -323,7 +329,7 @@ fun MapScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 마커 정보 모달 - 출발지
-            if (state.showStartMarkerModal) {
+            if (state.showStartMarkerModal && state.selectedStartMarker != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -331,10 +337,8 @@ fun MapScreen(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            mapViewModel.handleEvent(MapEvent.CloseModal)
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
                         },
-                    // TODO: 검색 INPUT 쪽으로 누르면 안 닫히네..
-//                        .clickable(onClick = { mapViewModel.handleEvent(MapEvent.CloseModal) }), // 모달 바깥을 클릭하면 모달이 닫히도록 설정
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Box(
@@ -342,48 +346,132 @@ fun MapScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { // 모달 안쪽은 클릭해도 안 닫히도록
-                            }
+                            ) { /* 모달 안쪽은 클릭해도 닫히지 않도록 */ }
                     ) {
                         MapMarkerInfoModal(
-                            routeLocation = state.selectedStartMarker!!,
-                            onSelect = { Log.d("MapScreen", "출발지로 선택 버튼 누르는 경우의 로직") },
+                            routeLocation = state.selectedStartMarker,
+                            onSelect = {
+                                mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
+                                mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                            }
                         )
                     }
                 }
             }
         }
 
-        // 2-2) 드론 배정 요청 버튼
-        Button(
-            onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.BottomCenter),
-            enabled = state.isTrackingLocation,
+        // 2-2) 드론 배정 취소/요청 버튼
+        Box(
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
         ) {
-            Text(
-                text = "드론 배정 요청",
-                style = MaterialTheme.typography.h5
-            )
+            // 드론 배정 취소 버튼
+            Button(
+                onClick = {
+                    mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = 5)))
+                },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier
+                    .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
+                    .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
+                    .wrapContentWidth(), // 버튼 크기를 텍스트 크기에 맞춤
+                enabled = true,
+            ) {
+                Text("드론 배정 취소")
+            }
+
+            // 드론 배정 요청 버튼
+            Button(
+                onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
+                shape = RoundedCornerShape(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .align(Alignment.BottomCenter),
+                enabled = state.selectedStart != null && state.selectedEnd != null,
+            ) {
+                Text(
+                    text = "드론 배정 요청",
+                    style = MaterialTheme.typography.h5
+                )
+            }
         }
 
-        // 3. 검색 결과 모달 (최상단 레이어)
-        if (state.showSearchModal) {
+        // 3. 최상단 레이어
+
+        // 3-1) 검색 결과 모달
+        if (state.showSearchResultsModal) {
             SearchResultsModal(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
                 onItemSelected = { selectedLocation ->
-//                    if (state.searchType == LocationType.START) {
-                    mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
-//                    } else {
-//                        mapViewModel.handleEvent(MapEvent.EndLocationSelected(selectedLocation))
-//                    }
-//                    mapViewModel.handleEvent(MapEvent.CloseModal) // 모달 닫기
+                    if (state.searchType == LocationType.START) {
+                        mapViewModel.handleEvent(MapEvent.SetStartLocation(selectedLocation))
+                    } else {
+                        mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
+                    }
                 },
-                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
+            )
+        }
+
+        // 3-2) 드론 배정 성공 결과 모달
+        if (state.showDroneAssignmentSuccessModal && state.droneState != null) {
+            DroneAssignmentSuccessModal (
+                droneState = state.droneState,
+                onDroneCodeInput = { code ->
+                    mapViewModel.handleEvent(
+                        MapEvent.RequestDroneMatching(
+                            DroneMatchRequest(
+                                droneId = state.droneState.droneId,
+                                droneCode = code
+                            )
+                        )
+                    )
+                },
+                onRequestMatching = {
+                    val droneState = state.droneState
+                        mapViewModel.handleEvent(
+                            MapEvent.RequestDroneMatching(
+                                request = DroneMatchRequest(
+                                    droneId = droneState.droneId,
+                                    droneCode = 0 // 드론 코드 기본값
+                                )
+                            )
+                        )
+                },
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) },
+//                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) },
+                matchResult = state.droneMatchResult
+            )
+        }
+
+        // 3-3) 드론 배정 실패 결과 모달
+        if (state.showDroneAssignmentFailureModal && state.droneAssignmentError != null) {
+            DroneAssignmentFailureModal (
+                errorMessage = state.droneAssignmentError,
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
+                // TODO: 이거 아래 꺼 동작 확인
+//                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) }
+            )
+        }
+
+        // 3-4) 드론 배정 취소 결과 모달
+        if (state.showCancelSuccessModal) {
+            AlertDialog(
+                onDismissRequest = {
+                    mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                },
+                title = { Text("드론 배정 취소") },
+                text = { Text("드론 배정이 성공적으로 취소되었습니다.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                        }
+                    ) {
+                        Text("확인")
+                    }
+                }
             )
         }
 
@@ -394,18 +482,18 @@ fun MapScreen(
                 {
                     coroutineScope.launch {
                         val success = mapViewModel.sendEmergencyAlert()
+                        Log.d(TAG, "비상상황 요청: $success")
                         if (success) {
                             mapViewModel.showToast()
                         } else {
                             // TODO: API 호출 실패 시 에러 메시지 등의 추가 작업 수행
                         }
-
                     }
                     true
                 }
             } else null,
             onSafeConfirm = {
-                mapViewModel.handleSafeConfirmation()
+                mapViewModel.updateWatchConfirmation(true) 
                 mapViewModel.dismissAlert()
             },
             alertHandler = alertHandler,
@@ -416,5 +504,21 @@ fun MapScreen(
             connectionState = connectionState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        // 심박수
+        if (connectionState == WatchConnectionState.Connected || connectionState is WatchConnectionState.Connecting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()  // 전체 너비를 가지도록
+                    .padding(top = 170.dp), // 검색 필드 아래로 위치 조정
+                contentAlignment = Alignment.CenterEnd // Box 내에서 오른쪽 정렬
+            ) {
+                Box(
+                    modifier = Modifier.padding(end = 4.dp) // 오른쪽 여백 추가
+                ) {
+                    HeartRateDisplay(heartRate = heartRate)
+                }
+            }
+        }
     }
 }

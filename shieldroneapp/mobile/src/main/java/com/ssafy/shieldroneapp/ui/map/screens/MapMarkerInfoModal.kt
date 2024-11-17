@@ -46,7 +46,7 @@ import com.ssafy.shieldroneapp.data.model.RouteLocation
 @Composable
 fun MapMarkerInfoModal(
     routeLocation: RouteLocation,
-    onSelect: (() -> Unit)? = null // 선택 버튼이 필요한 경우에만 사용
+    onSelect: (() -> Unit)? = null // 선택 버튼이 필요한 경우
 ) {
     val borderColor = if (routeLocation.locationType == LocationType.START) Color.Blue else Color.Red
     val showSelectButton = routeLocation.locationType == LocationType.START

@@ -12,21 +12,25 @@ import com.google.android.gms.location.Priority
 import com.ssafy.shieldroneapp.data.model.LatLng
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
+import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 import com.ssafy.shieldroneapp.data.model.response.HiveResponse
 import com.ssafy.shieldroneapp.data.source.local.MapLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.data.source.remote.KakaoApiService
 import com.ssafy.shieldroneapp.utils.NetworkUtils
 import com.ssafy.shieldroneapp.utils.getLastKnownLocation
 import com.ssafy.shieldroneapp.utils.getUpdatedLocation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MapRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
+    private val kakaoMapApiService: KakaoApiService,
     private val mapLocalDataSource: MapLocalDataSource,
     private val context: Context,
     private val fusedLocationClient: FusedLocationProviderClient // GPS
@@ -119,7 +123,36 @@ class MapRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 5. 출발지/도착지 위치를 로컬에 저장/조회/초기화
+     * 5. (키워드 기반) 도착지(집) 검색
+     *
+     * Kakao API 를 통해 사용자의 집을 검색 할 수 있다.
+     * */
+    override suspend fun searchDestinationByKeyword(kakaoSearchRequest: KakaoSearchRequest): Result<List<RouteLocation>> {
+        return NetworkUtils.apiCallAfterNetworkCheck(context) {
+            try {
+                Log.d("MapRepositoryImpl", "카카오 API 요청 시작 - 키워드: ${kakaoSearchRequest.keyword}")
+                val response = kakaoMapApiService.searchKeyword(query = kakaoSearchRequest.keyword)
+                Log.d("MapRepositoryImpl", "카카오 API 응답: $response")
+                response.documents.map { it.toRouteLocation() }
+            } catch (e: Exception) {
+                Log.e("MapRepositoryImpl", "카카오 API 요청 중 오류 발생: ${e.message}", e)
+                if (e is HttpException) {
+                    val response = e.response()
+                    val errorBody = response?.errorBody()?.string()
+                    val request = response?.raw()?.request
+                    Log.e("MapRepositoryImpl", "HTTP Status Code: ${response?.code()}")
+                    Log.e("MapRepositoryImpl", "Error Response: $errorBody")
+                    Log.e("MapRepositoryImpl", "Request URL: ${request?.url}")
+                    Log.e("MapRepositoryImpl", "Request Method: ${request?.method}")
+                    Log.e("MapRepositoryImpl", "Request Headers:")
+                }
+                throw e
+            }
+        }
+    }
+
+    /**
+     * 6. 출발지/도착지 위치를 로컬에 저장/조회/초기화
      */
     override suspend fun saveStartLocation(location: RouteLocation) {
         mapLocalDataSource.saveStartLocation(location)

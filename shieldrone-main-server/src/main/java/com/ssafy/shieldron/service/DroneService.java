@@ -45,17 +45,21 @@ public class DroneService {
 
     @Transactional
     public DroneAssignmentResponse droneAssignment(DroneAssignmentRequest droneAssignmentRequest, String phoneNumber) {
-        Integer droneId = droneAssignmentRequest.droneId();
+        Integer hiveId = droneAssignmentRequest.hiveId();
         User user = getUserOrThrow(phoneNumber);
 
-        Drone drone = getDroneOrThrow(droneId);
-        Hive hive = drone.getHive();
+        Optional<Hive> hiveOptional = hiveRepository.findById(hiveId);
+        if (hiveOptional.isEmpty()) {
+            throw new CustomException(INVALID_HIVE);
+        }
+        Hive hive = hiveOptional.get();
 
         Optional<DroneUser> existingDroneUser = droneUserRepository.findByUser(user);
         if (existingDroneUser.isPresent()) {
             throw new CustomException(USER_ALREADY_HAS_DRONE);
         }
 
+        Drone drone = findAvailableDroneInHive(hive);
 
         double distanceInMeters = calculateDistanceBetweenHiveAndEndLocation(hive, droneAssignmentRequest);
         Integer requiredBattery = calculateRequiredBattery(distanceInMeters);
@@ -150,12 +154,12 @@ public class DroneService {
 
     private DroneAssignmentResponse createAssignmentResponse(Drone drone, double distanceInMeters) {
         int estimatedMinutes = (int) Math.ceil(distanceInMeters / SPEED_METERS_PER_MINUTE);
-        String formattedDistance = String.format("%.0fm", distanceInMeters);
+        String formattedDistance = String.format("%.0f", distanceInMeters);
 
         return new DroneAssignmentResponse(
                 drone.getId(),
                 estimatedMinutes,
-                formattedDistance
+                Integer.valueOf(formattedDistance)
         );
     }
 
@@ -211,6 +215,13 @@ public class DroneService {
     private User getUserOrThrow(String phoneNumber) {
         return userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new CustomException(INVALID_USER));
+    }
+
+    private Drone findAvailableDroneInHive(Hive hive) {
+        return hive.getDrones().stream()
+                .filter(drone -> drone.getStatus().equals(DroneStatus.AVAILABLE))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(DRONE_NOT_AVAILABLE));
     }
 
 }

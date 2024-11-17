@@ -1,15 +1,12 @@
 package com.ssafy.shieldroneapp.services.connection
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
-import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
@@ -18,7 +15,6 @@ import com.ssafy.shieldroneapp.MainActivity
 import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
-import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.utils.await
@@ -26,9 +22,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -38,7 +32,6 @@ import javax.inject.Singleton
 class WearConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val alertHandler: AlertHandler,
-    private val alertRepository: AlertRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
@@ -54,7 +47,6 @@ class WearConnectionManager @Inject constructor(
     private var monitoringCallback: MonitoringCallback? = null
 
     private val _isSafeConfirmed = MutableStateFlow(false)
-    val isSafeConfirmed: StateFlow<Boolean> = _isSafeConfirmed
 
     companion object {
         private const val TAG = "워치: 연결 매니저"
@@ -63,7 +55,8 @@ class WearConnectionManager @Inject constructor(
         private const val PATH_REQUEST_MOBILE_LAUNCH = "/request_mobile_launch"
         private const val PATH_DANGER_ALERT = "/danger_alert"
         private const val PATH_OBJECT_ALERT = "/object_alert"
-        private const val PATH_SAFE_CONFIRMATION = "/safe_confirm"
+        private const val PATH_SAFE_CONFIRMATION = "/safe_confirmation"
+        private const val TYPE_MOBILE_SAFE = "MOBILE_SAFE"
     }
 
     interface MonitoringCallback {
@@ -84,7 +77,6 @@ class WearConnectionManager @Inject constructor(
 
     private val _connectionState =
         mutableStateOf<WatchConnectionState>(WatchConnectionState.Disconnected)
-    val connectionState: State<WatchConnectionState> = _connectionState
 
     private fun updateConnectionState(newState: WatchConnectionState) {
         scope.launch(Dispatchers.Main) {
@@ -127,12 +119,14 @@ class WearConnectionManager @Inject constructor(
                 }
 
                 PATH_SAFE_CONFIRMATION -> {
-                    Log.d(TAG, "모바일 앱에서 '안전' 확인 메시지 수신")
                     messageEvent.data?.let {
                         val confirmationJson = String(it)
                         try {
-                            val confirmationData = Gson().fromJson(confirmationJson, Map::class.java)
-                            handleSafeConfirmation(confirmationData as Map<String, Any>)
+                            val confirmationData = Gson().fromJson(
+                                confirmationJson,
+                                Map::class.java
+                            ) as Map<String, Any>
+                            handleSafeConfirmation(confirmationData)
                         } catch (e: Exception) {
                             Log.e(TAG, "안전 확인 메시지 파싱 실패", e)
                         }
@@ -256,51 +250,15 @@ class WearConnectionManager @Inject constructor(
     private fun handleSafeConfirmation(confirmationData: Map<String, Any>) {
         try {
             val messageType = confirmationData["type"] as? String
-            val shouldCancelTimer = confirmationData["shouldCancelTimer"] as? Boolean ?: false
-            val message = confirmationData["message"] as? String
-                ?: "워치에서 '안전' 확인이 되었으므로 알림이 중지됩니다."
+            val shouldCancelTimer = confirmationData["shouldDismiss"] as? Boolean ?: false
 
-            if (messageType == "WATCH_ACKNOWLEDGED_SAFE" && shouldCancelTimer) {
-                alertHandler.updateSafeConfirmation(true) 
-                alertHandler.dismissAlert()
-
-                showSafeConfirmationNotification(
-                    "안전 확인",
-                    message
-                )
-
+            if (messageType == TYPE_MOBILE_SAFE && shouldCancelTimer) {
+                alertHandler.updateSafeConfirmation(true)
                 _isSafeConfirmed.value = true
             }
         } catch (e: Exception) {
             Log.e(TAG, "안전 확인 처리 중 오류 발생", e)
         }
-    }
-
-    private fun showSafeConfirmationNotification(title: String, message: String) {
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // Notification Channel 생성 (Android 8.0 이상)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "safe_confirmation_channel",
-                "Safe Confirmation",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "안전 확인 알림"
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val notification = NotificationCompat.Builder(context, "safe_confirmation_channel")
-            .setContentTitle(title)
-            .setContentText(message)
-            .setSmallIcon(R.drawable.shieldrone_ic)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(1002, notification)
     }
 
     private suspend fun getConnectedNodes(): List<Node> = withContext(Dispatchers.IO) {
@@ -311,19 +269,14 @@ class WearConnectionManager @Inject constructor(
         try {
             val nodes = getConnectedNodes()
             if (nodes.isNotEmpty()) {
-                alertRepository.updateSafeConfirmation(true) 
-
                 val confirmationData = mapOf(
                     "type" to "WATCH_ACKNOWLEDGED_SAFE",
-                    "state" to "CONFIRMED_SAFE",
+                    "state" to "SAFE_CONFIRMED",
                     "timestamp" to System.currentTimeMillis(),
-                    "shouldCancelTimer" to true,
-                    "message" to "워치에서 안전이 확인되었습니다",
-                    "source" to "WATCH" 
+                    "shouldCancelTimer" to true
                 )
 
                 val confirmationJson = Gson().toJson(confirmationData)
-
                 nodes.forEach { node ->
                     messageClient.sendMessage(
                         node.id,

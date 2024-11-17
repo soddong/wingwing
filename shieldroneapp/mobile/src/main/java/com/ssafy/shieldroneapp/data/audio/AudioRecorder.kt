@@ -11,6 +11,7 @@ import com.ssafy.shieldroneapp.data.model.AudioData
 import com.ssafy.shieldroneapp.data.repository.AudioDataRepository
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketState
+import com.ssafy.shieldroneapp.services.alert.AlertService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +31,7 @@ class AudioRecorder @Inject constructor(
     private val audioDataRepository: AudioDataRepository,
     private val webSocketService: WebSocketService,
     private val audioAnalyzer: AudioAnalyzer,
+    private val alertService: AlertService,
 ) {
     private var audioRecord: AudioRecord? = null
     private val recordingScope = CoroutineScope(Dispatchers.IO + Job())
@@ -73,11 +75,13 @@ class AudioRecorder @Inject constructor(
                         }
                     }
                 }
+
                 is WebSocketState.Disconnected -> {
                     Log.d(TAG, "WebSocket 연결 해제됨")
                     // 연결이 끊어져도 녹음은 계속 유지
                     // 데이터 로컬에 저장됨
                 }
+
                 is WebSocketState.Error -> {
                     Log.e(TAG, "WebSocket 오류 발생", state.throwable)
                     // 오류가 발생해도 녹음은 계속 유지
@@ -87,7 +91,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-    // 녹음을 시작하는 함수
     fun startRecording() {
         if (!checkAudioPermission()) {
             Log.e(TAG, "RECORD_AUDIO 권한 없음")
@@ -121,7 +124,6 @@ class AudioRecorder @Inject constructor(
         }
     }
 
-    // 오디오 데이터를 수집 및 전송
     private suspend fun collectAndSendAudioData() {
         try {
             val buffer = ByteArray(bufferSize)
@@ -131,25 +133,36 @@ class AudioRecorder @Inject constructor(
                 val readResult = audioRecord?.read(buffer, 0, bufferSize) ?: -1
                 when {
                     readResult > 0 -> {
-                        val dbFlag = audioAnalyzer.analyzeAudioData(buffer)
+                        val analysisResult = audioAnalyzer.analyzeAudioData(
+                            buffer = buffer,
+                            enableDetailedAnalysis = true 
+                        )
+
+                        if (analysisResult.shouldShowToast) {
+                            alertService.showSafeConfirmationNotification(
+                                "주변에 소음 발생!",
+                                "안전에 유의하세요."
+                            )
+                        }
+
                         val audioData = AudioData(
                             time = System.currentTimeMillis(),
-                            dbFlag = dbFlag
+                            dbFlag = analysisResult.shouldSendToServer
                         )
-                        Log.d(TAG, "오디오 데이터 분석 완료 - dbFlag: $dbFlag")
 
                         try {
                             audioDataRepository.processAudioData(audioData)
                         } catch (e: Exception) {
                             Log.e(TAG, "오디오 데이터 처리 실패", e)
-                            // 실패해도 녹음은 계속 진행
                         }
                     }
+
                     readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
                         Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 형식")
                         handleRecordingError(IllegalStateException("Invalid operation"))
                         break
                     }
+
                     readResult == AudioRecord.ERROR_BAD_VALUE -> {
                         Log.e(TAG, "오디오 데이터 읽기 오류: 잘못된 값")
                         handleRecordingError(IllegalArgumentException("Bad value"))
@@ -190,10 +203,10 @@ class AudioRecorder @Inject constructor(
                 throw SecurityException("RECORD_AUDIO permission not granted")
             }
         } catch (e: SecurityException) {
-            Log.e("AudioRecorder", "Permission denied: ${e.message}")
+            Log.e(TAG, "Permission denied: ${e.message}")
             throw e
         } catch (e: Exception) {
-            Log.e("AudioRecorder", "Error initializing AudioRecord: ${e.message}")
+            Log.e(TAG, "Error initializing AudioRecord: ${e.message}")
             throw e
         }
     }

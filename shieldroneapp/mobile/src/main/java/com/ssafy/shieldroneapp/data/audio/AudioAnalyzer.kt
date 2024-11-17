@@ -12,8 +12,14 @@ class AudioAnalyzer @Inject constructor() {
         private const val TAG = "모바일: 오디오 분석기"
         private const val SAMPLE_RATE = 16000
 
-        // 음성 분석 임계값
-        private const val DECIBEL_THRESHOLD = 50.0
+        // 토스트 알림용 데시벨 범위
+        private const val TOAST_DECIBEL_MIN = 60.0
+        private const val TOAST_DECIBEL_MAX = 70.0
+
+        // 서버 전송용 데시벨 임계값 (토스트 최대값 초과)
+        private const val SERVER_DECIBEL_THRESHOLD = TOAST_DECIBEL_MAX
+
+        // 주파수 범위
         private const val MALE_NORMAL_FREQ_MIN = 100.0
         private const val MALE_NORMAL_FREQ_MAX = 199.0
         private const val FEMALE_NORMAL_FREQ_MIN = 200.0
@@ -24,34 +30,48 @@ class AudioAnalyzer @Inject constructor() {
         private const val FEMALE_SCREAM_FREQ_MAX = 3000.0
     }
 
-    fun analyzeAudioData(buffer: ByteArray): Boolean {
+    data class AudioAnalysisResult(
+        val shouldShowToast: Boolean,
+        val shouldSendToServer: Boolean
+    )
+
+    fun analyzeAudioData(buffer: ByteArray, enableDetailedAnalysis: Boolean = false): AudioAnalysisResult {
         val decibel = calculateDecibel(buffer)
         val frequency = calculateFrequency(buffer)
 
-        Log.d(TAG, "데시벨: $decibel, 주파수: $frequency")
+        Log.d(TAG, "데시벨: $decibel, 주파수: $frequency, $enableDetailedAnalysis")
 
         // 소리 유형 분석
-        when {
-            isInFrequencyRange(frequency, MALE_NORMAL_FREQ_MIN, MALE_NORMAL_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 남자 일반 목소리")
-            }
-            isInFrequencyRange(frequency, FEMALE_NORMAL_FREQ_MIN, FEMALE_NORMAL_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 여자 일반 목소리")
-            }
-            isInFrequencyRange(frequency, MALE_SCREAM_FREQ_MIN, MALE_SCREAM_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 남자 비명 목소리")
-            }
-            isInFrequencyRange(frequency, FEMALE_SCREAM_FREQ_MIN, FEMALE_SCREAM_FREQ_MAX) -> {
-                Log.d(TAG, "분석 결과, 여자 비명 목소리")
-            }
-            else -> {
-                Log.d(TAG, "분석 결과, 해당 없음")
+        if (enableDetailedAnalysis) {
+            when {
+                isInFrequencyRange(frequency, MALE_NORMAL_FREQ_MIN, MALE_NORMAL_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 남자 일반 목소리")
+                }
+                isInFrequencyRange(frequency, FEMALE_NORMAL_FREQ_MIN, FEMALE_NORMAL_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 여자 일반 목소리")
+                }
+                isInFrequencyRange(frequency, MALE_SCREAM_FREQ_MIN, MALE_SCREAM_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 남자 비명 목소리")
+                }
+                isInFrequencyRange(frequency, FEMALE_SCREAM_FREQ_MIN, FEMALE_SCREAM_FREQ_MAX) -> {
+                    Log.d(TAG, "분석 결과, 여자 비명 목소리")
+                }
+                else -> {
+                    Log.d(TAG, "분석 결과, 해당 없음")
+                }
             }
         }
 
-        // 위험 상황 판단
-        return isAboveThreshold(decibel) &&
-                isInFrequencyRange(frequency, FEMALE_NORMAL_FREQ_MIN, FEMALE_SCREAM_FREQ_MAX)
+        val frequencyInRange = isInFrequencyRange(
+            frequency,
+            FEMALE_NORMAL_FREQ_MIN,
+            FEMALE_SCREAM_FREQ_MAX
+        )
+
+        return AudioAnalysisResult(
+            shouldShowToast = isInToastDecibelRange(decibel) && frequencyInRange,
+            shouldSendToServer = isAboveServerThreshold(decibel) && frequencyInRange
+        )
     }
 
     private fun calculateDecibel(buffer: ByteArray): Double {
@@ -117,7 +137,11 @@ class AudioAnalyzer @Inject constructor() {
         return frequency in min..max
     }
 
-    private fun isAboveThreshold(decibel: Double): Boolean {
-        return decibel > DECIBEL_THRESHOLD
+    private fun isInToastDecibelRange(decibel: Double): Boolean {
+        return decibel in TOAST_DECIBEL_MIN..TOAST_DECIBEL_MAX
+    }
+
+    private fun isAboveServerThreshold(decibel: Double): Boolean {
+        return decibel > SERVER_DECIBEL_THRESHOLD
     }
 }

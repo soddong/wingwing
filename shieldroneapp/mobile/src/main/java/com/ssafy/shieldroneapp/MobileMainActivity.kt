@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
@@ -32,12 +33,14 @@ import com.ssafy.shieldroneapp.ui.map.MapScreen
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.utils.Constants.Navigation.ROUTE_MAP
 import com.ssafy.shieldroneapp.utils.await
+import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import androidx.compose.runtime.getValue
 
 @AndroidEntryPoint
 class MobileMainActivity : ComponentActivity() {
@@ -56,6 +59,9 @@ class MobileMainActivity : ComponentActivity() {
 
     @Inject
     lateinit var safetyMessageSender: SafetyMessageSender
+
+    @Inject
+    lateinit var heartRateViewModel: HeartRateViewModel
 
     private val _isAppActive = mutableStateOf(false)
     val isAppActive: State<Boolean> = _isAppActive
@@ -120,9 +126,9 @@ class MobileMainActivity : ComponentActivity() {
                 ) {
                     composable(ROUTE_LANDING) {
                         LandingScreen(onStartClick = {
-//                            navController.navigate(ROUTE_AUTHENTICATION) {
+                            navController.navigate(ROUTE_AUTHENTICATION) {
                             //  navController.navigate("main_screen") {
-                            navController.navigate(ROUTE_MAP) {
+//                            navController.navigate(ROUTE_MAP) {
                                 // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
@@ -140,10 +146,10 @@ class MobileMainActivity : ComponentActivity() {
                     }
                     composable(ROUTE_MAP) {
                         MapScreen(
-                            isAppActive = isAppActive.value,
                             alertHandler = alertHandler,
                             safetyMessageSender = safetyMessageSender,
-                            coroutineScope = coroutineScope
+                            coroutineScope = coroutineScope,
+                            viewModel = heartRateViewModel
                         )
                     }
                 }

@@ -20,6 +20,8 @@ import com.ssafy.shieldroneapp.data.repository.DataRepository
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
+import javax.inject.Inject
 
 private const val TAG = "워치: 메인스크린"
 
@@ -29,6 +31,7 @@ fun MainScreen(
     sensorRepository: SensorRepository,
     dataRepository: DataRepository,
     wearConnectionManager: WearConnectionManager,
+    alertHandler: AlertHandler,
 ) {
     val alertViewModel: AlertViewModel = hiltViewModel()
     val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
@@ -38,7 +41,8 @@ fun MainScreen(
     if (currentAlert != null) {
         AlertScreen(
             alertViewModel = alertViewModel,
-            wearConnectionManager = wearConnectionManager
+            wearConnectionManager = wearConnectionManager,
+            alertHandler = alertHandler
         )
         return
     }

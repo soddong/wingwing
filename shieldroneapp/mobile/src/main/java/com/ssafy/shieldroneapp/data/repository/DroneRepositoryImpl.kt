@@ -1,6 +1,7 @@
 package com.ssafy.shieldroneapp.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.ssafy.shieldroneapp.data.model.DroneState
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
 import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
@@ -19,18 +20,25 @@ class DroneRepositoryImpl @Inject constructor(
     private val droneLocalDataSource: DroneLocalDataSource,
     private val context: Context, // Context 주입
 ) : DroneRepository {
+    companion object {
+        private const val TAG = "Map - DroneRepositoryImpl"
+    }
 
     /**
      * 1. 드론 배정 요청
      *
      * 서버에 출발지와 도착지 데이터를 전송하여 드론 배정 가능 여부를 확인
      */
-    override suspend fun requestRoute(request: DroneRouteRequest): Result<DroneRouteResponse> {
+    override suspend fun requestDrone(request: DroneRouteRequest): Result<DroneRouteResponse> {
         return NetworkUtils.apiCallAfterNetworkCheck(context) {
-            val response = apiService.requestRoute(request)
+            val response = apiService.requestDrone(request)
+            Log.d(TAG, "드론 배정 API 응답 결과? $response")
+
             if (response.isSuccessful) {
+                Log.d(TAG, "서버에 드론 배정 요청 후 받은 성공 후 응답: $response")
                 response.body() ?: throw Exception("경로 응답이 비어 있습니다.")
             } else {
+                Log.d(TAG, "서버에 드론 배정 요청 실패")
                 throw Exception("드론 경로 요청 실패")
             }
         }
@@ -41,14 +49,22 @@ class DroneRepositoryImpl @Inject constructor(
      *
      * 서버에 드론 ID를 전송하여 배정을 취소
      */
-    override suspend fun cancelDrone(request: DroneCancelRequest): Result<Unit> {
-        return NetworkUtils.apiCallAfterNetworkCheck(context) {
-            val response = apiService.cancelDrone(request)
-            if (response.isSuccessful) {
-                Unit
-            } else {
-                throw Exception("드론 배정 취소 실패")
+    override suspend fun cancelDrone(droneId: DroneCancelRequest): Result<Unit> {
+        return try {
+            NetworkUtils.apiCallAfterNetworkCheck(context) {
+                val response = apiService.cancelDrone(droneId)
+                if (response.isSuccessful) {
+                    Log.d(TAG, "드론 배정 취소 요청 성공")
+                    Unit // 성공 시 반환
+                } else {
+                    Log.d(TAG, "드론 배정 취소 요청 실패")
+                    val errorMessage = response.errorBody()?.string() ?: "알 수 없는 에러 발생"
+                    throw Exception("드론 배정 취소 실패: $errorMessage") // 실패 시 예외 발생
+                }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "드론 배정 취소 요청 중 오류 발생", e)
+            Result.failure(e)
         }
     }
 
@@ -58,13 +74,18 @@ class DroneRepositoryImpl @Inject constructor(
      * 서버에 드론 ID와 드론 코드 데이터를 전송하여 매칭 성공 여부를 확인
      */
     override suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse> {
-        return NetworkUtils.apiCallAfterNetworkCheck(context) {
-            val response = apiService.matchDrone(request)
-            if (response.isSuccessful) {
-                response.body() ?: throw Exception("매칭 응답이 비어 있습니다.")
-            } else {
-                throw Exception("드론 매칭 요청 실패")
+        return try {
+            NetworkUtils.apiCallAfterNetworkCheck(context) {
+                val response = apiService.matchDrone(request)
+                if (response.isSuccessful) {
+                    Log.d(TAG, "드론 최종 매칭 성공 !!!!!!")
+                    response.body() ?: throw Exception("응답이 비어 있습니다.")
+                } else {
+                    throw Exception("매칭 요청 실패: ${response.errorBody()?.string()}")
+                }
             }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
