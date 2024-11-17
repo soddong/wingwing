@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.ssafy.shieldroneapp.data.model.DroneState
@@ -95,6 +96,18 @@ fun DroneAssignmentSuccessModal(
                                         newInputs[i] = ""
                                         codeInputs.value = newInputs
                                     }
+                                }
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DEL) {
+                                        if (codeInputs.value[i].isEmpty() && i > 0) {
+                                            // 이전 칸으로 이동하면서 값 삭제
+                                            val newInputs = codeInputs.value.toMutableList()
+                                            newInputs[i - 1] = ""
+                                            codeInputs.value = newInputs
+                                            focusRequesters[i - 1].requestFocus()
+                                        }
+                                    }
+                                    false
                                 }
                         )
                     }

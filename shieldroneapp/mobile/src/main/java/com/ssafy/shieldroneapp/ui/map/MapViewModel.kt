@@ -53,7 +53,7 @@ class MapViewModel @Inject constructor(
     companion object {
         private const val TAG = "MapViewModel 모바일: 맵 뷰모델"
         private const val TIMER_DURATION_MS = 10 * 60 * 1000L // 10분
-        private const val SEARCH_DEBOUNCE_MS = 300L // 300ms 디바운스
+        private const val SEARCH_DEBOUNCE_MS = 150L // 150ms 디바운스
     }
 
     private val _state = MutableStateFlow(MapState())
@@ -317,7 +317,7 @@ class MapViewModel @Inject constructor(
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MS) // 300ms 디바운스
+            delay(SEARCH_DEBOUNCE_MS) // 150ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
                 _state.update { it.copy(selectedEnd = null) }
@@ -343,7 +343,7 @@ class MapViewModel @Inject constructor(
                         showSearchResultsModal = false,
                     )
                 }
-//                mapRepository.saveStartLocation(location)
+                mapRepository.saveStartLocation(location)
                 Log.d(TAG, "출발지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "출발지 설정 중 오류 발생", e)
@@ -366,6 +366,7 @@ class MapViewModel @Inject constructor(
                         showSearchResultsModal = false,
                     )
                 }
+                mapRepository.saveEndLocation(location)
                 webSocketMessageSender.setDestinationLocation(LatLng(location.lat, location.lng))
                 Log.d(TAG, "도착지 설정 완료: ${location}")
             } catch (e: Exception) {
@@ -516,8 +517,8 @@ class MapViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             showDroneMatchResultModal = true, // 매칭 결과 모달 표시
-                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
-//                            error = "드론 매칭 요청 실패: ${error.message}",
+//                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
+                            error = "${error.message}",
                             isLoading = false
                         )
                     }
