@@ -1,9 +1,10 @@
 package com.ssafy.shieldroneapp.ui.map
 
-import com.ssafy.shieldroneapp.data.model.DroneMatchingResult
+import com.ssafy.shieldroneapp.data.model.DroneStatus
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.model.request.HiveSearchRequest
 import com.ssafy.shieldroneapp.data.model.request.KakaoSearchRequest
 
@@ -16,10 +17,14 @@ sealed class MapEvent {
     data class SearchHivesByKeyword(val keyword: HiveSearchRequest) : MapEvent() // 키워드로 정류장 검색
     data class SearchDestination(val destination: KakaoSearchRequest) : MapEvent() // 도착지 검색
 
-    // 출발지/도착지 마커 선택 및 모달 관리
+    // 출발지/도착지 마커 선택
     data class StartLocationSelected(val location: RouteLocation) : MapEvent()
     data class EndLocationSelected(val location: RouteLocation) : MapEvent()
-    object CloseModal : MapEvent()
+
+    // 모달 관리
+    data class OpenModal(val modalType: ModalType) : MapEvent() // 특정 모달 열기
+    data class CloseModal(val modalType: ModalType) : MapEvent() // 특정 모달 닫기
+    object CloseAllModals : MapEvent() // 모든 모달 닫기
 
     // 출발지/도착지 검색 입력 필드 클릭 / 텍스트 입력 시
     data class SearchFieldClicked(val type: LocationType) : MapEvent()
@@ -33,8 +38,8 @@ sealed class MapEvent {
     // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
     object RequestDroneAssignment : MapEvent()
     data class RequestDroneCancel(val droneId: DroneCancelRequest) : MapEvent()
-    data class RequestDroneMatching (val droneCode: Int) : MapEvent()
-    data class HandleDroneMatchingResult (val result: DroneMatchingResult) : MapEvent()
+    data class RequestDroneMatching (val request: DroneMatchRequest) : MapEvent()
+    data class HandleDroneMatchingResult (val result: DroneStatus) : MapEvent()
 
     // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
     data class UpdateLocationServicesState(val isEnabled: Boolean) : MapEvent()

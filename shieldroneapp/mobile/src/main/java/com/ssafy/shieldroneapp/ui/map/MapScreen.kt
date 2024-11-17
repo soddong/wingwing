@@ -48,6 +48,8 @@ import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
+import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
+import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
@@ -55,6 +57,8 @@ import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
 import com.ssafy.shieldroneapp.ui.components.HeartRateDisplay
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentFailureModal
+import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentSuccessModal
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
 import com.ssafy.shieldroneapp.ui.map.screens.SearchInputFields
 import com.ssafy.shieldroneapp.ui.map.screens.SearchResultsModal
@@ -274,8 +278,16 @@ fun MapScreen(
                     indication = null
                 ) {
                     keyboardController.hideKeyboard()
-                    if (state.showSearchModal || state.showStartMarkerModal) {
-                        mapViewModel.handleEvent(MapEvent.CloseModal)
+                    // 모달 닫기 처리
+                    if (state.showSearchResultsModal ||
+                        state.showStartMarkerModal ||
+                        state.showEndMarkerModal ||
+                        state.showDroneMatchResultModal ||
+                        state.showDroneAssignmentSuccessModal ||
+                        state.showDroneAssignmentFailureModal ||
+                        state.showCancelSuccessModal
+                        ) {
+                        mapViewModel.handleEvent(MapEvent.CloseAllModals)
                     }
                 },
         )
@@ -325,7 +337,7 @@ fun MapScreen(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            mapViewModel.handleEvent(MapEvent.CloseModal)
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
                         },
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -340,7 +352,7 @@ fun MapScreen(
                             routeLocation = state.selectedStartMarker,
                             onSelect = {
                                 mapViewModel.handleEvent(MapEvent.SetStartLocation(state.selectedStartMarker))
-                                mapViewModel.handleEvent(MapEvent.CloseModal)
+                                mapViewModel.handleEvent(MapEvent.CloseAllModals)
                             }
                         )
                     }
@@ -348,24 +360,46 @@ fun MapScreen(
             }
         }
 
-        // 2-2) 드론 배정 요청 버튼
-        Button(
-            onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.BottomCenter),
-            enabled = state.selectedStart != null && state.selectedEnd != null,
+        // 2-2) 드론 배정 취소/요청 버튼
+        Box(
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
         ) {
-            Text(
-                text = "드론 배정 요청",
-                style = MaterialTheme.typography.h5
-            )
+            // 드론 배정 취소 버튼
+            Button(
+                onClick = {
+                    mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = 5)))
+                },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier
+                    .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
+                    .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
+                    .wrapContentWidth(), // 버튼 크기를 텍스트 크기에 맞춤
+                enabled = true,
+            ) {
+                Text("드론 배정 취소")
+            }
+
+            // 드론 배정 요청 버튼
+            Button(
+                onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
+                shape = RoundedCornerShape(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .align(Alignment.BottomCenter),
+                enabled = state.selectedStart != null && state.selectedEnd != null,
+            ) {
+                Text(
+                    text = "드론 배정 요청",
+                    style = MaterialTheme.typography.h5
+                )
+            }
         }
 
-        // 3. 검색 결과 모달 (최상단 레이어)
-        if (state.showSearchModal) {
+        // 3. 최상단 레이어
+
+        // 3-1) 검색 결과 모달
+        if (state.showSearchResultsModal) {
             SearchResultsModal(
                 searchType = state.searchType,
                 searchResults = state.searchResults,
@@ -376,7 +410,68 @@ fun MapScreen(
                         mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
                     }
                 },
-                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal) }
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
+            )
+        }
+
+        // 3-2) 드론 배정 성공 결과 모달
+        if (state.showDroneAssignmentSuccessModal && state.droneState != null) {
+            DroneAssignmentSuccessModal (
+                droneState = state.droneState,
+                onDroneCodeInput = { code ->
+                    mapViewModel.handleEvent(
+                        MapEvent.RequestDroneMatching(
+                            DroneMatchRequest(
+                                droneId = state.droneState.droneId,
+                                droneCode = code
+                            )
+                        )
+                    )
+                },
+                onRequestMatching = {
+                    val droneState = state.droneState
+                        mapViewModel.handleEvent(
+                            MapEvent.RequestDroneMatching(
+                                request = DroneMatchRequest(
+                                    droneId = droneState.droneId,
+                                    droneCode = 0 // 드론 코드 기본값
+                                )
+                            )
+                        )
+                },
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) },
+//                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) },
+                matchResult = state.droneMatchResult
+            )
+        }
+
+        // 3-3) 드론 배정 실패 결과 모달
+        if (state.showDroneAssignmentFailureModal && state.droneAssignmentError != null) {
+            DroneAssignmentFailureModal (
+                errorMessage = state.droneAssignmentError,
+                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
+                // TODO: 이거 아래 꺼 동작 확인
+//                onDismiss = { mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT)) }
+            )
+        }
+
+        // 3-4) 드론 배정 취소 결과 모달
+        if (state.showCancelSuccessModal) {
+            AlertDialog(
+                onDismissRequest = {
+                    mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                },
+                title = { Text("드론 배정 취소") },
+                text = { Text("드론 배정이 성공적으로 취소되었습니다.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                        }
+                    ) {
+                        Text("확인")
+                    }
+                }
             )
         }
 
