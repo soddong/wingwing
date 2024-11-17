@@ -301,11 +301,14 @@ class MapViewModel @Inject constructor(
      * */
     private fun searchStartLocation(text: String) {
         _state.update { it.copy(startSearchText = text) }
-        if (text.trim() == "") {
-            _state.update { it.copy(selectedStart = null) }
-            closeAllModals()
-        } else {
-            searchHivesByKeyword(HiveSearchRequest(text))
+        viewModelScope.launch {
+            if (text.trim() == "") {
+                _state.update { it.copy(selectedStart = null) }
+                mapRepository.clearStartLocation()
+                closeAllModals()
+            } else {
+                searchHivesByKeyword(HiveSearchRequest(text))
+            }
         }
     }
 
@@ -321,6 +324,7 @@ class MapViewModel @Inject constructor(
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
                 _state.update { it.copy(selectedEnd = null) }
+                mapRepository.clearEndLocation()
                 closeAllModals()
                 return@launch
             } else {
@@ -715,7 +719,8 @@ class MapViewModel @Inject constructor(
     private fun clearLocationData() {
         viewModelScope.launch {
             try {
-                mapRepository.clearLocationData()
+                mapRepository.clearStartLocation()
+                mapRepository.clearEndLocation()
                 _state.update { currentState ->
                     currentState.copy(
                         selectedStart = null,
