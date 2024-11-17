@@ -56,5 +56,12 @@ sealed class MapEvent {
     object LoadDroneState : MapEvent() // 드론 상태 가져오기
     data class SaveDroneState(val droneState: DroneState) : MapEvent() // 드론 상태 저장
     object ClearDroneState : MapEvent() // 드론 상태 초기화
+
+    // [로컬 저장소] 출발지/도착치 관리
+    object LoadStartAndEndLocations : MapEvent() // 출발지, 도착지 가져오기
+    data class SaveStartLocation(val location: RouteLocation) : MapEvent() // 출발지 저장
+    data class SaveEndLocation(val location: RouteLocation) : MapEvent() // 도착지 저장
+    object ClearLocationData : MapEvent() // 초기화
+
 }
 
