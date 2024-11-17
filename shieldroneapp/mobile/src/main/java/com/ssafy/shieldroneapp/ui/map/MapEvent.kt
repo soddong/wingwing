@@ -1,5 +1,6 @@
 package com.ssafy.shieldroneapp.ui.map
 
+import com.ssafy.shieldroneapp.data.model.DroneState
 import com.ssafy.shieldroneapp.data.model.DroneStatus
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.RouteLocation
@@ -50,5 +51,10 @@ sealed class MapEvent {
 
     // 오류 메시지 설정
     data class SetErrorMessage(val message: String) : MapEvent()
+
+    // [로컬 저장소] 드론 상태 관리
+    object LoadDroneState : MapEvent() // 드론 상태 가져오기
+    data class SaveDroneState(val droneState: DroneState) : MapEvent() // 드론 상태 저장
+    object ClearDroneState : MapEvent() // 드론 상태 초기화
 }
 

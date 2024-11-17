@@ -375,6 +375,7 @@ fun MapScreen(
                         .clickable {
                             state.droneState.droneId.let { droneId ->
                                 mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId)))
+                                mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
                             }
                         },
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), // 회색 텍스트
