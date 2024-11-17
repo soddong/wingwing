@@ -1,6 +1,5 @@
 package com.ssafy.shieldroneapp.permissions
 
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.util.Log
 import androidx.core.content.ContextCompat
