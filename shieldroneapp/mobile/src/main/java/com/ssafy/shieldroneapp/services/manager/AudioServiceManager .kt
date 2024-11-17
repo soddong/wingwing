@@ -3,13 +3,17 @@ package com.ssafy.shieldroneapp.services.manager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
 import com.ssafy.shieldroneapp.services.sensor.AudioRecordService
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AudioServiceManager @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    private val webSocketService: WebSocketService,
+    private val webSocketConnectionManager: WebSocketConnectionManager,
 ) {
     companion object {
         private const val TAG = "모바일: 오디오 서비스 매니저"
@@ -38,6 +42,13 @@ class AudioServiceManager @Inject constructor(
             }
         }
     }
+
+    fun initializeWebSocket() {
+        Log.d(TAG, "WebSocket 초기화 시작")
+        webSocketService.setConnectionManager(webSocketConnectionManager)
+        webSocketService.initialize()
+    }
+
 
     fun isRunning() = isServiceRunning
 }

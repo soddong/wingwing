@@ -122,14 +122,11 @@ class MobileMainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = startDestination // 시작 화면 설정
+                    startDestination = startDestination
                 ) {
                     composable(ROUTE_LANDING) {
-                        LandingScreen(onStartClick = {
+                        LandingScreen(onAuthClick = {
                             navController.navigate(ROUTE_AUTHENTICATION) {
-                            //  navController.navigate("main_screen") {
-//                            navController.navigate(ROUTE_MAP) {
-                                // Landing 화면은 백스택에서 제거하여 뒤로가기 방지
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
                         })
@@ -138,7 +135,6 @@ class MobileMainActivity : ComponentActivity() {
                         AuthenticationScreen(
                             onAuthComplete = {
                                 navController.navigate(ROUTE_MAP) {
-                                    // 인증 화면들도 백스택에서 제거
                                     popUpTo(ROUTE_AUTHENTICATION) { inclusive = true }
                                 }
                             }
