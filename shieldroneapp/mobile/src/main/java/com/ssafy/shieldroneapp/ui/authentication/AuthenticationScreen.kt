@@ -34,9 +34,8 @@ fun AuthenticationScreen(
     viewModel: AuthenticationViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val errorMessage = state.error // error 값을 임시 변수로 저장
+    val errorMessage = state.error
 
-    // 인증 완료 시 콜백 호출
     LaunchedEffect(state.currentStep) {
         if (state.currentStep == AuthStep.Complete) {
             onAuthComplete()

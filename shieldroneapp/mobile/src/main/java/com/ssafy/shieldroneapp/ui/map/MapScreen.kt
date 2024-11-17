@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
+import android.net.Uri
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,6 +53,7 @@ import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
 import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
+import com.ssafy.shieldroneapp.permissions.PermissionViewModel
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -88,6 +90,7 @@ fun MapScreen(
     alertHandler: AlertHandler,
     safetyMessageSender: SafetyMessageSender,
     mapViewModel: MapViewModel = hiltViewModel(),
+    permissionViewModel: PermissionViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
@@ -97,6 +100,7 @@ fun MapScreen(
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val isMapInitialized = remember { mutableStateOf(false) }
+
 
     // 위치 서비스(GPS, 네트워크) 활성화 상태를 실시간으로 감지
     val locationServicesEnabled = mapViewModel.locationServicesEnabled.collectAsStateWithLifecycle()
@@ -133,16 +137,59 @@ fun MapScreen(
         mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(isLocationEnabled))
     }
 
-    // 위치 권한을 허용받은 후에만 초기 위치를 로드
+    // 상태 추가
+    val showPermissionDialog = remember { mutableStateOf(false) }
+
+    // 위치 및 오디오 권한을 함께 요청
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val locationGranted = permissions.entries.all { it.value }
+        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val audioGranted = permissions[Manifest.permission.RECORD_AUDIO] == true
+
+        // 오디오 권한 상태 업데이트
+        permissionViewModel.updateAudioPermissionStatus(audioGranted)
+
+        // 위치 권한이 허용된 경우에만 위치 관련 기능 시작
         if (locationGranted) {
-            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives) // 현재 위치 로드
-            mapViewModel.handleEvent(MapEvent.StartLocationTracking) // 위치 추적 시작
+            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+            mapViewModel.handleEvent(MapEvent.StartLocationTracking)
+        }
+
+        // 권한이 거부된 경우 다이얼로그 표시를 위한 상태 업데이트
+        if (!locationGranted || !audioGranted) {
+            showPermissionDialog.value = true
         }
     }
+
+// 권한 거부 시 다이얼로그 표시
+    if (showPermissionDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog.value = false },
+            title = { Text("권한 필요") },
+            text = { Text("앱 사용을 위해 위치 및 마이크 권한이 필요합니다.\n설정에서 권한을 허용해주세요.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                        showPermissionDialog.value = false
+                    }
+                ) {
+                    Text("설정으로 이동")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog.value = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
     LaunchedEffect(Unit) {
         locationPermissionLauncher.launch(
             arrayOf(
