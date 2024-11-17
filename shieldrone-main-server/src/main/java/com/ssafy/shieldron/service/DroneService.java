@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.ssafy.shieldron.global.exception.ErrorCode.DRONE_NOT_AVAILABLE;
+import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_CODE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_DRONE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_HIVE;
 import static com.ssafy.shieldron.global.exception.ErrorCode.INVALID_USER;
@@ -115,7 +116,7 @@ public class DroneService {
         }
 
         if (!Objects.equals(drone.getDroneCode(), droneCode)) {
-            throw new CustomException(INVALID_DRONE);
+            throw new CustomException(INVALID_CODE);
         }
 
         drone.updateStatus(DroneStatus.IN_USE);
