@@ -6,6 +6,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.DroneState
+import com.ssafy.shieldroneapp.data.model.DroneStatus
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,8 +33,8 @@ class DroneLocalDataSourceImpl @Inject constructor(
      *
      * @param state 로컬에 저장할 드론 상태 객체
      */
-    override suspend fun saveDroneState(state: DroneState) {
-        val droneStateJson = gson.toJson(state)
+    override suspend fun saveDroneState(droneState: DroneState) {
+        val droneStateJson = gson.toJson(droneState)
         sharedPreferences.edit().putString("droneState", droneStateJson).apply()
     }
 
@@ -54,16 +55,16 @@ class DroneLocalDataSourceImpl @Inject constructor(
      *
      * @param newState 업데이트할 드론 상태
      */
-    override suspend fun updateDroneState(newState: DroneState) {
-        val currentState = getDroneState() ?: DroneState(droneId = newState.droneId)
+    override suspend fun updateDroneState(newDroneState: DroneState) {
+        val currentState = getDroneState() ?: DroneState(droneId = newDroneState.droneId)
         // 새로운 값이 있으면 덮어씌우고, 없으면 기존 값을 유지
         val updatedState = currentState.copy(
-            stationIP = newState.stationIP ?: currentState.stationIP,
-            matchStatus = newState.matchStatus,
-            battery = newState.battery ?: currentState.battery,
-            estimatedTime = newState.estimatedTime ?: currentState.estimatedTime,
-            distance = newState.distance ?: currentState.distance,
-            assignedTime = newState.assignedTime ?: currentState.assignedTime
+            stationIP = newDroneState.stationIP ?: currentState.stationIP,
+            matchStatus = newDroneState.matchStatus,
+            battery = newDroneState.battery ?: currentState.battery,
+            estimatedTime = newDroneState.estimatedTime ?: currentState.estimatedTime,
+            distance = newDroneState.distance ?: currentState.distance,
+            assignedTime = newDroneState.assignedTime ?: currentState.assignedTime
         )
         saveDroneState(updatedState)
     }
@@ -96,12 +97,6 @@ class DroneLocalDataSourceImpl @Inject constructor(
      */
     override suspend fun checkAssignmentExpiration(): Boolean {
         val startTime = sharedPreferences.getLong("assignmentStartTime", -1)
-        return if (startTime == -1L) {
-            false
-        } else {
-            val currentTime = System.currentTimeMillis()
-            val elapsedTime = currentTime - startTime
-            elapsedTime >= 10 * 60 * 1000 // 10분(600,000 밀리초) 경과 여부 확인
-        }
+        return startTime != -1L && (System.currentTimeMillis() - startTime >= 10 * 60 * 1000)
     }
 }

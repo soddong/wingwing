@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -36,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,6 +46,7 @@ import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.KakaoMapReadyCallback
+import com.ssafy.shieldroneapp.data.model.DroneStatus
 import com.ssafy.shieldroneapp.data.model.LocationType
 import com.ssafy.shieldroneapp.data.model.WatchConnectionState
 import com.ssafy.shieldroneapp.data.model.request.DroneCancelRequest
@@ -365,18 +366,21 @@ fun MapScreen(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
         ) {
             // 드론 배정 취소 버튼
-            Button(
-                onClick = {
-                    mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = 5)))
-                },
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier
-                    .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
-                    .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
-                    .wrapContentWidth(), // 버튼 크기를 텍스트 크기에 맞춤
-                enabled = true,
-            ) {
-                Text("드론 배정 취소")
+            if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+                Text(
+                    text = "드론 배정 취소",
+                    modifier = Modifier
+                        .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
+                        .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
+                        .clickable {
+                            state.droneState.droneId.let { droneId ->
+                                mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId)))
+                                mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
+                            }
+                        },
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), // 회색 텍스트
+                    style = MaterialTheme.typography.body2.copy(textDecoration = TextDecoration.Underline) // 밑줄
+                )
             }
 
             // 드론 배정 요청 버튼
@@ -409,6 +413,8 @@ fun MapScreen(
                     } else {
                         mapViewModel.handleEvent(MapEvent.SetEndLocation(selectedLocation))
                     }
+                    mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                    keyboardController.hideKeyboard()
                 },
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
             )

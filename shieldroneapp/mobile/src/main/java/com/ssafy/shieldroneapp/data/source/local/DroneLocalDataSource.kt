@@ -11,9 +11,9 @@ import com.ssafy.shieldroneapp.data.model.DroneState
  */
 interface DroneLocalDataSource {
     // 드론 상태 관리
-    suspend fun saveDroneState(state: DroneState) // 저장
+    suspend fun saveDroneState(droneState: DroneState) // 저장
     suspend fun getDroneState(): DroneState? // 조회
-    suspend fun updateDroneState(newState: DroneState) // 업데이트
+    suspend fun updateDroneState(newDroneState: DroneState) // 업데이트
     suspend fun clearDroneState() // 삭제
 
     // 드론 배정 후 매칭 타이머 관련

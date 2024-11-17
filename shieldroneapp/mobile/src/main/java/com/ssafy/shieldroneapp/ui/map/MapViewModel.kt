@@ -20,6 +20,7 @@ import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
 import com.ssafy.shieldroneapp.data.repository.AlertRepository
 import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
+import com.ssafy.shieldroneapp.data.source.local.DroneLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
@@ -43,6 +44,7 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val droneRepository: DroneRepository,
+    private val droneLocalDataSource: DroneLocalDataSource,
     private val alertRepository: AlertRepository,
     private val alertHandler: AlertHandler,
     private val apiService: ApiService,
@@ -69,6 +71,11 @@ class MapViewModel @Inject constructor(
 
     private var searchJob: Job? = null // 검색 디바운스 용도
     private var timerJob: Job? = null // 10분 타이머 용도
+
+    // 앱 실행 시 로컬 드론 상태 로드
+    init {
+        handleEvent(MapEvent.LoadDroneState)
+    }
 
     // 전체 이벤트 핸들러
     fun handleEvent(event: MapEvent) {
@@ -111,6 +118,11 @@ class MapViewModel @Inject constructor(
 
             // 오류 메시지 설정
             is MapEvent.SetErrorMessage -> setError(event.message) // 오류 메세지 설정
+
+            // [로컬 저장소] 드론 상태 관리
+            is MapEvent.LoadDroneState -> loadDroneState() // 드론 상태 가져오기
+            is MapEvent.SaveDroneState -> saveDroneState(event.droneState) // 드론 상태 저장
+            is MapEvent.ClearDroneState -> clearDroneState() // 드론 상태 초기화
         }
     }
 
@@ -392,13 +404,16 @@ class MapViewModel @Inject constructor(
      * 14-2. 드론 배정 요청 성공 시 결과를 처리
      */
     private fun handleDroneAssignmentSuccess(response: DroneRouteResponse) {
+        val droneState = DroneState.createDroneStateFromResponse(response)
+
         _state.update { currentState ->
             currentState.copy(
-                droneState = DroneState.createDroneStateFromResponse(response),
+                droneState = droneState,
                 showDroneAssignmentSuccessModal = true, // 성공 모달 표시
                 error = null,
             )
         }
+        handleEvent(MapEvent.SaveDroneState(droneState)) // 로컬에 드론 상태 저장
         startTimer() // 배정 완료 후, 매칭까지 10분 타이머 시작
         Log.d(TAG, "드론 배정 성공: $response")
     }
@@ -558,6 +573,39 @@ class MapViewModel @Inject constructor(
      * */
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }
+    }
+
+    /**
+     * 22. 로컬에서 드론 상태 가져오기
+     * */
+    private fun loadDroneState() {
+        viewModelScope.launch {
+            val savedState = droneLocalDataSource.getDroneState()
+            if (savedState != null) {
+                _state.update { it.copy(droneState = savedState) }
+            }
+        }
+    }
+
+    /**
+     * 23. 로컬에 드론 상태 저장
+     * */
+    private fun saveDroneState(droneState: DroneState) {
+        viewModelScope.launch {
+            droneLocalDataSource.saveDroneState(droneState)
+            _state.update { it.copy(droneState = droneState) }
+            Log.d(TAG, "드론 상태 로컬 저장 완료: $droneState")
+        }
+    }
+
+    /**
+     * 24. 로컬에서 드론 상태 초기화
+     * */
+    private fun clearDroneState() {
+        viewModelScope.launch {
+            droneLocalDataSource.clearDroneState()
+            _state.update { it.copy(droneState = null) }
+        }
     }
 
     val alertState = alertRepository.alertState
