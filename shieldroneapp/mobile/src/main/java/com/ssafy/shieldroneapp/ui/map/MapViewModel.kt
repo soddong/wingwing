@@ -53,7 +53,7 @@ class MapViewModel @Inject constructor(
     companion object {
         private const val TAG = "MapViewModel 모바일: 맵 뷰모델"
         private const val TIMER_DURATION_MS = 10 * 60 * 1000L // 10분
-        private const val SEARCH_DEBOUNCE_MS = 300L // 300ms 디바운스
+        private const val SEARCH_DEBOUNCE_MS = 150L // 150ms 디바운스
     }
 
     private val _state = MutableStateFlow(MapState())
@@ -317,7 +317,7 @@ class MapViewModel @Inject constructor(
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MS) // 300ms 디바운스
+            delay(SEARCH_DEBOUNCE_MS) // 150ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
                 _state.update { it.copy(selectedEnd = null) }
