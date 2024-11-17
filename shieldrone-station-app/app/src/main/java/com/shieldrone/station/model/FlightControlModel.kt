@@ -54,7 +54,7 @@ class FlightControlModel {
         val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
         val homeLocation by lazy { KeyTools.createKey(FlightControllerKey.KeyHomeLocation) }
     }
-    val state = State()
+    var state = State()
     var currentVerticalPosition: Int = 0
     var currentYawPosition: Int = 0
     // 2. LifeCycle
@@ -247,6 +247,7 @@ class FlightControlModel {
      */
     fun subscribeDroneState(onUpdate: (State) -> Unit) {
 
+        state = State()
 
         // 초기 값 설정
         state.pitch = attitude.get()?.pitch
@@ -265,12 +266,14 @@ class FlightControlModel {
                 state.yaw = it.yaw
                 state.roll = it.roll
                 state.pitch = it.pitch
+                Log.d(TAG,"attitude updated : ${state.pitch}")
                 onUpdate(state)
             }
         }
         // 업데이트 리스너 설정
         KeyManager.getInstance().listen(location3D, this) { _, data ->
             data?.let {
+
                 state.longitude = it.longitude
                 state.latitude = it.latitude
                 state.altitude = it.altitude
@@ -291,7 +294,7 @@ class FlightControlModel {
 
     fun subscribeGoHomeState(onUpdate: (FCGoHomeState) -> Unit) {
         // KeyManager를 통해 GoHome 상태를 구독
-        KeyManager.getInstance().listen(homeState, this) { _, data ->
+        KeyManager.getInstance().listen(homeState, this, false) { _, data ->
             data?.let { goHomeState ->
                 Log.d(TAG, "GoHome 상태 업데이트: $goHomeState")
                 onUpdate(goHomeState)
@@ -304,7 +307,7 @@ class FlightControlModel {
      */
     fun subscribeHomeLocation(onUpdate: (LocationCoordinate2D) -> Unit) {
         // KeyManager를 통해 GoHome 상태를 구독
-        KeyManager.getInstance().listen(homeLocation, this) { _, data ->
+        KeyManager.getInstance().listen(homeLocation, this, false) { _, data ->
             data?.let { homeLocation ->
                 Log.d(TAG, "집주소 업데이트: $homeLocation")
                 onUpdate(homeLocation)
@@ -412,8 +415,9 @@ class FlightControlModel {
         verticalSpeed = verticalSpeed.coerceIn(MAX_DESCENT_SPEED, MAX_ASCENT_SPEED)
 
         // 속도 명령을 스틱 입력 값으로 변환하는 계수 계산
-        val SPEED_TO_STICK = MAX_STICK_VALUE / MAX_ASCENT_SPEED // 660 / 5.0 = 132.0
+//        val SPEED_TO_STICK = MAX_STICK_VALUE / MAX_ASCENT_SPEED // 660 / 5.0 = 132.0
 
+        val SPEED_TO_STICK = 20
         // 속도 명령을 스틱 입력 값으로 변환
         val verticalSpeedCommand = (verticalSpeed * SPEED_TO_STICK).toInt()
 

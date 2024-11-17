@@ -92,7 +92,7 @@ class FlightControlVM : ViewModel() {
                 // 이미 타이머가 실행 중인 경우 처리하지 않음
                 if (reachedTargetTime == null) {
                     reachedTargetTime = System.currentTimeMillis()
-                    startTimerForReturnToHome()
+//                    startTimerForReturnToHome()
                 }
             } else {
                 // 3미터 범위를 벗어났을 경우 초기화
@@ -105,12 +105,17 @@ class FlightControlVM : ViewModel() {
     val routeModel: RouteModel = RouteModel(routeListener)
 
     init {
-        flightControlModel.apply {
-            subscribeDroneState { _droneState.value = it }
-            subscribeVirtualStickState { _virtualStickState.value = it }
-            subscribeGoHomeState { _goHomeState.value = it }
-        }
+        flightControlModel.subscribeDroneState {
 
+                state ->
+            _droneState.value = state
+        }
+        flightControlModel.subscribeVirtualStickState { stick ->
+            _virtualStickState.value = stick
+        }
+        flightControlModel.subscribeGoHomeState { home ->
+            _goHomeState.value = home
+        }
         flightControlModel.subscribeGoHomeState { state ->
             _goHomeState.value = state
         }
@@ -264,6 +269,7 @@ class FlightControlVM : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         handler.removeCallbacksAndMessages(null)
+        routeModel.stopReceivingLocation()
     }
 
 

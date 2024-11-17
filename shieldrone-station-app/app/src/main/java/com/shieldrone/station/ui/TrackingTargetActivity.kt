@@ -89,10 +89,10 @@ fun TrackingTargetScreen(
     val gimbalInfo by gimbalVM.gimbalInfo.collectAsState()
 
     var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
-    var maxStickValue by remember { mutableStateOf(110.0) }   // 최대 전진 속도
+    var maxStickValue by remember { mutableStateOf(20.0) }   // 최대 전진 속도
     var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
-    var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
+    var KpValue by remember { mutableStateOf(1.0) } // 드론 속도 조절 가중치
 
 
     // Yaw 조정 기능 (버튼 클릭 시에만 작동)

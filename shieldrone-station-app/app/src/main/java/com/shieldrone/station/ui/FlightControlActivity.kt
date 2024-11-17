@@ -48,6 +48,7 @@ class FlightControlActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        trackingVM.stopReceivingData()
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,31 +82,31 @@ class FlightControlActivity : ComponentActivity() {
         val virtualStickState by flightControlVM.virtualStickState.collectAsState()
 
         var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
-        var maxStickValue by remember { mutableStateOf(110.0) }   // 최대 전진 속도
+        var maxStickValue by remember { mutableStateOf(20.0) }   // 최대 전진 속도
         var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
         var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
-        var KpValue by remember { mutableStateOf(2.0) } // 드론 속도 조절 가중치
+        var KpValue by remember { mutableStateOf(1.0) } // 드론 속도 조절 가중치
 
 
         // Yaw 조정 기능 (버튼 클릭 시에만 작동)
         LaunchedEffect(isAdjustingYaw) {
             var yawAdjustment = 0.0
             if (isAdjustingYaw) {
-                Log.i("TrackingTargetActivity", "Yaw adjustment started")
+                Log.i("TAG", "Yaw adjustment started")
                 while (isAdjustingYaw) {
                     val threshold = 0.3
                     val minYaw = 10.0    // 최소 회전 속도
                     val offsetX = trackingData!!.newData.normalizedOffsetX
                     val absOffsetX = abs(offsetX)
 
-                    Log.d("TrackingTargetActivity", "OffsetX: $offsetX, AbsOffsetX: $absOffsetX")
+                    Log.d("TAG", "OffsetX: $offsetX, AbsOffsetX: $absOffsetX")
 
                     if (absOffsetX > threshold) {
                         // 임계값을 초과한 부분을 0부터 1 사이로 정규화
                         val scaledOffset = (absOffsetX - threshold) / (1.0 - threshold)
                         // 최소 및 최대 회전 속도 사이에서 보간
                         val adjustmentValue = scaledOffset * (maxYaw - minYaw) + minYaw
-                        Log.d("TrackingTargetActivity", "adjustmentValue: $adjustmentValue")
+                        Log.d("TAG", "adjustmentValue: $adjustmentValue")
                         // 방향에 따라 부호 적용
                         yawAdjustment = adjustmentValue * sign(offsetX)
                     } else {
@@ -119,7 +120,7 @@ class FlightControlActivity : ComponentActivity() {
                     val vY = -KpValue * eYFuture
 
                     val vYLimited = vY.coerceIn(-1.0, 1.0) * maxStickValue
-                    Log.d("TrackingTargetActivity", "vYLimited: $vYLimited")
+                    Log.d("TAG", "vYLimited: $vYLimited")
                     // 100ms 간격으로 업데이트
                     flightControlVM.updatePitch(vYLimited.toInt())
                     flightControlVM.adjustPitch()
@@ -149,6 +150,7 @@ class FlightControlActivity : ComponentActivity() {
                 if (droneState != null) {
                     Text("롤: ${droneState!!.roll}, 요: ${droneState!!.yaw}, 피치: ${droneState!!.pitch}")
                     Text("고도: ${droneState!!.altitude}")
+                    Log.d(TAG, "state 변경됨 : $droneState")
 //                Text("속도 X: ${droneState!!.xVelocity}, Y: ${droneState!!.yVelocity},  Z:${droneState!!.zVelocity}")
                 }
 
@@ -290,7 +292,7 @@ class FlightControlActivity : ComponentActivity() {
                     value = altitudeValue.toFloat(),
                     onValueChange = { value ->
                         altitudeValue = value.toInt()
-                        flightControlVM.updateAltitude(altitudeValue) // 슬라이더 조정 시 altitude 값 업데이트
+//                        flightControlVM.updateAltitude(altitudeValue) // 슬라이더 조정 시 altitude 값 업데이트
 //                        flightControlVM.adjustAltitude()
                     },
                     valueRange = 0f..200f,
