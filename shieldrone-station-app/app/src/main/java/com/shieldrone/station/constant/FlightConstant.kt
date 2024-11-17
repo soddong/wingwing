@@ -15,6 +15,8 @@ class FlightConstant {
         const val FORWARD_DELAY_MILLISECONDS = 100L
         const val GPS_ALTITUDE = 3.2
         const val HEIGHT_SPEED = 110
+        const val MAX_ASCENT_SPEED = 5.0      // 최대 상승 속도 (m/s)
+        const val MAX_DESCENT_SPEED = -3.5    // 최대 하강 속도 (m/s)
         const val ANGLE_THRESHOLD = 0.01  // Roll, Pitch, Yaw의 오차 허용 범위 (도 단위)
         const val VELOCITY_THRESHOLD = 0.01  // 속도의 오차 허용 범위 (m/s 단위)
         const val DISTANCE_THRESHOLD = 0.00001 // 거리 오차 허용 범위 (= 0.1mm)

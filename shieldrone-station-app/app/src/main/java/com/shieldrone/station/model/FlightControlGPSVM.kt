@@ -54,11 +54,13 @@ class FlightControlGPSVM : ViewModel() {
             locationLng: Double,
             destLat: Double,
             destLng: Double,
-            altitude: Double
+            altitude: Double,
+            startFlag: Boolean
         ) {
             _currentLocation.value = Position(locationLat, locationLng, altitude)
             _destinationLocation.value = Position(destLat, destLng, altitude)
 
+//            _isStart.value = startFlag
             val latDiff = abs(locationLat - destLat)
             val lngDiff = abs(locationLng - destLng)
             val threshold = 0.000027  // 대략적인 3미터 범위

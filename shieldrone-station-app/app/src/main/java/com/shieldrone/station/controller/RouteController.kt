@@ -14,7 +14,6 @@ class RouteController(private val routeAdapter: RouteAdapter) {
     private var isReceiving = false
 
     companion object {
-        private const val HOST = "0.0.0.0"  // 모든 IP 주소에서 수신
         private const val PORT = 23456      // RouteDecision에서 보낸 포트와 일치
     }
 
@@ -55,14 +54,15 @@ class RouteController(private val routeAdapter: RouteAdapter) {
                 val destLat = destLocation.optDouble("lat", Double.NaN)
                 val destLng = destLocation.optDouble("lng", Double.NaN)
 
+                val startFlag = data.optBoolean("start_flag",false)
                 // 데이터 처리
-                routeAdapter.process(locationLat, locationLng, destLat, destLng)
+                routeAdapter.process(locationLat, locationLng, destLat, destLng,startFlag)
 
                 // 수신한 데이터 출력
                 Log.i(
                     "RouteController",
                     "Received Locations: location(lat=$locationLat, lng=$locationLng), " +
-                            "dest_location(lat=$destLat, lng=$destLng)"
+                            "dest_location(lat=$destLat, lng=$destLng), start_flag=$startFlag"
                 )
             }
 

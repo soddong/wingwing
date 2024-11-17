@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.shieldrone.station.constant.FlightConstant.Companion.GPS_ALTITUDE
 import com.shieldrone.station.model.CameraStreamVM
 import com.shieldrone.station.model.FlightControlVM
 import com.shieldrone.station.model.TrackingDataVM
@@ -45,6 +46,9 @@ class FlightControlActivity : ComponentActivity() {
     private val flightControlVM: FlightControlVM by viewModels()
     private val cameraStreamVM: CameraStreamVM by viewModels()
 
+    override fun onDestroy() {
+        super.onDestroy()
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "Activity created")
@@ -52,6 +56,9 @@ class FlightControlActivity : ComponentActivity() {
         // 카메라 인덱스 설정
         cameraStreamVM.setCameraModeAndIndex(ComponentIndexType.LEFT_OR_MAIN)
         Log.i(TAG, "Camera index set to LEFT_OR_MAIN")
+
+        flightControlVM.startReceivingLocation()
+        Log.i(TAG, "location receive start")
 
         setContent {
             TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM)
@@ -82,6 +89,7 @@ class FlightControlActivity : ComponentActivity() {
 
         // Yaw 조정 기능 (버튼 클릭 시에만 작동)
         LaunchedEffect(isAdjustingYaw) {
+            var yawAdjustment = 0.0
             if (isAdjustingYaw) {
                 Log.i("TrackingTargetActivity", "Yaw adjustment started")
                 while (isAdjustingYaw) {
@@ -99,10 +107,12 @@ class FlightControlActivity : ComponentActivity() {
                         val adjustmentValue = scaledOffset * (maxYaw - minYaw) + minYaw
                         Log.d("TrackingTargetActivity", "adjustmentValue: $adjustmentValue")
                         // 방향에 따라 부호 적용
-                        flightControlVM.adjustYaw(adjustmentValue * sign(offsetX))
+                        yawAdjustment = adjustmentValue * sign(offsetX)
                     } else {
-                        flightControlVM.adjustYaw(0.0)
+                        yawAdjustment = 0.0
                     }
+                    // yaw와 고도를 동시에 조절
+                    flightControlVM.adjustLeftStick(yawDifference = yawAdjustment, desiredAltitude = GPS_ALTITUDE)
 
                     val eYFuture = trackingData!!.futureErrorY
 
@@ -281,7 +291,7 @@ class FlightControlActivity : ComponentActivity() {
                     onValueChange = { value ->
                         altitudeValue = value.toInt()
                         flightControlVM.updateAltitude(altitudeValue) // 슬라이더 조정 시 altitude 값 업데이트
-                        flightControlVM.adjustAltitude()
+//                        flightControlVM.adjustAltitude()
                     },
                     valueRange = 0f..200f,
                     modifier = Modifier

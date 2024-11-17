@@ -31,8 +31,6 @@ class FlightControlVM : ViewModel() {
     private val flightControlModel = FlightControlModel()
     private val handler = Handler(Looper.getMainLooper())
 
-    private var isMoving = false
-
     private val _virtualMessage = MutableStateFlow<String?>(null)
     val virtualMessage: StateFlow<String?> get() = _virtualMessage.asStateFlow()
 
@@ -60,6 +58,8 @@ class FlightControlVM : ViewModel() {
     private var _goHomeState = MutableStateFlow(FCGoHomeState.UNKNOWN)
     val goHomeState: StateFlow<FCGoHomeState> = _goHomeState.asStateFlow()
 
+    private var _isStart = MutableStateFlow(false)
+    val isStart: StateFlow<Boolean> = _isStart.asStateFlow()
     private val _homeLocation =
         MutableStateFlow(LocationCoordinate2D(0.0, 0.0))
     val homeLocation: StateFlow<LocationCoordinate2D> = _homeLocation.asStateFlow()
@@ -76,11 +76,13 @@ class FlightControlVM : ViewModel() {
             locationLng: Double,
             destLat: Double,
             destLng: Double,
-            altitude: Double
+            altitude: Double,
+            startFlag: Boolean
         ) {
             _currentLocation.value = Position(locationLat, locationLng, altitude)
             _destinationLocation.value = Position(destLat, destLng, altitude)
 
+            _isStart.value = startFlag
             val latDiff = abs(locationLat - destLat)
             val lngDiff = abs(locationLng - destLng)
             val threshold = 0.000027  // 대략적인 3미터 범위
@@ -123,8 +125,10 @@ class FlightControlVM : ViewModel() {
     fun stopReceivingLocation() = routeModel.stopReceivingLocation()
 
     fun startTakeOff() {
-        val callback = createCompletionCallback("이륙 시작", "이륙 실패")
-        flightControlModel.startTakeOff(callback)
+        if (isStart.value) {
+            val callback = createCompletionCallback("이륙 시작", "이륙 실패")
+            flightControlModel.startTakeOff(callback)
+        }
     }
 
     fun startLanding() {
@@ -174,11 +178,31 @@ class FlightControlVM : ViewModel() {
     }
 
 
-    fun adjustYaw(yawDifference: Double) {
+//    fun adjustYaw(yawDifference: Double) {
+//        try {
+//            flightControlModel.adjustYaw(yawDifference)
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Yaw 조정 실패: ${e.message}")
+//        }
+//    }
+//
+//
+//    fun adjustAltitude() {
+//        try {
+//            flightControlModel.adjustAltitude(altitude)
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Altitude 조정 실패: ${e.message}")
+//        }
+//    }
+
+    /**
+     * yaw와 altitude를 동시에 조절하는 메서드
+     */
+    fun adjustLeftStick(yawDifference: Double, desiredAltitude: Double) {
         try {
-            flightControlModel.adjustYaw(yawDifference)
+            flightControlModel.adjustLeftStick(yawDifference, desiredAltitude)
         } catch (e: Exception) {
-            Log.e(TAG, "Yaw 조정 실패: ${e.message}")
+            Log.e(TAG, "Left Stick 조정 실패: ${e.message}")
         }
     }
 
@@ -190,31 +214,12 @@ class FlightControlVM : ViewModel() {
         }
     }
 
-    fun adjustAltitude() {
-        try {
-            flightControlModel.adjustAltitude(altitude)
-        } catch (e: Exception) {
-            Log.e(TAG, "Altitude 조정 실패: ${e.message}")
-        }
-    }
-
     fun updatePitch(value: Int) {
         pitch = value
     }
 
     fun updateAltitude(value: Int) {
         altitude = value
-    }
-
-    private fun handleSuccess(message: String): CommonCallbacks.CompletionCallback {
-        return object : CommonCallbacks.CompletionCallback {
-            override fun onSuccess() {
-                _message.value = message
-                Log.d(TAG, message)
-            }
-
-            override fun onFailure(error: IDJIError) {}
-        }
     }
 
     private fun startReturnToHome() {
@@ -255,7 +260,6 @@ class FlightControlVM : ViewModel() {
             }
         }
     }
-
 
     override fun onCleared() {
         super.onCleared()

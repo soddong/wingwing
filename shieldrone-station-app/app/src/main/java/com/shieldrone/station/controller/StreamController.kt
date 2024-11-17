@@ -16,7 +16,8 @@ class StreamController(private val imageFrameProvider: ImageFrameProvider) {
     private var onFrameAvailable: ((Bitmap) -> Unit)? = null
 
     companion object {
-        private const val HOST = "192.168.107.191"
+        private const val HOST = "172.30.1.33"
+//        private const val HOST = "192.168.107.191"
         private const val PORT = 65432
         private const val FRAME_WIDTH = 640
         private const val FRAME_HEIGHT = 360

@@ -24,9 +24,12 @@ import dji.v5.manager.interfaces.ICameraStreamManager.FrameFormat
 import dji.v5.manager.interfaces.ICameraStreamManager.ScaleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CameraStreamVM : ViewModel() {
 
@@ -43,6 +46,10 @@ class CameraStreamVM : ViewModel() {
     val keyExposureModeRange = KeyTools.createKey(KeyExposureModeRange)
     val keyCameraVideoStreamSource = KeyTools.createKey(KeyCameraVideoStreamSource)
     val keyExposureMode = KeyTools.createKey(KeyExposureMode)
+
+    // CoroutineScope를 ViewModel에서 관리
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val frameListener = object : ICameraStreamManager.CameraFrameListener {
         override fun onFrame(
             frameData: ByteArray,
@@ -52,19 +59,23 @@ class CameraStreamVM : ViewModel() {
             height: Int,
             format: FrameFormat
         ) {
-            streamController.sendFrameDataOverUDP(frameData, width, height)
-            Log.d(TAG, "Frame received: $length bytes, Resolution: ${width}x$height")
-            CoroutineScope(Dispatchers.Main).launch {
-                _frameInfo.value = "Frame: ${width}x$height, Format: $format"
+            coroutineScope.launch {
+                streamController.sendFrameDataOverUDP(frameData, width, height)
+                Log.d(TAG, "Frame received: $length bytes, Resolution: ${width}x$height")
+                withContext(Dispatchers.Main) {
+                    _frameInfo.value = "Frame: ${width}x$height, Format: $format"
+                }
             }
         }
     }
+
 
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "onCleared() called")
         removeFrameListener()
         streamController.closeSocket()
+        coroutineScope.cancel()
     }
 
     /**

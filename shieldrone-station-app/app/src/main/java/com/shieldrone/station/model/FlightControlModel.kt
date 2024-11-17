@@ -1,6 +1,8 @@
 package com.shieldrone.station.model
 
 import android.util.Log
+import com.shieldrone.station.constant.FlightConstant.Companion.MAX_ASCENT_SPEED
+import com.shieldrone.station.constant.FlightConstant.Companion.MAX_DESCENT_SPEED
 import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
 import com.shieldrone.station.data.LeftStick
 import com.shieldrone.station.data.RightStick
@@ -52,7 +54,9 @@ class FlightControlModel {
         val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
         val homeLocation by lazy { KeyTools.createKey(FlightControllerKey.KeyHomeLocation) }
     }
-
+    val state = State()
+    var currentVerticalPosition: Int = 0
+    var currentYawPosition: Int = 0
     // 2. LifeCycle
     /**
      * 리소스 해제 및 메모리 누수 방지 메서드
@@ -242,7 +246,7 @@ class FlightControlModel {
      * 드론 위치 정보 구독
      */
     fun subscribeDroneState(onUpdate: (State) -> Unit) {
-        val state = State()
+
 
         // 초기 값 설정
         state.pitch = attitude.get()?.pitch
@@ -371,20 +375,63 @@ class FlightControlModel {
     }
 
 
-    // 스틱 제어
-    fun adjustYaw(yawDifference: Double) {
-        val yawRate =
-            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
-        setLeftStick(LeftStick(StickPosition(0, yawRate)))
+//    // 스틱 제어
+//    fun adjustYaw(yawDifference: Double) {
+//        val yawRate =
+//            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+//        setLeftStick(LeftStick(StickPosition(0, yawRate)))
+//    }
+    fun adjustAltitude(altitude: Int) {
+        setLeftStick(LeftStick().apply { verticalPosition = altitude })
     }
 
     fun adjustPitch(pitch: Int) {
         setRightStick(RightStick().apply { verticalPosition = pitch })
     }
+    /**
+     * yaw와 altitude를 동시에 조절하는 메서드
+     */
+    fun adjustLeftStick(yawDifference: Double, desiredAltitude: Double) {
+        // 최대 스틱 값과 상승/하강 속도 정의
+        val altitudeKp = 0.5            // 고도 제어를 위한 비례 이득 (적절히 조정 필요)
 
-    fun adjustAltitude(altitude: Int) {
-        setLeftStick(LeftStick().apply { verticalPosition = altitude })
+        // yawDifference를 기반으로 yawRate 계산
+        val yawRate = yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        currentYawPosition = yawRate
+
+        // 현재 고도 가져오기 (state 객체를 통해)
+        val currentAltitude = state.altitude ?: 0.0
+
+        // 고도 오차 계산
+        val altitudeError = desiredAltitude - currentAltitude
+
+        // 원하는 상승/하강 속도 계산 (m/s 단위)
+        var verticalSpeed = altitudeKp * altitudeError
+
+        // 상승/하강 속도를 제한
+        verticalSpeed = verticalSpeed.coerceIn(MAX_DESCENT_SPEED, MAX_ASCENT_SPEED)
+
+        // 속도 명령을 스틱 입력 값으로 변환하는 계수 계산
+        val SPEED_TO_STICK = MAX_STICK_VALUE / MAX_ASCENT_SPEED // 660 / 5.0 = 132.0
+
+        // 속도 명령을 스틱 입력 값으로 변환
+        val verticalSpeedCommand = (verticalSpeed * SPEED_TO_STICK).toInt()
+
+        // 스틱 입력 값을 제한된 범위 내로 조정
+        val verticalSpeedCommandLimited = verticalSpeedCommand.coerceIn(-MAX_STICK_VALUE, MAX_STICK_VALUE)
+        currentVerticalPosition = verticalSpeedCommandLimited
+
+        // LeftStick 생성 (pitch는 0으로 설정)
+        val leftStick = LeftStick(StickPosition(0, currentYawPosition)).apply {
+            verticalPosition = currentVerticalPosition
+        }
+
+        // 드론의 컨트롤 업데이트
+        setLeftStick(leftStick)
     }
+
+
+
 
     /**
      * 드론을 홈 포인트로 복귀시키는 메서드 (Return to Home) - homeLocation
