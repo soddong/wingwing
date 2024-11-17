@@ -72,7 +72,7 @@ public class DroneService {
             throw new CustomException(DRONE_NOT_AVAILABLE);
         }
 
-        drone.updateStatus(DroneStatus.RESERVED);
+//        drone.updateStatus(DroneStatus.RESERVED);
 
         createDroneUser(drone, user);
 
@@ -168,7 +168,7 @@ public class DroneService {
                 .drone(drone)
                 .user(user)
                 .build();
-        droneUserRepository.save(droneUser);
+//        droneUserRepository.save(droneUser);
     }
 
     private double calculateDistanceBetweenHiveAndEndLocation(Hive hive, DroneAssignmentRequest droneAssignmentRequest) {
