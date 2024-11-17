@@ -258,6 +258,9 @@ class MapViewModel @Inject constructor(
                 ModalType.START_MARKER_INFO -> it.copy(showStartMarkerModal = true)
                 ModalType.END_MARKER_INFO -> it.copy(showEndMarkerModal = true)
                 ModalType.DRONE_MATCH_RESULT -> it.copy(showDroneMatchResultModal = true)
+                ModalType.DRONE_ASSIGNMENT_SUCCESS -> it.copy(showDroneAssignmentSuccessModal = true)
+                ModalType.DRONE_ASSIGNMENT_FAILURE -> it.copy(showDroneAssignmentFailureModal = true)
+                ModalType.CANCEL_SUCCESS -> it.copy(showCancelSuccessModal = true)
                 else -> it
             }
         }
@@ -273,6 +276,9 @@ class MapViewModel @Inject constructor(
                 ModalType.START_MARKER_INFO -> it.copy(showStartMarkerModal = false)
                 ModalType.END_MARKER_INFO -> it.copy(showEndMarkerModal = false)
                 ModalType.DRONE_MATCH_RESULT -> it.copy(showDroneMatchResultModal = false)
+                ModalType.DRONE_ASSIGNMENT_SUCCESS -> it.copy(showDroneAssignmentSuccessModal = false)
+                ModalType.DRONE_ASSIGNMENT_FAILURE -> it.copy(showDroneAssignmentFailureModal = false)
+                ModalType.CANCEL_SUCCESS -> it.copy(showCancelSuccessModal = false)
                 else -> it
             }
         }

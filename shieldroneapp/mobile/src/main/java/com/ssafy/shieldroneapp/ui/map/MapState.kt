@@ -13,7 +13,10 @@ enum class ModalType {
     SEARCH_RESULTS, // 검색 결과 모달
     START_MARKER_INFO, // 출발지 마커 정보 모달
     END_MARKER_INFO, // 도착지 마커 정보 모달
-    DRONE_MATCH_RESULT // 드론 매칭 결과 모달
+    DRONE_MATCH_RESULT, // 드론 매칭 결과 모달
+    DRONE_ASSIGNMENT_SUCCESS, // 드론 배정 성공 모달
+    DRONE_ASSIGNMENT_FAILURE, // 드론 배정 실패 모달
+    CANCEL_SUCCESS // 드론 배정 취소 완료 모달
 }
 
 data class MapState(
