@@ -38,11 +38,13 @@ fun IntroScreen(
                     color = MaterialTheme.colors.onBackground
                 )
 
-                CustomButton(
-                    text = "인증하기",
-                    onClick = onAuthenticateClick,
-                    type = ButtonType.LARGE
-                )
+            CustomButton(
+                text = "인증하기",
+                onClick = {
+                    onAuthenticateClick()
+                },
+                type = ButtonType.LARGE
+            )
         }
     }
 }

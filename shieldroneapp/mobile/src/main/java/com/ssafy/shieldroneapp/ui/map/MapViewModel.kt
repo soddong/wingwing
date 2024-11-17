@@ -22,7 +22,10 @@ import com.ssafy.shieldroneapp.data.repository.DroneRepository
 import com.ssafy.shieldroneapp.data.repository.MapRepository
 import com.ssafy.shieldroneapp.data.source.local.DroneLocalDataSource
 import com.ssafy.shieldroneapp.data.source.remote.ApiService
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketConnectionManager
 import com.ssafy.shieldroneapp.data.source.remote.WebSocketMessageSender
+import com.ssafy.shieldroneapp.data.source.remote.WebSocketService
+import com.ssafy.shieldroneapp.services.manager.AudioServiceManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
 import com.ssafy.shieldroneapp.ui.components.AlertState
 import com.ssafy.shieldroneapp.ui.components.AlertType
@@ -49,6 +52,9 @@ class MapViewModel @Inject constructor(
     private val alertHandler: AlertHandler,
     private val apiService: ApiService,
     private val webSocketMessageSender: WebSocketMessageSender,
+    private val webSocketService: WebSocketService,
+    private val webSocketConnectionManager: WebSocketConnectionManager,
+    private val audioServiceManager: AudioServiceManager,
 ) : ViewModel() {
     companion object {
         private const val TAG = "MapViewModel 모바일: 맵 뷰모델"
@@ -84,7 +90,7 @@ class MapViewModel @Inject constructor(
             // 출발지/도착지 리스트 조회/검색
             is MapEvent.LoadCurrentLocationAndFetchHives -> fetchCurrentLocationAndNearbyHives() // 근처 출발지 조회
             is MapEvent.SearchHivesByKeyword -> searchHivesByKeyword(event.keyword) // 출발지 검색
-            is MapEvent.SearchDestination ->  searchDestinationByKeyword(event.destination) // 도착지 검색
+            is MapEvent.SearchDestination -> searchDestinationByKeyword(event.destination) // 도착지 검색
 
             // 출발지/도착지 마커 선택
             is MapEvent.StartLocationSelected -> selectStartLocation(event.location) // 출발지 마커 선택
@@ -102,7 +108,7 @@ class MapViewModel @Inject constructor(
 
             // 출발지/도착지 선택
             is MapEvent.SetStartLocation -> setStartLocation(event.location) // 출발지 선택
-            is MapEvent.SetEndLocation  -> setEndLocation(event.location) // 도착지 선택
+            is MapEvent.SetEndLocation -> setEndLocation(event.location) // 도착지 선택
 
             // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
             is MapEvent.RequestDroneAssignment -> requestDroneAssignment() // 드론 배정 요청
@@ -181,11 +187,13 @@ class MapViewModel @Inject constructor(
                 .onSuccess { hives ->
                     // HiveResponse 목록을 RouteLocation 목록으로 변환
                     val routeLocations = hives.map { it.toRouteLocation() }
-                    _state.update { it.copy(
-                        searchResults = routeLocations,
-                        showSearchResultsModal = true, // 검색 결과 모달 표시
-                        error = null
-                    ) }
+                    _state.update {
+                        it.copy(
+                            searchResults = routeLocations,
+                            showSearchResultsModal = true, // 검색 결과 모달 표시
+                            error = null
+                        )
+                    }
                     Log.d(TAG, "출발지 검색 결과, 정류장 리스트: $routeLocations")
                 }
                 .onFailure { error ->
@@ -221,7 +229,7 @@ class MapViewModel @Inject constructor(
                 }
         }
     }
-    
+
     /**
      * 4. 출발지 마커 - 선택
      * */
@@ -232,7 +240,7 @@ class MapViewModel @Inject constructor(
                 showStartMarkerModal = true,
             )
         }
-        Log.d(TAG,"출발지 마커 모달 표시됨: ${location}")
+        Log.d(TAG, "출발지 마커 모달 표시됨: ${location}")
     }
 
     /**
@@ -472,12 +480,14 @@ class MapViewModel @Inject constructor(
                 droneRepository.cancelDrone(droneId)
                     .onSuccess {
                         Log.d(TAG, "드론 배정 취소 성공: 드론 ID - ${droneId.droneId}")
-                        _state.update { it.copy(
-                            droneState = null,
-                            droneMatchResult = null, // 매칭 결과 초기화
-                            showCancelSuccessModal = true, // 취소 성공 알림 표시
-                            error = null
-                        ) }
+                        _state.update {
+                            it.copy(
+                                droneState = null,
+                                droneMatchResult = null, // 매칭 결과 초기화
+                                showCancelSuccessModal = true, // 취소 성공 알림 표시
+                                error = null
+                            )
+                        }
                     }
                     .onFailure { error ->
                         Log.e(TAG, "드론 배정 취소 실패: ${error.message}")
@@ -498,15 +508,15 @@ class MapViewModel @Inject constructor(
      * */
     private fun requestDroneMatching(request: DroneMatchRequest) {
         viewModelScope.launch {
-            Log.e(TAG, "드론 최종 매칭 요청 : $request")
-            _state.update { it.copy(isLoading = true) }
-
             droneRepository.matchDrone(request)
                 .onSuccess { response ->
+                    // 드론 매칭 성공 시에만 WebSocket 초기화
+                    audioServiceManager.initializeWebSocket()
+
                     _state.update {
                         it.copy(
-                            droneMatchResult = response, // 매칭 결과 저장
-                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
+                            droneMatchResult = response,
+                            showDroneMatchResultModal = true,
                             error = null,
                             isLoading = false
                         )
@@ -536,10 +546,12 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(showDroneAssignmentSuccessModal = true) }
                 Log.d(TAG, "드론 배정 성공 모달 활성화")
             }
+
             DroneStatus.MATCHING_FAILED -> {
                 _state.update { it.copy(error = "드론 매칭 실패: 코드 오류") }
                 Log.e(TAG, "드론 매칭 실패")
             }
+
             DroneStatus.MATCHING_COMPLETE -> {
                 _state.update { it.copy(error = null) }
                 Log.d(TAG, "드론 매칭 완료")
@@ -622,11 +634,12 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 24. 로컬에서 드론 상태 초기화
-     * */
+     * 24. 로컬에서 드론 상태 초기화 및 웹소켓 연결 해제
+     */
     private fun clearDroneState() {
         viewModelScope.launch {
             droneLocalDataSource.clearDroneState()
+            webSocketService.shutdown()
             _state.update {
                 it.copy(
                     droneState = DroneState(
@@ -729,6 +742,9 @@ class MapViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "로컬에서 위치 초기화 실패", e)
             }
+
+            // 드론 상태 초기화 시 웹소켓도 연결 해제
+            webSocketService.shutdown()
         }
     }
 
@@ -805,5 +821,27 @@ class MapViewModel @Inject constructor(
 
     fun hideToast() {
         _showToast.value = false
+    }
+
+    /**
+     * WebSocket 연결 초기화
+     */
+    private fun initializeWebSocket() {
+        try {
+            Log.d(TAG, "WebSocket 연결 초기화 시작")
+            webSocketService.setConnectionManager(webSocketConnectionManager)
+            webSocketService.initialize()
+        } catch (e: Exception) {
+            Log.e(TAG, "WebSocket 초기화 실패", e)
+            _state.update {
+                it.copy(error = "실시간 연결 설정에 실패했습니다: ${e.message}")
+            }
+        }
+    }
+
+    // 앱 종료 시 웹소켓 연결 해제
+    override fun onCleared() {
+        super.onCleared()
+        webSocketService.shutdown()
     }
 }
