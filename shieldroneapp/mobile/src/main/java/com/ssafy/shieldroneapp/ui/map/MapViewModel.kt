@@ -359,7 +359,7 @@ class MapViewModel @Inject constructor(
                         showSearchResultsModal = false,
                     )
                 }
-//                mapRepository.saveEndLocation(location)
+                webSocketMessageSender.setDestinationLocation(LatLng(location.lat, location.lng))
                 Log.d(TAG, "도착지 설정 완료: ${location}")
             } catch (e: Exception) {
                 Log.e(TAG, "도착지 설정 중 오류 발생", e)
