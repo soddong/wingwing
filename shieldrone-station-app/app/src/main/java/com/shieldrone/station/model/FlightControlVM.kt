@@ -41,8 +41,9 @@ class FlightControlVM : ViewModel() {
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
 
+    // StateFlow 변수 선언
     private val _droneState = MutableStateFlow<State?>(null)
-    val droneState: StateFlow<State?> = _droneState.asStateFlow()
+    val droneState: StateFlow<State?> get() = _droneState.asStateFlow()
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
@@ -123,9 +124,7 @@ class FlightControlVM : ViewModel() {
     val routeModel: RouteModel = RouteModel(routeListener)
 
     init {
-        flightControlModel.subscribeDroneState {
-
-                state ->
+        flightControlModel.subscribeDroneState { state ->
             _droneState.value = state
         }
         flightControlModel.subscribeVirtualStickState { stick ->

@@ -1,13 +1,14 @@
 package com.shieldrone.station.model
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import com.shieldrone.station.constant.FlightConstant.Companion.MAX_ASCENT_SPEED
-import com.shieldrone.station.constant.FlightConstant.Companion.MAX_DESCENT_SPEED
 import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
 import com.shieldrone.station.data.LeftStick
 import com.shieldrone.station.data.RightStick
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.StickPosition
+import com.shieldrone.station.model.FlightAutoControlModel.Companion
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.value.common.LocationCoordinate2D
@@ -35,6 +36,7 @@ class FlightControlModel {
 
     // 1. field, companion object
     private var isVirtualStickEnabled = false
+    private val handler = Handler(Looper.getMainLooper())
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
@@ -55,7 +57,6 @@ class FlightControlModel {
         val homeLocation by lazy { KeyTools.createKey(FlightControllerKey.KeyHomeLocation) }
     }
 
-    var state = State()
     var currentVerticalPosition: Int = 0
     var currentYawPosition: Int = 0
     // 2. LifeCycle
@@ -86,13 +87,13 @@ class FlightControlModel {
 
     private fun removeAllKeySubscriptions() {
         listOf(
-            FlightAutoControlModel.keyConnection,
-            FlightAutoControlModel.keyIsFlying,
-            FlightAutoControlModel.location3D,
-            FlightAutoControlModel.velocity3D,
-            FlightAutoControlModel.compassHeading,
-            FlightAutoControlModel.keyGPSSignalLevel,
-            FlightAutoControlModel.attitude
+            keyConnection,
+            keyIsFlying,
+            location3D,
+            velocity3D,
+            compassHeading,
+            keyGPSSignalLevel,
+            attitude
         ).forEach { key ->
             KeyManager.getInstance().cancelListen(key)
         }
@@ -117,7 +118,7 @@ class FlightControlModel {
         var changeReason: String? = null
 
 
-        FlightAutoControlModel.virtualStickManager.setVirtualStickStateListener(object :
+        virtualStickManager.setVirtualStickStateListener(object :
             VirtualStickStateListener {
             override fun onVirtualStickStateUpdate(stickState: VirtualStickState) {
                 Log.d(TAG, "subscribeVirtualStickState: VirtualStickState 업데이트 $stickState")
@@ -247,8 +248,7 @@ class FlightControlModel {
      * 드론 위치 정보 구독
      */
     fun subscribeDroneState(onUpdate: (State) -> Unit) {
-
-        state = State()
+        val state = State()
 
         // 초기 값 설정
         state.pitch = attitude.get()?.pitch
@@ -262,19 +262,17 @@ class FlightControlModel {
         state.longitude = location3D.get()?.longitude
         state.altitude = location3D.get()?.altitude
 
-        KeyManager.getInstance().listen(attitude, this) { _, data ->
+        KeyManager.getInstance().listen(attitude, this, false) { _, data ->
             data?.let {
                 state.yaw = it.yaw
                 state.roll = it.roll
                 state.pitch = it.pitch
-                Log.d(TAG, "attitude updated : ${state.pitch}")
                 onUpdate(state)
             }
         }
         // 업데이트 리스너 설정
-        KeyManager.getInstance().listen(location3D, this) { _, data ->
+        KeyManager.getInstance().listen(location3D, this, false) { _, data ->
             data?.let {
-
                 state.longitude = it.longitude
                 state.latitude = it.latitude
                 state.altitude = it.altitude
@@ -282,7 +280,7 @@ class FlightControlModel {
             }
         }
 
-        KeyManager.getInstance().listen(velocity3D, this) { _, data ->
+        KeyManager.getInstance().listen(velocity3D, this, false) { _, data ->
             data?.let {
                 state.xVelocity = it.x
                 state.yVelocity = it.y
@@ -385,6 +383,7 @@ class FlightControlModel {
             yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
         setLeftStick(LeftStick(StickPosition(0, yawRate)))
     }
+
     fun adjustAltitude(altitude: Int) {
         setLeftStick(LeftStick().apply { verticalPosition = altitude })
     }
@@ -399,8 +398,10 @@ class FlightControlModel {
     fun adjustLeftStick(yawDifference: Double, adjustmentSpeed: Int) {
         val yawRate =
             yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
-        setLeftStick(LeftStick().apply { verticalPosition = adjustmentSpeed
-        horizontalPosition = yawRate })
+        setLeftStick(LeftStick().apply {
+            verticalPosition = adjustmentSpeed
+            horizontalPosition = yawRate
+        })
     }
 
 
