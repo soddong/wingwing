@@ -64,8 +64,8 @@ class MapRepositoryImpl @Inject constructor(
      */
     @SuppressLint("MissingPermission")
     override fun getLocationUpdates(): Flow<LatLng> = callbackFlow {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-            .setMinUpdateDistanceMeters(5f)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+            .setMinUpdateDistanceMeters(1f)
             .build()
 
         val locationCallback = object : LocationCallback() {

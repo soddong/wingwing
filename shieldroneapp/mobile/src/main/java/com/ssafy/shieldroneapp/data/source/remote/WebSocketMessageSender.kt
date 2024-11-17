@@ -31,9 +31,15 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
         private const val TAG = "모바일: 웹소켓 메시지 센더"
         private var lastSentDbFlag: Boolean? = null
         private var lastSentLocation: LatLng? = null
+        private var destinationLocation: LatLng? = null
         private var lastSentTime: Long = 0
         private val PERIODIC_SEND_INTERVAL = 5000L
         private const val MIN_LOCATION_UPDATE_INTERVAL = 1000L
+    }
+
+    fun setDestinationLocation(location: LatLng) {
+        destinationLocation = location
+        Log.d(TAG, "목적지 위치 설정됨: lat=${location.lat}, lng=${location.lng}")
     }
 
     fun sendWatchSensorData(data: HeartRateData) {
@@ -127,6 +133,10 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
                 "location" to mapOf(
                     "lat" to location.lat.toString(),
                     "lng" to location.lng.toString()
+                ),
+                "dest_location" to mapOf(
+                    "lat" to destinationLocation?.lat.toString(),
+                    "lng" to destinationLocation?.lng.toString()
                 )
             )
 
@@ -137,7 +147,7 @@ class WebSocketMessageSender @Inject constructor(private var webSocket: WebSocke
             if (isSent) {
                 lastSentLocation = location
                 lastSentTime = currentTime
-                Log.d(TAG, "위치 데이터 전송 성공 - lat: ${location.lat}, lng: ${location.lng}")
+                Log.d(TAG, "위치 데이터 전송 성공 - lat: ${location.lat}, lng: ${location.lng}, 목적지: lat=${destinationLocation?.lat}, lng=${destinationLocation?.lng}")
             } else {
                 Log.e(TAG, "위치 데이터 전송 실패")
                 throw Exception("위치 데이터 전송 실패")
