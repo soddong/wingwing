@@ -148,5 +148,8 @@ data class DroneRouteResponse(
  */
 data class DroneMatchResponse(
     val droneId: Int,
+    val matchStatus: DroneStatus,
     val stationIP: String,
+    val estimatedTime: Int,
+    val message: String? = null
 )
