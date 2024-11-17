@@ -101,9 +101,9 @@ public class DroneService {
         User user = getUserOrThrow(phoneNumber);
         Drone drone = getDroneOrThrow(droneId);
 
-        if (drone.getStatus() != DroneStatus.RESERVED) {
-            throw new CustomException(INVALID_DRONE);
-        }
+//        if (drone.getStatus() != DroneStatus.RESERVED) {
+//            throw new CustomException(INVALID_DRONE);
+//        }
 
         droneUserRepository.findByUserAndDrone(user, drone)
                 .orElseThrow(() -> new CustomException(INVALID_DRONE));
