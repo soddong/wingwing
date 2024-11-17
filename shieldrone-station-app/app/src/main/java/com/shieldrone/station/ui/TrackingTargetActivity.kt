@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.model.CameraStreamVM
 import com.shieldrone.station.model.FlightAutoControlVM
+import com.shieldrone.station.model.GimbalVM
 import com.shieldrone.station.model.TrackingDataVM
 import com.shieldrone.station.service.route.RouteAdapter
 import dji.sdk.keyvalue.value.common.ComponentIndexType
@@ -44,6 +45,7 @@ class TrackingTargetActivity : ComponentActivity() {
     private val trackingVM: TrackingDataVM by viewModels()
     private val flightControlVM: FlightAutoControlVM by viewModels()
     private val cameraStreamVM: CameraStreamVM by viewModels()
+    private val gimbalVM: GimbalVM by viewModels()
     private lateinit var routeAdapter: RouteAdapter
     private lateinit var routeController: RouteController
 
@@ -56,7 +58,7 @@ class TrackingTargetActivity : ComponentActivity() {
         Log.i("TrackingTargetActivity", "Camera index set to LEFT_OR_MAIN")
 
         setContent {
-            TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM)
+            TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM, gimbalVM)
         }
     }
 
@@ -74,7 +76,8 @@ class TrackingTargetActivity : ComponentActivity() {
 fun TrackingTargetScreen(
     trackingVM: TrackingDataVM,
     flightControlVM: FlightAutoControlVM,
-    cameraStreamVM: CameraStreamVM
+    cameraStreamVM: CameraStreamVM,
+    gimbalVM: GimbalVM
 ) {
     val trackingData by trackingVM.trackingDataDiffFlow.collectAsState()
     val droneState by flightControlVM.droneState.collectAsState()
@@ -83,6 +86,7 @@ fun TrackingTargetScreen(
     val virtualMessage by flightControlVM.virtualMessage.collectAsState()
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
     val virtualStickState by flightControlVM.virtualStickState.collectAsState()
+    val gimbalInfo by gimbalVM.gimbalInfo.collectAsState()
 
     var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
     var maxStickValue by remember { mutableStateOf(110.0) }   // 최대 전진 속도
@@ -188,12 +192,6 @@ fun TrackingTargetScreen(
 
             Text("스트리밍 상태")
             Text("Streaming : $frameInfo")
-            Divider(
-                color = Color.Gray, // 원하는 색상으로 변경 가능
-                thickness = 2.dp,   // 구분선의 두께 조절
-                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
-            )
-
 
             Row {
                 Button(
@@ -212,6 +210,28 @@ fun TrackingTargetScreen(
                 thickness = 2.dp,   // 구분선의 두께 조절
                 modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
             )
+
+            Text("짐벌 상태")
+            Text("Streaming : $gimbalInfo")
+
+            Row {
+                Button(
+                    onClick = { gimbalVM.setGimbalAngle() },
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text("짐벌 45도 세팅")
+                }
+                Button(onClick = { gimbalVM.resetGimbal()}) {
+                    Text("짐벌 초기화")
+                }
+            }
+
+            Divider(
+                color = Color.Gray, // 원하는 색상으로 변경 가능
+                thickness = 2.dp,   // 구분선의 두께 조절
+                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
+            )
+
 
             // Yaw 조정 버튼 추가
             Button(
