@@ -162,6 +162,10 @@ class MapRepositoryImpl @Inject constructor(
         return mapLocalDataSource.getStartLocation()
     }
 
+    override suspend fun clearStartLocation() {
+        return mapLocalDataSource.clearStartLocation()
+    }
+
     override suspend fun saveEndLocation(location: RouteLocation) {
         mapLocalDataSource.saveEndLocation(location)
     }
@@ -170,8 +174,8 @@ class MapRepositoryImpl @Inject constructor(
         return mapLocalDataSource.getEndLocation()
     }
 
-    override suspend fun clearLocationData() {
-        mapLocalDataSource.clearLocationData()
+    override suspend fun clearEndLocation() {
+        mapLocalDataSource.clearEndLocation()
     }
 
 }

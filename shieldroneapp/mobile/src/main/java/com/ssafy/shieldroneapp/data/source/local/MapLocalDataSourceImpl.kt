@@ -59,7 +59,14 @@ class MapLocalDataSourceImpl @Inject constructor(
     }
 
     /**
-     * 3. 도착지 위치 저장
+     * 3. 저장된 출발지 초기화
+     */
+    override suspend fun clearStartLocation() {
+        sharedPreferences.edit().remove(startLocationKey).apply()
+    }
+
+    /**
+     * 4. 도착지 위치 저장
      *
      * @param location 저장할 도착지 위치 데이터 (RouteLocation 객체)
      */
@@ -69,7 +76,7 @@ class MapLocalDataSourceImpl @Inject constructor(
     }
 
     /**
-     * 4. 저장된 도착지 위치 불러오기
+     * 5. 저장된 도착지 위치 불러오기
      *
      * @return 저장된 도착지 위치 데이터 (RouteLocation 객체) 또는 null
      */
@@ -79,11 +86,9 @@ class MapLocalDataSourceImpl @Inject constructor(
     }
 
     /**
-     * 5. 저장된 모든 위치 데이터 초기화
-     *
-     * 출발지 및 도착지 위치 데이터를 모두 삭제하여 초기화
+     * 6. 저장된 도착지 초기화
      */
-    override suspend fun clearLocationData() {
-        sharedPreferences.edit().remove(startLocationKey).remove(endLocationKey).apply()
+    override suspend fun clearEndLocation() {
+        sharedPreferences.edit().remove(endLocationKey).apply()
     }
 }
