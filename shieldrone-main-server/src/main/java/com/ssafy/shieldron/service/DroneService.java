@@ -119,7 +119,7 @@ public class DroneService {
             throw new CustomException(INVALID_CODE);
         }
 
-        drone.updateStatus(DroneStatus.IN_USE);
+//        drone.updateStatus(DroneStatus.IN_USE);
 
         String hiveIp = hive.getHiveIp();
         return new DroneMatchResponse(droneId, hiveIp);
