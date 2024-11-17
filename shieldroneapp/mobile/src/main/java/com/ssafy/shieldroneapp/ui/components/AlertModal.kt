@@ -189,7 +189,10 @@ fun AlertModal(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    safetyMessageSender.sendSafeConfirmationToMobile()
+                                    // 안전 확인 처리
+                                    alertHandler.handleSafeConfirmation()
+                                    // 워치에 안전 확인 메시지 전송
+                                    safetyMessageSender.sendSafeConfirmationToWatch()
                                     onSafeConfirm()
                                 }
                             },

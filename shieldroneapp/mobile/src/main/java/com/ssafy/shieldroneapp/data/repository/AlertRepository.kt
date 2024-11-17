@@ -19,12 +19,13 @@ class AlertRepository @Inject constructor() {
     private val _isSafeConfirmed = MutableStateFlow(false)
     val isSafeConfirmed: StateFlow<Boolean> = _isSafeConfirmed
 
-    fun updateWarningAlert() {
-        Log.d(TAG, "경고 알림 상태 업데이트")
+    fun updateWarningAlert(frame: String? = null) {
+        Log.d(TAG, "경고 알림 상태 업데이트 ${if (frame != null) "- 프레임 포함" else ""}")
         _alertState.value = AlertData(
             warningFlag = true,
             objectFlag = false,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            frame = frame
         )
     }
 

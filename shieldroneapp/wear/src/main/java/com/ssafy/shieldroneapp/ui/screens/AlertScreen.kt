@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationCompat
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.wearable.Wearable
+import com.ssafy.shieldroneapp.data.source.remote.AlertHandler
 import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
 import com.ssafy.shieldroneapp.utils.await
 import com.ssafy.shieldroneapp.viewmodels.AlertViewModel
@@ -29,20 +30,21 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AlertScreen(
+    alertHandler: AlertHandler,
     alertViewModel: AlertViewModel,
     modifier: Modifier = Modifier,
-    wearConnectionManager: WearConnectionManager
+    wearConnectionManager: WearConnectionManager,
 ) {
     val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
+    var showImage by remember { mutableStateOf(false) }
     var timeLeft by remember { mutableStateOf(5) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
-    val confirmedFromMobile by alertViewModel.confirmedFromMobile.collectAsState()
     val isSafeConfirmed by alertViewModel.isSafeConfirmed.collectAsState()
     val context = LocalContext.current
 
+    val confirmedFromMobile by alertViewModel.confirmedFromMobile.collectAsState()
 
-    // 현재 알림이 없으면 빈 화면 반환
     if (currentAlert == null) {
         return
     }
@@ -101,51 +103,46 @@ fun AlertScreen(
         }
     }
 
-    // 안전 확인 메시지를 모바일로 전송하는 함수
-    suspend fun sendSafeConfirmationToMobile() {
-        val messageClient = Wearable.getMessageClient(context)
-        try {
-            val nodes = Wearable.getNodeClient(context).connectedNodes.await(5000)
-            nodes.forEach { node ->
-                messageClient.sendMessage(
-                    node.id,
-                    "/safe_confirmation",
-                    "WATCH_CONFIRMED_SAFE".toByteArray()
-                ).await(5000)
-            }
-        } catch (e: Exception) {
-            Log.e("AlertScreen", "Failed to send safe confirmation to mobile", e)
-        }
-    }
-
     LaunchedEffect(isTimerRunning, isSafeConfirmed) {
         while (isTimerRunning && timeLeft > 0 && !isSafeConfirmed) {
             delay(1000L)
             timeLeft--
         }
 
-        when {
-            isSafeConfirmed -> {
-                isTimerRunning = false
-                timeLeft = 0
+        if (timeLeft == 0 && !isSafeConfirmed) {
+            showEmergencyAlert()
+            showEmergencyNotification = true
+            delay(5000L)
+            showEmergencyNotification = false
+            if (currentAlert?.frame != null) {
+                showImage = true
+            } else {
                 alertViewModel.clearAlert()
-            }
-            timeLeft == 0 && !isSafeConfirmed -> {
-                showEmergencyAlert()
-                showEmergencyNotification = true
-                delay(2000L)
-                alertViewModel.clearAlert()
-            }
-            else -> {
-                isTimerRunning = false
             }
         }
     }
 
-    if (showEmergencyNotification) {
+    if (showImage && currentAlert?.frame != null) {
+        ImageScreen(
+            jsonMessage = currentAlert?.frame,
+            onTimeout = {
+                showImage = false
+                alertViewModel.clearAlert()
+            }
+        )
+    } else if (showEmergencyNotification) {
         EmergencyNotificationScreen()
     } else if (isSafeConfirmed) {
-        SafeConfirmedScreen(confirmedFromMobile = confirmedFromMobile)
+        AlertConfirmScreen(
+            message = if (confirmedFromMobile) {
+                "모바일 앱에서 '안전'이 확인되었습니다."
+            } else {
+                "워치에서 '안전'이 확인되어 알림이 중지됩니다."
+            },
+            onDismiss = {
+                alertViewModel.clearAlert()
+            }
+        )
     } else {
         Column(
             modifier = modifier
@@ -180,10 +177,11 @@ fun AlertScreen(
             PrimaryButton(
                 text = "안전 확인",
                 onClick = {
-                    isTimerRunning = false
-                    alertViewModel.clearAlert()
+                    alertHandler.updateSafeConfirmation(true)
+                    Log.d("이거", "alertHandler 눌림")
                     CoroutineScope(Dispatchers.IO).launch {
                         wearConnectionManager.sendSafeConfirmationToMobile()
+                        Log.d("이거", "wearConnectionManager 눌림")
                     }
                 }
             )
@@ -200,11 +198,7 @@ fun SafeConfirmedScreen(confirmedFromMobile: Boolean = false) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (confirmedFromMobile) {
-                "모바일 앱에서 안전함이 확인되어\n알림이 중지됩니다"
-            } else {
-                "워치에서 안전함이 확인되어\n알림이 중지됩니다"
-            },
+            text = "모바일 앱에서 안전함이 확인되어\n알림이 중지됩니다",
             style = MaterialTheme.typography.body2,
             color = Color.White,
             textAlign = TextAlign.Center,
