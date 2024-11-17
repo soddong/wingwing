@@ -516,8 +516,8 @@ class MapViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             showDroneMatchResultModal = true, // 매칭 결과 모달 표시
-                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
-//                            error = "드론 매칭 요청 실패: ${error.message}",
+//                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
+                            error = "${error.message}",
                             isLoading = false
                         )
                     }
