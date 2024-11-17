@@ -16,6 +16,7 @@ import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,7 +70,7 @@ class FlightControlVM : ViewModel() {
         private set
     private var isReturningHome = false  // 홈 복귀 여부를 추적
     private var reachedTargetTime: Long? = null  // 3미터 이내 도달 시간 기록
-
+    private var altitudeAdjustmentJob: Job? = null
     val routeListener = object : RouteAdapter.RouteListener {
         override fun onRouteUpdate(
             locationLat: Double,
@@ -79,10 +80,25 @@ class FlightControlVM : ViewModel() {
             altitude: Double,
             startFlag: Boolean
         ) {
+            _isStart.value = startFlag
+            if (startFlag) {
+                try {
+                    startTakeOff()
+                    Log.i(TAG, "이륙에 성공했습니다.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "이륙 중 예외 발생: ${e.message}")
+                    // 예외 발생 시 필요한 추가 처리 (예: 사용자에게 알림, 재시도 로직 등)
+                }
+            }
+            // 위치 값이 유효한지 확인
+            if (locationLat.isNaN() || locationLng.isNaN() || destLat.isNaN() || destLng.isNaN()) {
+                Log.e(TAG, "Invalid location data received.")
+                return
+            }
+
             _currentLocation.value = Position(locationLat, locationLng, altitude)
             _destinationLocation.value = Position(destLat, destLng, altitude)
 
-            _isStart.value = startFlag
             val latDiff = abs(locationLat - destLat)
             val lngDiff = abs(locationLng - destLng)
             val threshold = 0.000027  // 대략적인 3미터 범위
@@ -93,11 +109,13 @@ class FlightControlVM : ViewModel() {
                 if (reachedTargetTime == null) {
                     reachedTargetTime = System.currentTimeMillis()
 //                    startTimerForReturnToHome()
+                    Log.d(TAG, "도달했습니다.")
                 }
             } else {
                 // 3미터 범위를 벗어났을 경우 초기화
                 reachedTargetTime = null
                 isReturningHome = false
+                Log.d(TAG, "범위를 벗어났습니다.")
             }
         }
     }
@@ -116,10 +134,6 @@ class FlightControlVM : ViewModel() {
         flightControlModel.subscribeGoHomeState { home ->
             _goHomeState.value = home
         }
-        flightControlModel.subscribeGoHomeState { state ->
-            _goHomeState.value = state
-        }
-
         flightControlModel.subscribeHomeLocation { location ->
             _homeLocation.value = location
         }
@@ -130,10 +144,8 @@ class FlightControlVM : ViewModel() {
     fun stopReceivingLocation() = routeModel.stopReceivingLocation()
 
     fun startTakeOff() {
-        if (isStart.value) {
-            val callback = createCompletionCallback("이륙 시작", "이륙 실패")
-            flightControlModel.startTakeOff(callback)
-        }
+        val callback = createCompletionCallback("이륙 시작", "이륙 실패")
+        flightControlModel.startTakeOff(callback)
     }
 
     fun startLanding() {
@@ -141,28 +153,28 @@ class FlightControlVM : ViewModel() {
         flightControlModel.startLanding(callback)
     }
 
-    fun ascendToCruiseAltitude(altitudeSpeed: Int, targetAltitude: Float = 3.2f) {
-        CoroutineScope(Dispatchers.Default).launch {
-            try {
-                adjustAltitudeCoroutine(altitudeSpeed, targetAltitude)
-            } catch (e: Exception) {
-                Log.e(TAG, "Cruise Altitude 상승 실패: ${e.message}")
-            }
-        }
-    }
-
-    private suspend fun adjustAltitudeCoroutine(altitudeSpeed: Int, targetAltitude: Float) {
-        while (true) {
-            val currentAltitude = _droneState.value?.altitude ?: break
-            if (currentAltitude >= targetAltitude) break
-
-            val altitudeRatio = currentAltitude / targetAltitude
-            val adjustmentSpeed = calculateSpeed(altitudeSpeed, altitudeRatio)
-
-            flightControlModel.adjustAltitude(adjustmentSpeed)
-            delay(100L)
-        }
-    }
+//    fun ascendToCruiseAltitude(altitudeSpeed: Int, targetAltitude: Float = 3.2f) {
+//        CoroutineScope(Dispatchers.Default).launch {
+//            try {
+//                adjustAltitudeCoroutine(altitudeSpeed, targetAltitude)
+//            } catch (e: Exception) {
+//                Log.e(TAG, "Cruise Altitude 상승 실패: ${e.message}")
+//            }
+//        }
+//    }
+//
+//    private suspend fun adjustAltitudeCoroutine(altitudeSpeed: Int, targetAltitude: Float) {
+//        while (true) {
+//            val currentAltitude = _droneState.value?.altitude ?: break
+//            if (currentAltitude >= targetAltitude) break
+//
+//            val altitudeRatio = currentAltitude / targetAltitude
+//            val adjustmentSpeed = calculateSpeed(altitudeSpeed, altitudeRatio)
+//
+//            flightControlModel.adjustAltitude(adjustmentSpeed)
+//            delay(100L)
+//        }
+//    }
 
     private fun calculateSpeed(baseSpeed: Int, ratio: Double): Int {
         return when {
@@ -203,11 +215,30 @@ class FlightControlVM : ViewModel() {
     /**
      * yaw와 altitude를 동시에 조절하는 메서드
      */
-    fun adjustLeftStick(yawDifference: Double, desiredAltitude: Double) {
-        try {
-            flightControlModel.adjustLeftStick(yawDifference, desiredAltitude)
-        } catch (e: Exception) {
-            Log.e(TAG, "Left Stick 조정 실패: ${e.message}")
+    fun adjustLeftStick(yawDifference: Double, targetAltitude: Double) {
+        if (altitudeAdjustmentJob?.isActive == true) {
+            // 이미 고도 조절이 진행 중인 경우 함수 종료
+            return
+        }
+        altitudeAdjustmentJob = CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                val altitudeSpeed = 20
+                val currentAltitude = _droneState.value?.altitude ?: break
+                if (currentAltitude >= targetAltitude) break
+
+                val altitudeRatio = currentAltitude / targetAltitude
+
+                val altitudeDifference = targetAltitude - currentAltitude
+                val threshold = 0.1 // 허용 오차 범위 (예: 0.1미터)
+
+                if (abs(altitudeDifference) <= threshold) {
+                    break
+                }
+
+                val adjustmentSpeed = calculateSpeed(altitudeSpeed, altitudeRatio)
+                flightControlModel.adjustLeftStick(yawDifference, adjustmentSpeed)
+                delay(100L)
+            }
         }
     }
 

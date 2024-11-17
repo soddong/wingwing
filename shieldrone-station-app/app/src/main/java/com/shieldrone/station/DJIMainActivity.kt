@@ -33,7 +33,6 @@ import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.FlightControlActivity
-import com.shieldrone.station.ui.FlightControlGPSActivity
 import com.shieldrone.station.ui.SimulatorActivity
 import com.shieldrone.station.ui.TrackingTargetActivity
 import dji.v5.manager.KeyManager
@@ -205,12 +204,6 @@ class DJIMainActivity : AppCompatActivity() {
                         }) {
                             Text(text = "Drone Mode")
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        // 시뮬레이터 모드 버튼 추가
-                        Button(onClick = { navigateToGPS() }) {
-                            Text(text = "GPS Mode")
-                        }
-
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     // 버추얼 스틱 모드 버튼 추가
@@ -240,10 +233,6 @@ class DJIMainActivity : AppCompatActivity() {
     }
     private fun navigateToCameraStreamList() {
         val intent = Intent(this, CameraStreamActivity::class.java)
-        startActivity(intent)
-    }
-    private fun navigateToGPS() {
-        val intent = Intent(this, FlightControlGPSActivity::class.java)
         startActivity(intent)
     }
 }

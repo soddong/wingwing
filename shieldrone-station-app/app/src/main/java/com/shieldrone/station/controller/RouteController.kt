@@ -49,30 +49,31 @@ class RouteController(private val routeAdapter: RouteAdapter) {
 
             val startFlag = data.optBoolean("start_flag", false)
 
-            // location 추출
-            val location = data.optJSONObject("location")
+            if (startFlag) {
+                // start_flag가 true인 경우
+                Log.i("RouteController", "Received start_flag: $startFlag (No location data expected)")
+                // 필요한 추가 로직
+            } else if (data.has("location") && data.has("dest_location")) {
+                // location과 dest_location이 모두 존재하는 경우
+                val location = data.getJSONObject("location")
+                val destLocation = data.getJSONObject("dest_location")
 
-            // dest_location 추출
-            val destLocation = data.optJSONObject("dest_location")
-            val destLat = destLocation.optDouble("lat", Double.NaN)
-            val destLng = destLocation.optDouble("lng", Double.NaN)
+                val locationLat = location.optDouble("lat", Double.NaN)
+                val locationLng = location.optDouble("lng", Double.NaN)
+                val destLat = destLocation.optDouble("lat", Double.NaN)
+                val destLng = destLocation.optDouble("lng", Double.NaN)
 
-            val locationLat = location.optDouble("lat", Double.NaN)
-            val locationLng = location.optDouble("lng", Double.NaN)
-
-            // 데이터 처리
-            routeAdapter.process(locationLat, locationLng, destLat, destLng, startFlag)
-
-            // 수신한 데이터 출력
-            Log.i(
-                "RouteController",
-                "Received Locations: location(lat=$locationLat, lng=$locationLng), " +
-                        "dest_location(lat=$destLat, lng=$destLng), start_flag=$startFlag"
-            )
+                // 데이터 처리
+                routeAdapter.process(locationLat, locationLng, destLat, destLng, startFlag)
+                // 로그 출력
+            } else {
+                // 데이터가 누락된 경우 처리
+                Log.e("RouteController", "Missing location or dest_location data.")
+                // 필요에 따라 기본값 설정이나 예외 처리
+            }
         }
-
-
     }
+
 
     fun stopReceivingLocation() {
         isReceiving = false

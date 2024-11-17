@@ -54,6 +54,7 @@ class FlightControlModel {
         val homeState by lazy { KeyTools.createKey(FlightControllerKey.KeyGoHomeState) }
         val homeLocation by lazy { KeyTools.createKey(FlightControllerKey.KeyHomeLocation) }
     }
+
     var state = State()
     var currentVerticalPosition: Int = 0
     var currentYawPosition: Int = 0
@@ -266,7 +267,7 @@ class FlightControlModel {
                 state.yaw = it.yaw
                 state.roll = it.roll
                 state.pitch = it.pitch
-                Log.d(TAG,"attitude updated : ${state.pitch}")
+                Log.d(TAG, "attitude updated : ${state.pitch}")
                 onUpdate(state)
             }
         }
@@ -294,7 +295,7 @@ class FlightControlModel {
 
     fun subscribeGoHomeState(onUpdate: (FCGoHomeState) -> Unit) {
         // KeyManager를 통해 GoHome 상태를 구독
-        KeyManager.getInstance().listen(homeState, this, false) { _, data ->
+        KeyManager.getInstance().listen(homeState, this) { _, data ->
             data?.let { goHomeState ->
                 Log.d(TAG, "GoHome 상태 업데이트: $goHomeState")
                 onUpdate(goHomeState)
@@ -307,7 +308,7 @@ class FlightControlModel {
      */
     fun subscribeHomeLocation(onUpdate: (LocationCoordinate2D) -> Unit) {
         // KeyManager를 통해 GoHome 상태를 구독
-        KeyManager.getInstance().listen(homeLocation, this, false) { _, data ->
+        KeyManager.getInstance().listen(homeLocation, this) { _, data ->
             data?.let { homeLocation ->
                 Log.d(TAG, "집주소 업데이트: $homeLocation")
                 onUpdate(homeLocation)
@@ -378,12 +379,12 @@ class FlightControlModel {
     }
 
 
-//    // 스틱 제어
-//    fun adjustYaw(yawDifference: Double) {
-//        val yawRate =
-//            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
-//        setLeftStick(LeftStick(StickPosition(0, yawRate)))
-//    }
+    //    // 스틱 제어
+    fun adjustYaw(yawDifference: Double) {
+        val yawRate =
+            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        setLeftStick(LeftStick(StickPosition(0, yawRate)))
+    }
     fun adjustAltitude(altitude: Int) {
         setLeftStick(LeftStick().apply { verticalPosition = altitude })
     }
@@ -391,50 +392,16 @@ class FlightControlModel {
     fun adjustPitch(pitch: Int) {
         setRightStick(RightStick().apply { verticalPosition = pitch })
     }
+
     /**
      * yaw와 altitude를 동시에 조절하는 메서드
      */
-    fun adjustLeftStick(yawDifference: Double, desiredAltitude: Double) {
-        // 최대 스틱 값과 상승/하강 속도 정의
-        val altitudeKp = 0.5            // 고도 제어를 위한 비례 이득 (적절히 조정 필요)
-
-        // yawDifference를 기반으로 yawRate 계산
-        val yawRate = yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
-        currentYawPosition = yawRate
-
-        // 현재 고도 가져오기 (state 객체를 통해)
-        val currentAltitude = state.altitude ?: 0.0
-
-        // 고도 오차 계산
-        val altitudeError = desiredAltitude - currentAltitude
-
-        // 원하는 상승/하강 속도 계산 (m/s 단위)
-        var verticalSpeed = altitudeKp * altitudeError
-
-        // 상승/하강 속도를 제한
-        verticalSpeed = verticalSpeed.coerceIn(MAX_DESCENT_SPEED, MAX_ASCENT_SPEED)
-
-        // 속도 명령을 스틱 입력 값으로 변환하는 계수 계산
-//        val SPEED_TO_STICK = MAX_STICK_VALUE / MAX_ASCENT_SPEED // 660 / 5.0 = 132.0
-
-        val SPEED_TO_STICK = 20
-        // 속도 명령을 스틱 입력 값으로 변환
-        val verticalSpeedCommand = (verticalSpeed * SPEED_TO_STICK).toInt()
-
-        // 스틱 입력 값을 제한된 범위 내로 조정
-        val verticalSpeedCommandLimited = verticalSpeedCommand.coerceIn(-MAX_STICK_VALUE, MAX_STICK_VALUE)
-        currentVerticalPosition = verticalSpeedCommandLimited
-
-        // LeftStick 생성 (pitch는 0으로 설정)
-        val leftStick = LeftStick(StickPosition(0, currentYawPosition)).apply {
-            verticalPosition = currentVerticalPosition
-        }
-
-        // 드론의 컨트롤 업데이트
-        setLeftStick(leftStick)
+    fun adjustLeftStick(yawDifference: Double, adjustmentSpeed: Int) {
+        val yawRate =
+            yawDifference.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        setLeftStick(LeftStick().apply { verticalPosition = adjustmentSpeed
+        horizontalPosition = yawRate })
     }
-
-
 
 
     /**

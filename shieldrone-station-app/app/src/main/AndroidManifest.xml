@@ -47,7 +47,6 @@
         <activity android:name=".ui.FlightControlActivity" />
         <activity android:name=".ui.TrackingTargetActivity" />
         <activity android:name=".ui.CameraStreamActivity"/>
-        <activity android:name=".ui.FlightControlGPSActivity"/>
     </application>
 
 </manifest>

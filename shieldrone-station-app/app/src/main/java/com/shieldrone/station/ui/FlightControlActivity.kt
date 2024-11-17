@@ -113,7 +113,7 @@ class FlightControlActivity : ComponentActivity() {
                         yawAdjustment = 0.0
                     }
                     // yaw와 고도를 동시에 조절
-                    flightControlVM.adjustLeftStick(yawDifference = yawAdjustment, desiredAltitude = GPS_ALTITUDE)
+                    flightControlVM.adjustLeftStick(yawAdjustment, GPS_ALTITUDE)
 
                     val eYFuture = trackingData!!.futureErrorY
 
@@ -121,11 +121,11 @@ class FlightControlActivity : ComponentActivity() {
 
                     val vYLimited = vY.coerceIn(-1.0, 1.0) * maxStickValue
                     Log.d("TAG", "vYLimited: $vYLimited")
-                    // 100ms 간격으로 업데이트
+                    // 200ms 간격으로 업데이트
                     flightControlVM.updatePitch(vYLimited.toInt())
                     flightControlVM.adjustPitch()
 
-                    kotlinx.coroutines.delay(100)
+                    kotlinx.coroutines.delay(200)
                 }
             }
         }
@@ -237,9 +237,9 @@ class FlightControlActivity : ComponentActivity() {
                     Button(onClick = { flightControlVM.startTakeOff() }) {
                         Text("Take Off")
                     }
-                    Button(onClick = { flightControlVM.ascendToCruiseAltitude(altitudeValue) }) {
-                        Text("Cruising altitude")
-                    }
+//                    Button(onClick = { flightControlVM.ascendToCruiseAltitude(altitudeValue) }) {
+//                        Text("Cruising altitude")
+//                    }
                     Button(onClick = { flightControlVM.startLanding() }) {
                         Text("Land")
                     }
