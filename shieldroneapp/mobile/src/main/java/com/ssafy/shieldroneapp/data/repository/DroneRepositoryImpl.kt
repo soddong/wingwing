@@ -75,16 +75,22 @@ class DroneRepositoryImpl @Inject constructor(
      */
     override suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse> {
         return try {
+            Log.d(TAG, "드론 API 보내기 전 request 확인: $request")
+
             NetworkUtils.apiCallAfterNetworkCheck(context) {
                 val response = apiService.matchDrone(request)
+
                 if (response.isSuccessful) {
                     Log.d(TAG, "드론 최종 매칭 성공 !!!!!!")
                     response.body() ?: throw Exception("응답이 비어 있습니다.")
                 } else {
-                    throw Exception("매칭 요청 실패: ${response.errorBody()?.string()}")
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "드론 최종 매칭 요청 실패 - 상태 코드: ${response.code()}, 오류 메시지: $errorBody")
+                    throw Exception("드론 최종 매칭 요청 실패: 상태 코드 ${response.code()}, 오류 메시지: $errorBody")
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "드론 매칭 요청 중 예외 발생", e)
             Result.failure(e)
         }
     }
