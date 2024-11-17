@@ -244,6 +244,7 @@ class AlertService @Inject constructor(
         }
     }
 
+    // 앱이 종료되거나 사용자가 앱을 강제로 종료할 때
     fun release() {
         stopWarningSound()
         cancelWarningNotification()

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
+import android.net.Uri
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +56,8 @@ import com.ssafy.shieldroneapp.data.model.request.DroneMatchRequest
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.services.base.BaseMobileService
 import com.ssafy.shieldroneapp.services.connection.WearableDataListenerService
+import com.ssafy.shieldroneapp.permissions.PermissionViewModel
+import com.ssafy.shieldroneapp.services.sensor.AudioRecordService
 import com.ssafy.shieldroneapp.ui.components.AlertModal
 import com.ssafy.shieldroneapp.ui.components.AlertType
 import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
@@ -91,10 +94,12 @@ fun MapScreen(
     alertHandler: AlertHandler,
     safetyMessageSender: SafetyMessageSender,
     mapViewModel: MapViewModel = hiltViewModel(),
+    permissionViewModel: PermissionViewModel = hiltViewModel(),
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = mapViewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
+    val audioRecordingServiceIntent = remember { Intent(context, AudioRecordService::class.java) }
 
     // 카카오 맵
     val kakaoMap = remember { mutableStateOf<KakaoMap?>(null) }
@@ -154,22 +159,105 @@ fun MapScreen(
         mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(isLocationEnabled))
     }
 
-    // 위치 권한을 허용받은 후에만 초기 위치를 로드
+    // 권한 요청 상태 관리
+    val (showLocationPermissionDialog, setShowLocationPermissionDialog) = remember {
+        mutableStateOf(
+            false
+        )
+    }
+    val (showAudioPermissionDialog, setShowAudioPermissionDialog) = remember { mutableStateOf(false) }
+
+    // 음성 권한 요청 launcher
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        permissionViewModel.updateAudioPermissionStatus(isGranted)
+        if (isGranted) {
+            // 권한이 허용되면 오디오 녹음 서비스 시작
+            audioRecordingServiceIntent.action = AudioRecordService.ACTION_START_RECORDING
+            context.startForegroundService(audioRecordingServiceIntent)
+        } else {
+            setShowAudioPermissionDialog(true)
+        }
+    }
+
+    // 위치 권한 요청 launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val locationGranted = permissions.entries.all { it.value }
+        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
         if (locationGranted) {
-            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives) // 현재 위치 로드
-            mapViewModel.handleEvent(MapEvent.StartLocationTracking) // 위치 추적 시작
+            mapViewModel.handleEvent(MapEvent.LoadCurrentLocationAndFetchHives)
+            mapViewModel.handleEvent(MapEvent.StartLocationTracking)
+            // 위치 권한이 허용되면 음성 권한 요청
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            setShowLocationPermissionDialog(true)
         }
     }
+
+    // 초기 위치 권한 요청
     LaunchedEffect(Unit) {
         locationPermissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
+        )
+    }
+
+    // 위치 권한 거부 시 다이얼로그
+    if (showLocationPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { setShowLocationPermissionDialog(false) },
+            title = { Text("위치 권한 필요") },
+            text = { Text("앱 사용을 위해 위치 권한이 필요합니다.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                        setShowLocationPermissionDialog(false)
+                    }
+                ) {
+                    Text("권한 허용")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { setShowLocationPermissionDialog(false) }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+// 음성 권한 거부 시 다이얼로그
+    if (showAudioPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { setShowAudioPermissionDialog(false) },
+            title = { Text("음성 권한 필요") },
+            text = { Text("앱 사용을 위해 음성 권한이 필요합니다.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        setShowAudioPermissionDialog(false)
+                    }
+                ) {
+                    Text("권한 허용")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { setShowAudioPermissionDialog(false) }) {
+                    Text("취소")
+                }
+            }
         )
     }
 
@@ -308,7 +396,7 @@ fun MapScreen(
                         state.showDroneAssignmentSuccessModal ||
                         state.showDroneAssignmentFailureModal ||
                         state.showCancelSuccessModal
-                        ) {
+                    ) {
                         mapViewModel.handleEvent(MapEvent.CloseAllModals)
                     }
                 },
@@ -384,7 +472,9 @@ fun MapScreen(
 
         // 2-2) 드론 관련 버튼 - 배정 취소/배정 요청/배정 성공 모달
         Box(
-            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
         ) {
             // [버튼] 드론 배정 취소
             if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
@@ -424,7 +514,13 @@ fun MapScreen(
             } else if (state.droneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 // [버튼] 드론 배정 성공 모달 열기
                 Button(
-                    onClick = { mapViewModel.handleEvent(MapEvent.HandleDroneMatchingResult(DroneStatus.MATCHING_ASSIGNED)) },
+                    onClick = {
+                        mapViewModel.handleEvent(
+                            MapEvent.HandleDroneMatchingResult(
+                                DroneStatus.MATCHING_ASSIGNED
+                            )
+                        )
+                    },
                     shape = RoundedCornerShape(0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -437,7 +533,7 @@ fun MapScreen(
                     )
                 }
             }
-         
+
         }
 
         // 3. 최상단 레이어
@@ -462,10 +558,10 @@ fun MapScreen(
 
         // 3-2) 드론 배정 성공 결과 모달
         if (state.showDroneAssignmentSuccessModal && state.droneState != null) {
-            DroneAssignmentSuccessModal (
+            DroneAssignmentSuccessModal(
                 droneState = state.droneState,
                 selectedStart = state.selectedStart?.locationName ?: "",
-                selectedEnd  = state.selectedEnd?.locationName ?: "",
+                selectedEnd = state.selectedEnd?.locationName ?: "",
                 onDroneCodeInput = { code ->
                     mapViewModel.handleEvent(
                         MapEvent.RequestDroneMatching(
@@ -492,7 +588,7 @@ fun MapScreen(
 
         // 3-3) 드론 배정 실패 결과 모달
         if (state.showDroneAssignmentFailureModal && state.droneAssignmentError != null) {
-            DroneAssignmentFailureModal (
+            DroneAssignmentFailureModal(
                 errorMessage = state.droneAssignmentError,
                 onDismiss = { mapViewModel.handleEvent(MapEvent.CloseAllModals) }
                 // TODO: 이거 아래 꺼 동작 확인
@@ -532,7 +628,8 @@ fun MapScreen(
                 },
                 text = {
                     Text(
-                        text = state.error ?: "드론 매칭이 성공적으로 완료되었습니다!\n\n드론이 확인할 수 있도록 5초간 머리 위로 손을 들어주세요!",
+                        text = state.error
+                            ?: "드론 매칭이 성공적으로 완료되었습니다!\n\n드론이 확인할 수 있도록 5초간 머리 위로 손을 들어주세요!",
                         style = MaterialTheme.typography.body1
                     )
                 },
@@ -564,7 +661,7 @@ fun MapScreen(
                 }
             } else null,
             onSafeConfirm = {
-                mapViewModel.updateWatchConfirmation(true) 
+                mapViewModel.updateWatchConfirmation(true)
                 mapViewModel.dismissAlert()
             },
             alertHandler = alertHandler,

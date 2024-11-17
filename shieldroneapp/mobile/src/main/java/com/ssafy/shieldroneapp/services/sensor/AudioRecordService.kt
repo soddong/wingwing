@@ -10,9 +10,11 @@ import javax.inject.Inject
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.ssafy.shieldroneapp.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +41,6 @@ class AudioRecordService : BaseMobileService() {
 
     private var isRecording = false
 
-    // 알림 채널 생성
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -60,7 +61,7 @@ class AudioRecordService : BaseMobileService() {
     private fun createNotification(): Notification {
         Log.d(TAG, "포그라운드 서비스 알림 생성")
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("음성 감지 중")
+            .setContentTitle("WINGWING-voice")
             .setContentText("백그라운드에서 음성을 감지하고 있습니다")
             .setSmallIcon(R.drawable.record_ic)
             .setPriority(NotificationCompat.PRIORITY_LOW)
