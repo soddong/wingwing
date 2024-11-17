@@ -19,7 +19,7 @@ interface DroneRepository {
 
     // 드론 배정/매칭 관련
     suspend fun requestDrone(request: DroneRouteRequest): Result<DroneRouteResponse>
-    suspend fun cancelDrone(request: DroneCancelRequest): Result<Unit>
+    suspend fun cancelDrone(droneId: DroneCancelRequest): Result<Unit>
     suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse>
 
     // 드론 상태 관리
