@@ -105,8 +105,8 @@ public class DroneService {
 //            throw new CustomException(INVALID_DRONE);
 //        }
 
-        droneUserRepository.findByUserAndDrone(user, drone)
-                .orElseThrow(() -> new CustomException(INVALID_DRONE));
+//        droneUserRepository.findByUserAndDrone(user, drone)
+//                .orElseThrow(() -> new CustomException(INVALID_DRONE));
 
 
         Hive hive = drone.getHive();
