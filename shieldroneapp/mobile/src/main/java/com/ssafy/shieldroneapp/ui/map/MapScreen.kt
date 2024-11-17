@@ -387,7 +387,7 @@ fun MapScreen(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
         ) {
             // [버튼] 드론 배정 취소
-//            if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+            if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 Text(
                     text = "드론 배정 취소",
                     modifier = Modifier
@@ -402,9 +402,9 @@ fun MapScreen(
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), // 회색 텍스트
                     style = MaterialTheme.typography.body2.copy(textDecoration = TextDecoration.Underline) // 밑줄
                 )
-//            }
+            }
 
-//            if (state.droneState?.matchStatus == DroneStatus.MATCHING_NONE) {
+            if (state.droneState == null || state.droneState.matchStatus == DroneStatus.MATCHING_NONE) {
                 // [버튼] 드론 배정 요청
                 Button(
                     onClick = { mapViewModel.handleEvent(MapEvent.RequestDroneAssignment) },
@@ -420,8 +420,7 @@ fun MapScreen(
                         style = MaterialTheme.typography.h5
                     )
                 }
-//            } else
-                if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+            } else if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 // [버튼] 드론 배정 성공 모달 열기
                 Button(
                     onClick = { mapViewModel.handleEvent(MapEvent.HandleDroneMatchingResult(DroneStatus.MATCHING_ASSIGNED)) },
