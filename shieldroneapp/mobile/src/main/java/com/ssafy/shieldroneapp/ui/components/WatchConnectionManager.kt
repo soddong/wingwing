@@ -8,16 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.ssafy.shieldroneapp.utils.await
@@ -82,7 +80,7 @@ private fun WatchConnectionDialog(
         title = {
             Text(
                 "갤럭시 워치 연동 안내",
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.subtitle1,
             )
         },
         text = {
@@ -90,8 +88,9 @@ private fun WatchConnectionDialog(
                 if (connectedNodes.isEmpty())
                     "정확한 위험 상황 판단을 위해 갤럭시 워치와 페어링 해주세요."
                 else
-                    "심박수 정보를 얻기 위해 워치의 Shield Drone 앱을 실행해주세요."
-            )
+                    "심박수 정보를 얻기 위해 워치의 Shield Drone 앱을 실행해주세요.",
+                style = MaterialTheme.typography.body1,
+                )
         },
         buttons = {
             if (connectedNodes.isEmpty()) {
@@ -103,10 +102,9 @@ private fun WatchConnectionDialog(
                 ) {
                     Text(
                         text = "모바일 앱만 사용하기",
-                        style = TextStyle(
+                        style = MaterialTheme.typography.body2.copy(
                             textDecoration = TextDecoration.Underline,
-                            fontSize = 12.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
                         ),
                         modifier = Modifier.clickable(onClick = onDismiss)
                     )
