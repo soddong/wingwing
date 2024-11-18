@@ -110,11 +110,12 @@ class MapViewModel @Inject constructor(
             is MapEvent.SetStartLocation -> setStartLocation(event.location) // 출발지 선택
             is MapEvent.SetEndLocation -> setEndLocation(event.location) // 도착지 선택
 
-            // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
+            // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리 / 서비스 종료
             is MapEvent.RequestDroneAssignment -> requestDroneAssignment() // 드론 배정 요청
             is MapEvent.RequestDroneCancel -> requestDroneCancel(event.droneId) // 배정 취소
             is MapEvent.RequestDroneMatching -> requestDroneMatching(event.request) // 드론 최종 매칭 요청
             is MapEvent.HandleDroneMatchingResult -> handleMatchingResult(event.result) // 드론 매칭 결과 별 이벤트 처리
+            is MapEvent.RequestServiceEnd -> requestServiceEnd(event.droneId) // 서비스 종료
 
             // 드론 애니메이션 이벤트 처리
             is MapEvent.StartDroneAnimation -> startDroneAnimation()
@@ -265,6 +266,7 @@ class MapViewModel @Inject constructor(
                 ModalType.DRONE_ASSIGNMENT_SUCCESS -> it.copy(showDroneAssignmentSuccessModal = true)
                 ModalType.DRONE_ASSIGNMENT_FAILURE -> it.copy(showDroneAssignmentFailureModal = true)
                 ModalType.CANCEL_SUCCESS -> it.copy(showCancelSuccessModal = true)
+                ModalType.SERVICE_END -> it.copy(showServiceEndModal = true)
                 else -> it
             }
         }
@@ -283,6 +285,7 @@ class MapViewModel @Inject constructor(
                 ModalType.DRONE_ASSIGNMENT_SUCCESS -> it.copy(showDroneAssignmentSuccessModal = false)
                 ModalType.DRONE_ASSIGNMENT_FAILURE -> it.copy(showDroneAssignmentFailureModal = false)
                 ModalType.CANCEL_SUCCESS -> it.copy(showCancelSuccessModal = false)
+                ModalType.SERVICE_END -> it.copy(showServiceEndModal = false)
                 else -> it
             }
         }
@@ -301,6 +304,7 @@ class MapViewModel @Inject constructor(
                 showDroneAssignmentSuccessModal = false,
                 showDroneAssignmentFailureModal = false,
                 showCancelSuccessModal = false,
+                showServiceEndModal = false,
             )
         }
     }
@@ -514,6 +518,21 @@ class MapViewModel @Inject constructor(
                         ) }
                     }
                     .onFailure { error ->
+                        // TODO: 계속 유효하지 않은 드론 오류 떠서 임의로 넣어둠
+                        _state.update { it.copy(
+                            selectedStart = null,
+                            selectedEnd = null,
+                            selectedStartMarker = null,
+                            selectedEndMarker = null,
+                            startSearchText = "",
+                            endSearchText = "",
+                            searchResults = emptyList(),
+                            droneState = null,
+                            droneMatchResult = null, // 매칭 결과 초기화
+                            droneAssignmentError = null,
+                            showCancelSuccessModal = true, // 취소 성공 알림 표시
+                            error = null,
+                        ) }
                         Log.e(TAG, "드론 배정 취소 실패: ${error.message}")
                         setError("드론 배정 취소 중 오류 발생: ${error.message}")
                     }
@@ -556,10 +575,14 @@ class MapViewModel @Inject constructor(
                     // 6. 마지막으로 매칭 결과 모달 표시
                     _state.update {
                         it.copy(
+                            droneState = it.droneState?.copy(
+                                matchStatus = DroneStatus.MATCHING_COMPLETE
+                            ),
                             droneMatchResult = response,
                             showDroneMatchResultModal = true,
                             error = null,
-                            isLoading = false
+                            isLoading = false,
+
                         )
                     }
                     Log.d(TAG, "드론 매칭 성공: $response")
@@ -604,28 +627,84 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 18. 드론 매칭 성공 시 - 애니메이션 시작
+     * 18. 서비스 종료
+     */
+    private fun requestServiceEnd(droneId: DroneCancelRequest) {
+        viewModelScope.launch {
+            try {
+                _state.update { it.copy(isLoading = true) }
+
+                droneRepository.serviceEnd(droneId)
+                    .onSuccess {
+                        Log.d(TAG, "서비스 종료 성공: 드론 ID - ${droneId.droneId}")
+                        _state.update { it.copy(
+                            selectedStart = null,
+                            selectedEnd = null,
+                            selectedStartMarker = null,
+                            selectedEndMarker = null,
+                            startSearchText = "",
+                            endSearchText = "",
+                            searchResults = emptyList(),
+                            droneState = null,
+                            droneMatchResult = null, // 매칭 결과 초기화
+                            droneAssignmentError = null,
+                            showServiceEndModal = true, // 서비스 종료 성공 알림 표시
+                            error = null,
+                        ) }
+                    }
+                    .onFailure { error ->
+                        // TODO: 계속 유효하지 않은 드론 오류 떠서 임의로 넣어둠
+                        _state.update { it.copy(
+                            selectedStart = null,
+                            selectedEnd = null,
+                            selectedStartMarker = null,
+                            selectedEndMarker = null,
+                            startSearchText = "",
+                            endSearchText = "",
+                            searchResults = emptyList(),
+                            droneState = null,
+                            droneMatchResult = null, // 매칭 결과 초기화
+                            droneAssignmentError = null,
+                            showServiceEndModal = true, // 서비스 종료 성공 알림 표시
+                            error = null,
+                        ) }
+                        Log.e(TAG, "서비스 종료 실패: ${error.message}")
+                        setError("서비스 종료 중 오류 발생: ${error.message}")
+                    }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "서비스 종료 요청 중 오류 발생", e)
+                setError("서비스 종료 요청 중 오류가 발생했습니다.")
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+        
+    }
+
+    /**
+     * 19. 드론 매칭 성공 시 - 애니메이션 시작
      */
     private fun startDroneAnimation() {
         _state.update { it.copy(showDroneAnimation = true) }
     }
 
     /**
-     * 19. 드론 매칭 성공 시 - 애니메이션 종료
+     * 20. 드론 매칭 성공 시 - 애니메이션 종료
      */
     private fun endDroneAnimation() {
         _state.update { it.copy(showDroneAnimation = false) }
     }
 
     /**
-     * 20. 위치 서비스 활성화 상태 업데이트
+     * 21. 위치 서비스 활성화 상태 업데이트
      * */
     fun updateLocationServicesState(isEnabled: Boolean) {
         _locationServicesEnabled.value = isEnabled
     }
 
     /**
-     * 21. 실시간 위치 추적을 시작
+     * 22. 실시간 위치 추적을 시작
      * */
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
@@ -645,21 +724,21 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 22. TODO: 실시간 위치 추적을 중지 (필요 시)
+     * 23. TODO: 실시간 위치 추적을 중지 (필요 시)
      * */
     private fun stopTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = false) }
     }
 
     /**
-     * 23. 오류 메시지 설정
+     * 24. 오류 메시지 설정
      * */
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }
     }
 
     /**
-     * 24. 로컬에서 드론 상태 가져오기
+     * 25. 로컬에서 드론 상태 가져오기
      * */
     private fun loadDroneState() {
         viewModelScope.launch {
@@ -671,7 +750,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 25. 로컬에 드론 상태 저장
+     * 26. 로컬에 드론 상태 저장
      * */
     private fun saveDroneState(droneState: DroneState) {
         viewModelScope.launch {
@@ -682,7 +761,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 26. 로컬에서 드론 상태 초기화 및 웹소켓 연결 해제
+     * 27. 로컬에서 드론 상태 초기화 및 웹소켓 연결 해제
      */
     private fun clearDroneState() {
         viewModelScope.launch {
@@ -707,7 +786,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 27. 로컬에서 출발지, 도착지 가져오기
+     * 28. 로컬에서 출발지, 도착지 가져오기
      * */
     private fun loadStartAndEndLocations() {
         viewModelScope.launch {
@@ -732,7 +811,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 28. 로컬에서 출발지 저장
+     * 29. 로컬에서 출발지 저장
      * */
     private fun saveStartLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -753,7 +832,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 29. 로컬에서 도착지 저장
+     * 30. 로컬에서 도착지 저장
      * */
     private fun saveEndLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -775,7 +854,7 @@ class MapViewModel @Inject constructor(
 
 
     /**
-     * 30. 로컬에서 출발/도착지 초기화
+     * 31. 로컬에서 출발/도착지 초기화
      * */
     private fun clearLocationData() {
         viewModelScope.launch {
