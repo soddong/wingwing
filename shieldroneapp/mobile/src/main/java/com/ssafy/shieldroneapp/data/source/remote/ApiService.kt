@@ -181,8 +181,17 @@ interface ApiService {
     @POST("drones/match")
     suspend fun matchDrone(@Body requestBody: DroneMatchRequest): Response<DroneMatchResponse>
 
+    /**
+     * 4) 서비스 종료
+     *
+     * @param droneId 서비스 종료할 드론의 ID
+     * @return 성공 시 유닛(Unit), 실패 시 오류 응답
+     */
+    @POST("drones/end")
+    suspend fun serviceEnd(@Body requestBody: DroneCancelRequest): Response<Unit>
 
-    
+
+
     // 5. 위험 상황 관련 API
     @POST("settings/emergency")
     suspend fun setEmergency(@Body request: EmergencyRequest): Response<Unit>

@@ -16,11 +16,11 @@ import com.ssafy.shieldroneapp.data.model.response.DroneRouteResponse
  * 코드 인식 성공 여부에 따라 데이터를 적절히 처리합니다.
  */
 interface DroneRepository {
-
-    // 드론 배정/매칭 관련
+    // 드론 배정/매칭, 서비스 종료 관련
     suspend fun requestDrone(request: DroneRouteRequest): Result<DroneRouteResponse>
     suspend fun cancelDrone(droneId: DroneCancelRequest): Result<Unit>
     suspend fun matchDrone(request: DroneMatchRequest): Result<DroneMatchResponse>
+    suspend fun serviceEnd(droneId: DroneCancelRequest): Result<Unit>
 
     // 드론 상태 관리
     suspend fun getDroneState(): DroneState?

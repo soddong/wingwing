@@ -96,7 +96,31 @@ class DroneRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 4. 드론 상태 조회
+     * 4. 서비스 종료
+     *
+     * 서버에 드론 ID를 전송하여 서비스를 종료
+     */
+    override suspend fun serviceEnd(droneId: DroneCancelRequest): Result<Unit> {
+        return try {
+            NetworkUtils.apiCallAfterNetworkCheck(context) {
+                val response = apiService.serviceEnd(droneId)
+                if (response.isSuccessful) {
+                    Log.d(TAG, "서비스 종료 요청 성공")
+                    Unit // 성공 시 반환
+                } else {
+                    Log.d(TAG, "서비스 종료 요청 실패")
+                    val errorMessage = response.errorBody()?.string() ?: "알 수 없는 에러 발생"
+                    throw Exception("서비스 종료 실패: $errorMessage") // 실패 시 예외 발생
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "서비스 종료 요청 중 오류 발생", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 5. 드론 상태 조회
      *
      * 로컬 저장소에서 드론 상태 정보를 불러옴
      */
@@ -105,7 +129,7 @@ class DroneRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 5. 드론 상태 업데이트
+     * 6. 드론 상태 업데이트
      *
      * 로컬 저장소에 드론 상태 정보를 업데이트
      */
@@ -114,7 +138,7 @@ class DroneRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 6. 드론 상태 초기화
+     * 7. 드론 상태 초기화
      *
      * 로컬 저장소에 저장된 드론 상태 정보 삭제
      */
@@ -123,7 +147,7 @@ class DroneRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 7. 드론 배정 타이머 시작
+     * 8. 드론 배정 타이머 시작
      *
      * 로컬 저장소에 드론 배정 후, 최종 매칭 타이머 시작 시간 기록
      */
@@ -132,7 +156,7 @@ class DroneRepositoryImpl @Inject constructor(
     }
 
     /**
-     * 8. 드론 배정 만료 여부 확인
+     * 9. 드론 배정 만료 여부 확인
      *
      * 10분 경과 시 만료
      * 현재 시간과 배정 시작 시간 간의 경과 시간으로 만료 여부 확인
