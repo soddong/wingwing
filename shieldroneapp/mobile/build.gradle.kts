@@ -124,6 +124,7 @@ dependencies {
     implementation("androidx.compose.material:material")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.animation:animation") // Compose 애니메이션
 
     // Compose 확장 라이브러리
     // SystemUiController: 상태바, 네비게이션 바 등 시스템 UI 커스터마이징 (배경색, 아이콘 색상 등)
