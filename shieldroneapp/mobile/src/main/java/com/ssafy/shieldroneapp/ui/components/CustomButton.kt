@@ -60,7 +60,7 @@ fun CustomButton(
         MaterialTheme.colors.background // Disabled 상태
     } else {
         when (type) {
-            ButtonType.FULL_WIDTH, ButtonType.LARGE, ButtonType.MODAL_MEDIUM -> MaterialTheme.colors.primary
+            ButtonType.FULL_WIDTH, ButtonType.LARGE, ButtonType.MODAL_MEDIUM -> MaterialTheme.colors.secondary
             ButtonType.MODAL_LARGE -> MaterialTheme.colors.secondary
             ButtonType.SMALL -> MaterialTheme.colors.onSurface
         }
@@ -84,7 +84,7 @@ fun CustomButton(
 
     // 텍스트 색상
     val contentColor = if (isEnabled) {
-        MaterialTheme.colors.onPrimary
+        MaterialTheme.colors.onSecondary
     } else {
         MaterialTheme.colors.onBackground
     }

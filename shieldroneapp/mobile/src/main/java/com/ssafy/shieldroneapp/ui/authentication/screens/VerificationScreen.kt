@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -86,7 +87,7 @@ fun VerificationScreen(
 
         Text(
             text = "인증 코드를 입력해주세요.",
-            style = MaterialTheme.typography.h4,
+            style = MaterialTheme.typography.subtitle1,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -103,7 +104,13 @@ fun VerificationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), // autofocus
-            label = { Text("인증 코드 (6자리)") },
+            label = {
+                Text(
+                    text = "인증 코드 (6자리)",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.secondary,
+                )
+            },
             singleLine = true,
             isError = validationError != null,
             keyboardOptions = KeyboardOptions(
@@ -119,7 +126,10 @@ fun VerificationScreen(
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
-                backgroundColor = MaterialTheme.colors.surface
+                backgroundColor = MaterialTheme.colors.background,
+                focusedIndicatorColor = MaterialTheme.colors.secondary,
+                unfocusedIndicatorColor = MaterialTheme.colors.secondary,
+                cursorColor = MaterialTheme.colors.secondary,
             ),
         )
 
@@ -157,14 +167,16 @@ fun VerificationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            enabled = validationError == null && code.isNotBlank()
+            enabled = validationError == null && code.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary, // secondary 배경
+                contentColor = MaterialTheme.colors.onSecondary // 텍스트 색상
+            ),
         ) {
             Text(
                 text = "인증",
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h6
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
