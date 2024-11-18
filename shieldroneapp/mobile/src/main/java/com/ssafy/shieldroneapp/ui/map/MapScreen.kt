@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -310,7 +311,10 @@ fun MapScreen(
                         val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
                         context.startActivity(intent)
                         mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
-                    }
+                    },
+                    colors = androidx.compose.material.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colors.secondary // 버튼 텍스트 색상을 secondary로 설정
+                    )
                 ) {
                     Text("설정으로 이동")
                 }
@@ -319,7 +323,10 @@ fun MapScreen(
                 TextButton(
                     onClick = {
                         mapViewModel.handleEvent(MapEvent.UpdateLocationServicesState(true))
-                    }
+                    },
+                    colors = androidx.compose.material.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colors.secondary // 버튼 텍스트 색상을 secondary로 설정
+                    )
                 ) {
                     Text("취소")
                 }
@@ -488,7 +495,7 @@ fun MapScreen(
                     modifier = Modifier
                         .padding(
                             end = 16.dp,
-                            bottom = if (isMatchingAssigned) 72.dp else 48.dp
+                            bottom = 72.dp
                         )
                         .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
                         .clickable {
@@ -533,6 +540,7 @@ fun MapScreen(
                     Text(
                         text = "드론 배정 요청",
                         style = MaterialTheme.typography.h5,
+                        color = MaterialTheme.colors.onSecondary,
                     )
                 }
             } else if (state.droneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
@@ -557,9 +565,27 @@ fun MapScreen(
                 ) {
                     Text(
                         text = "최종 매칭 요청",
-                        style = MaterialTheme.typography.h5
+                        style = MaterialTheme.typography.h5,
+                        color = MaterialTheme.colors.onSecondary,
                     )
                 }
+            } else {
+                // [텍스트] 서비스 이용 중
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colors.secondary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "안심 귀가 서비스 이용 중",
+                        style = MaterialTheme.typography.h5,
+                        color = MaterialTheme.colors.onSecondary // 텍스트 색상
+                    )
+                }
+
             }
 
         }
@@ -667,7 +693,7 @@ fun MapScreen(
                 title = {
                     Text(
                         text = if (state.error == null) "매칭 성공" else "매칭 실패",
-                        style = MaterialTheme.typography.h6
+                        style = MaterialTheme.typography.subtitle1
                     )
                 },
                 text = {
@@ -686,9 +712,15 @@ fun MapScreen(
                             } else {
                                 mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT))
                             }
-                        }
+                        },
+                        colors = androidx.compose.material.ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colors.secondary
+                        )
                     ) {
-                        Text("확인")
+                        Text(
+                            text = "확인",
+                            style = MaterialTheme.typography.subtitle2,
+                        )
                     }
                 }
             )
