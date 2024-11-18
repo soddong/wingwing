@@ -173,6 +173,7 @@ class FlightAutoControlModel {
             keyStartTakeoff.action({
                 Log.d(TAG, "[Model] startTakeOff 성공")
                 callback.onSuccess()
+
             }, { e: IDJIError ->
                 Log.d(TAG, "[Model] startTakeOff 실패: ${e.description()}")
                 callback.onFailure(e)
