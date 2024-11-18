@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.shieldrone.station.model.CameraStreamVM
 import com.shieldrone.station.model.FlightAutoControlVM
 import com.shieldrone.station.model.GimbalVM
+import com.shieldrone.station.model.RouteVM
 import com.shieldrone.station.model.TrackingDataVM
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import kotlin.math.abs
@@ -44,7 +45,7 @@ class TrackingTargetActivity : ComponentActivity() {
     private val flightControlVM: FlightAutoControlVM by viewModels()
     private val cameraStreamVM: CameraStreamVM by viewModels()
     private val gimbalVM: GimbalVM by viewModels()
-
+    private val routeVM: RouteVM by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i("TrackingTargetActivity", "Activity created")
@@ -54,9 +55,9 @@ class TrackingTargetActivity : ComponentActivity() {
         Log.i("TrackingTargetActivity", "Camera index set to LEFT_OR_MAIN")
 
         flightControlVM.setTrackingInfo(trackingVM.trackingDataDiffFlow)
-
+        routeVM.startReceivingLocation()
         setContent {
-            TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM, gimbalVM)
+            TrackingTargetScreen(trackingVM, flightControlVM, cameraStreamVM, gimbalVM, routeVM)
         }
     }
 
@@ -65,6 +66,7 @@ class TrackingTargetActivity : ComponentActivity() {
         super.onDestroy()
         Log.i("TrackingTargetActivity", "Activity destroyed")
         cameraStreamVM.removeFrameListener()
+        routeVM.stopReceivingLocation()
         Log.i("TrackingTargetActivity", "Camera frame listener removed")
     }
 }
@@ -75,7 +77,8 @@ fun TrackingTargetScreen(
     trackingVM: TrackingDataVM,
     flightControlVM: FlightAutoControlVM,
     cameraStreamVM: CameraStreamVM,
-    gimbalVM: GimbalVM
+    gimbalVM: GimbalVM,
+    routeVM: RouteVM
 ) {
     val trackingData by trackingVM.trackingDataDiffFlow.collectAsState()
     val droneState by flightControlVM.droneState.collectAsState()
@@ -84,7 +87,7 @@ fun TrackingTargetScreen(
     val virtualStickState by flightControlVM.virtualStickState.collectAsState()
     val gimbalInfo by gimbalVM.gimbalInfo.collectAsState()
     val droneStatus by flightControlVM.status.collectAsState()
-
+    val startFlag by routeVM.startFlag.collectAsState()
     var maxYaw by remember { mutableStateOf(220.0) }   // 최대 회전 속도
     var maxStickValue by remember { mutableStateOf(35.0) }   // 최대 전진 속도
     var altitudeValue by remember { mutableStateOf(30) } // 순항 고도 상승 속도
@@ -93,16 +96,24 @@ fun TrackingTargetScreen(
     var targetAltitude by remember { mutableStateOf(1.8f) } // 목표 순항 고도
     val threshold = 0.2f // 드론 제어 시작 임계값
     val minYaw = 10.0    // 최소 회전 속도
+    val TAG = "TrackingTargetActivity"
 
     // Yaw 조정 기능 (버튼 클릭 시에만 작동)
     LaunchedEffect(isAdjustingYaw) {
         if (isAdjustingYaw) {
-            Log.i("TrackingTargetActivity", "Yaw adjustment started")
+            Log.i(TAG, "Yaw adjustment started")
             while (isAdjustingYaw) {
                 flightControlVM.adjustAutoControl(targetAltitude, yawThreshold = threshold, maxYawPower = maxYaw,
                     minYawPower = minYaw, kpValue = KpValue, maxPitchPower = maxStickValue)
                 kotlinx.coroutines.delay(100)
             }
+        }
+    }
+    LaunchedEffect(startFlag) {
+        if(startFlag) {
+            Log.i("TrackingTargetActivity", "start TakeOff")
+            gimbalVM.setGimbalAngle()
+            flightControlVM.startTakeOff()
         }
     }
 

@@ -1,145 +1,54 @@
 package com.shieldrone.station.model
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.shieldrone.station.constant.FlightConstant.Companion.GPS_ALTITUDE
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import org.json.JSONObject
-import java.net.DatagramPacket
-import java.net.DatagramSocket
+import com.shieldrone.station.controller.RouteController
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 
 class RouteVM : ViewModel() {
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
-    private var udpSocket: DatagramSocket? = null
-    private var isReceiving = false
-    private var isReturningHome = false  // 홈 복귀 여부를 추적
-    private var reachedTargetTime: Long? = null  // 3미터 이내 도달 시간 기록
-    private var startFlag: Boolean = false
+
+    private var _locLat = MutableStateFlow(0.0)
+    val locLat: StateFlow<Double> = _locLat
+
+    private var _locLng = MutableStateFlow(0.0)
+    val locLng: StateFlow<Double> = _locLng
+
+    private var _destLat = MutableStateFlow(0.0)
+    val destLat: StateFlow<Double> = _destLat
+
+    private var _destLng = MutableStateFlow(0.0)
+    val destLng: StateFlow<Double> = _destLng
+
+    private var _locAlt = MutableStateFlow(0.0)
+    val locAlt: StateFlow<Double> = _locAlt
+
+    private var _startFlag = MutableStateFlow(false)
+    val startFlag: StateFlow<Boolean> = _startFlag
 
     private val TAG = "RouteVM"
 
-    companion object {
-        private const val PORT = 23456      // RouteDecision에서 보낸 포트와 일치
-    }
+    private var routeController = RouteController(this)
 
-    fun onRouteUpdate(
+    //    lat,lng,lat,lng,startFlag 가지고 있기
+    fun setRouteUpdate(
         locationLat: Double,
         locationLng: Double,
         destLat: Double,
         destLng: Double,
-        altitude: Double,
-        startFlag: Boolean
+        altitude: Double
     ) {
-        if (startFlag) {
-            try {
-                Log.i(TAG, "이륙에 성공했습니다.")
-            } catch (e: Exception) {
-                Log.e(TAG, "이륙 중 예외 발생: ${e.message}")
-            }
-        }
 
-
-//        _currentLocation.value = Position(locationLat, locationLng, altitude)
-//        _destinationLocation.value = Position(destLat, destLng, altitude)
-
-
+        _locLat.value = locationLat
+        _locLng.value = locationLng
+        _destLat.value = destLat
+        _destLng.value = destLng
+        _locAlt.value = altitude
     }
 
-    init {
-        try {
-            udpSocket = DatagramSocket(PORT)
-            Log.i("TAG", "UDP Socket created and bound to port $PORT")
-        } catch (e: Exception) {
-            Log.e("TAG", "Error creating UDP socket: ${e.message}")
-        }
+    fun setStartFlag(startFlag: Boolean) {
+        _startFlag.value = startFlag
     }
-
-    fun startReceivingLocation() {
-        isReceiving = true
-        coroutineScope.launch {
-            receiveLocationOverUDP()
-        }
-    }
-
-    private suspend fun receiveLocationOverUDP() {
-        try {
-            val buffer = ByteArray(1024)  // 수신할 최대 바이트 크기 설정
-
-            while (isReceiving) {
-                val packet = DatagramPacket(buffer, buffer.size)
-                udpSocket?.receive(packet)  // 데이터 패킷 수신 대기
-
-                val message = String(packet.data, 0, packet.length, Charsets.UTF_8)
-                val data = JSONObject(message)  // JSON 데이터로 변환
-
-                val startFlag = data.optBoolean("start_flag", false)
-
-                if (startFlag) {
-                    // start_flag가 true인 경우
-                    Log.i(
-                        "TAG",
-                        "Received start_flag: $startFlag (No location data expected)"
-                    )
-                    // 필요한 추가 로직
-                } else if (data.has("location") && data.has("dest_location")) {
-                    // location과 dest_location이 모두 존재하는 경우
-                    val location = data.getJSONObject("location")
-                    val destLocation = data.getJSONObject("dest_location")
-
-                    val locationLat = location.optDouble("lat", Double.NaN)
-                    val locationLng = location.optDouble("lng", Double.NaN)
-                    val destLat = destLocation.optDouble("lat", Double.NaN)
-                    val destLng = destLocation.optDouble("lng", Double.NaN)
-
-                    // 데이터 처리
-                    process(locationLat, locationLng, destLat, destLng, startFlag)
-                    // 로그 출력
-                } else {
-                    // 데이터가 누락된 경우 처리
-                    Log.e("TAG", "Missing location or dest_location data.")
-                    // 필요에 따라 기본값 설정이나 예외 처리
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("TAG", "Error receiving UDP packet: ${e.message}")
-        }
-    }
-
-    fun startLanding() {
-        if (true) {
-            // 이미 타이머가 실행 중인 경우 처리하지 않음
-            if (reachedTargetTime == null) {
-                reachedTargetTime = System.currentTimeMillis()
-//                    startTimerForReturnToHome()
-                Log.d(TAG, "도달했습니다.")
-            }
-        } else {
-            // 3미터 범위를 벗어났을 경우 초기화
-            reachedTargetTime = null
-            isReturningHome = false
-            Log.d(TAG, "범위를 벗어났습니다.")
-        }
-    }
-    fun process(
-        locationLat: Double,
-        locationLng: Double,
-        destLat: Double,
-        destLng: Double,
-        startFlag: Boolean
-    ) {
-        // 리스너가 설정된 경우 업데이트 전달
-        onRouteUpdate(locationLat, locationLng, destLat, destLng, GPS_ALTITUDE, startFlag)
-        Log.i(
-            TAG,
-            "Received Data: location(lat=$locationLat, lng=$locationLng), " +
-                    "dest_location(lat=$destLat, lng=$destLng), start_flag=$startFlag"
-        )
-    }
-
     fun validateLocationData(
         locationLat: Double,
         locationLng: Double,
@@ -163,21 +72,10 @@ class RouteVM : ViewModel() {
         return (latDiff <= threshold && lngDiff <= threshold)
 
     }
-
-    fun stopReceivingLocation() {
-        isReceiving = false
-        closeSocket()
-        coroutineScope.cancel()
+    fun startReceivingLocation() {
+        routeController.startReceivingLocation()
     }
-
-    private fun closeSocket() {
-        try {
-            udpSocket?.close()
-            Log.i("TAG", "UDP Socket closed")
-        } catch (e: Exception) {
-            Log.e("TAG", "Error closing UDP socket: ${e.message}")
-        } finally {
-            udpSocket = null
-        }
+    fun stopReceivingLocation() {
+        routeController.stopReceivingLocation()
     }
 }
