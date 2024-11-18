@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
-import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.ui.CameraStreamActivity
 import com.shieldrone.station.ui.TrackingTargetActivity
 import dji.v5.manager.KeyManager
@@ -71,7 +70,6 @@ class DJIMainActivity : AppCompatActivity() {
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val disposable = CompositeDisposable()
     private var isOpenCVInitialized = false
-    private lateinit var batteryViewModel: BatteryViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,20 +80,6 @@ class DJIMainActivity : AppCompatActivity() {
             return
 
         }
-//        val batteryModel = BatteryModel()
-//        batteryViewModel = BatteryViewModel(batteryModel)
-//        batteryViewModel.startSendingBatteryStatus()
-//        setContent {
-//            com.shieldrone.station.ui.theme.ShieldronStationTheme {
-//                CameraPermissionScreen(
-//                    onRequestPermission = { requestCameraPermission() },
-//                    onModeSelected = { isCamera -> onModeSelected(isCamera) },
-//                    cameraPermissionGranted = cameraPermissionGranted,
-//                    isCameraMode = isCameraMode,
-//                    isStreaming = isStreaming
-//                )
-//            }
-//        }
     }
 
     override fun onRequestPermissionsResult(
@@ -112,7 +96,6 @@ class DJIMainActivity : AppCompatActivity() {
         KeyManager.getInstance().cancelListen(this)
         handler.removeCallbacksAndMessages(null)
         disposable.dispose()
-//        batteryViewModel.stopSendingBatteryStatus()
 
     }
 
@@ -211,9 +194,6 @@ class DJIMainActivity : AppCompatActivity() {
         val intent = Intent(this, TrackingTargetActivity::class.java)
         startActivity(intent)
     }
-    private fun navigateToCameraStreamList() {
-        val intent = Intent(this, CameraStreamActivity::class.java)
-        startActivity(intent)
-    }
+
 }
 

@@ -3,11 +3,7 @@ package com.shieldrone.station.model
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.shieldrone.station.constant.FlightConstant.Companion.BTN_DELAY
-import com.shieldrone.station.constant.FlightConstant.Companion.FLIGHT_CONTROL_TAG
 import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
-import com.shieldrone.station.constant.FlightConstant.Companion.VIRTUAL_STICK_TAG
-import com.shieldrone.station.data.Controls
 import com.shieldrone.station.data.LeftStick
 import com.shieldrone.station.data.RightStick
 import com.shieldrone.station.data.State
@@ -74,16 +70,16 @@ class FlightAutoControlModel {
         if (isVirtualStickEnabled) {
             disableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
                 override fun onSuccess() {
-                    Log.d(VIRTUAL_STICK_TAG, "Virtual Stick 모드가 비활성화되었습니다.")
+                    Log.d(TAG, "Virtual Stick 모드가 비활성화되었습니다.")
                 }
 
                 override fun onFailure(error: IDJIError) {
-                    Log.e(VIRTUAL_STICK_TAG, "Virtual Stick 모드 비활성화 실패: ${error.description()}")
+                    Log.e(TAG, "Virtual Stick 모드 비활성화 실패: ${error.description()}")
                 }
             })
         }
 
-        Log.d(FLIGHT_CONTROL_TAG, "FlightControlModel의 리소스가 해제되었습니다.")
+        Log.d(TAG, "FlightControlModel의 리소스가 해제되었습니다.")
     }
 
     // 3. Virtual Stick
@@ -130,7 +126,8 @@ class FlightAutoControlModel {
         virtualStickManager.setVirtualStickStateListener(object : VirtualStickStateListener {
             override fun onVirtualStickStateUpdate(stickState: VirtualStickState) {
                 Log.d(TAG, "subscribeVirtualStickState: VirtualStickState 업데이트 $stickState")
-                virtualStickState = """상태: ${stickState.currentFlightControlAuthorityOwner.name} | 활성화 여부: ${stickState.isVirtualStickEnable}""".trimIndent()
+                virtualStickState =
+                    """상태: ${stickState.currentFlightControlAuthorityOwner.name} | 활성화 여부: ${stickState.isVirtualStickEnable}""".trimIndent()
                 updateCombinedState()
             }
 
@@ -141,7 +138,8 @@ class FlightAutoControlModel {
             }
 
             private fun updateCombinedState() {
-                val combinedState = """${virtualStickState ?: "N/A"} | ${changeReason ?: "N/A"}""".trimIndent()
+                val combinedState =
+                    """${virtualStickState ?: "N/A"} | ${changeReason ?: "N/A"}""".trimIndent()
 
                 onUpdate(combinedState)
             }
@@ -205,7 +203,7 @@ class FlightAutoControlModel {
         val isConnected = KeyManager.getInstance().getValue(keyConnection) ?: false
         val isFlying = KeyManager.getInstance().getValue(keyIsFlying) ?: false
         Log.d(
-            FLIGHT_CONTROL_TAG,
+            TAG,
             "Preconditions for takeoff - isConnected: $isConnected, isFlying: $isFlying"
         )
 
@@ -218,7 +216,7 @@ class FlightAutoControlModel {
     fun monitorTakeoffStatus() {
         KeyManager.getInstance().listen(keyIsFlying, this) { _, isFlying ->
             if (isFlying == true) {
-                Log.d(FLIGHT_CONTROL_TAG, "Drone is now flying")
+                Log.d(TAG, "Drone is now flying")
             }
         }
     }
@@ -361,7 +359,7 @@ class FlightAutoControlModel {
                         )
                     }
 
-                    handler.postDelayed(this, BTN_DELAY)
+                    handler.postDelayed(this, 1000L)
                 }
             })
         } catch (e: Exception) {
@@ -371,27 +369,14 @@ class FlightAutoControlModel {
 
 
     // 6. State, Location Helper
-    fun getCurrentStickPositions(): Controls {
-        return Controls(
-            StickPosition(
-                virtualStickManager.leftStick.verticalPosition,
-                virtualStickManager.leftStick.horizontalPosition
-            ),
-            StickPosition(
-                virtualStickManager.rightStick.verticalPosition,
-                virtualStickManager.rightStick.horizontalPosition
-            )
-        )
-    }
-
 
     fun subscribeGoHomeState(onUpdate: (FCGoHomeState) -> Unit) {
         // KeyManager를 통해 GoHome 상태를 구독
         KeyManager.getInstance().listen(homeState, this) { _, data ->
             data?.let { goHomeState ->
-                Log.d(FLIGHT_CONTROL_TAG, "GoHome 상태 업데이트: $goHomeState")
+                Log.d(TAG, "GoHome 상태 업데이트: $goHomeState")
                 onUpdate(goHomeState)
-            } ?: Log.e(FLIGHT_CONTROL_TAG, "GoHome 상태를 가져오지 못했습니다.")
+            } ?: Log.e(TAG, "GoHome 상태를 가져오지 못했습니다.")
         }
     }
 
@@ -402,9 +387,9 @@ class FlightAutoControlModel {
         // KeyManager를 통해 GoHome 상태를 구독
         KeyManager.getInstance().listen(homeLocation, this) { _, data ->
             data?.let { homeLocation ->
-                Log.d(FLIGHT_CONTROL_TAG, "집주소 업데이트: $homeLocation")
+                Log.d(TAG, "집주소 업데이트: $homeLocation")
                 onUpdate(homeLocation)
-            } ?: Log.e(FLIGHT_CONTROL_TAG, "집주소를 받아오지 못했습니다.")
+            } ?: Log.e(TAG, "집주소를 받아오지 못했습니다.")
         }
     }
 
@@ -427,7 +412,7 @@ class FlightAutoControlModel {
                 object : CommonCallbacks.CompletionCallback {
                     override fun onSuccess() {
                         Log.d(
-                            FLIGHT_CONTROL_TAG,
+                            TAG,
                             "Home location successfully set to: $homeLocation2D"
                         )
                         callback.onSuccess()
@@ -435,14 +420,14 @@ class FlightAutoControlModel {
 
                     override fun onFailure(error: IDJIError) {
                         Log.e(
-                            FLIGHT_CONTROL_TAG,
+                            TAG,
                             "Failed to set home location: ${error.description()}"
                         )
                         callback.onFailure(error)
                     }
                 })
         } else {
-            Log.e(FLIGHT_CONTROL_TAG, "Current location not available to set as home location.")
+            Log.e(TAG, "Current location not available to set as home location.")
             callback.onFailure(object : IDJIError {
                 override fun errorType() = ErrorType.UNKNOWN
                 override fun errorCode() = "LOCATION_NOT_AVAILABLE"
@@ -474,23 +459,6 @@ class FlightAutoControlModel {
         val location = KeyManager.getInstance().getValue(homeLocation)
 
     }
-
-    /**
-     * Return to Home 중지
-     */
-//    fun stopReturnToHome(callback: CommonCallbacks.CompletionCallback) {
-//        KeyManager.getInstance().performAction(stopToHome, object : CommonCallbacks.CompletionCallback {
-//            override fun onSuccess() {
-//                Log.d(FLIGHT_CONTROL_TAG, "Return to Home 중지됨")
-//                callback.onSuccess()
-//            }
-//
-//            override fun onFailure(error: IDJIError) {
-//                Log.e(FLIGHT_CONTROL_TAG, "Return to Home 중지 실패: ${error.description()}")
-//                callback.onFailure(error)
-//            }
-//        })
-//    }
 
 
 }
