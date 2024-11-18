@@ -477,16 +477,26 @@ fun MapScreen(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
         ) {
-            // [버튼] 드론 배정 취소
-            if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
+            // [버튼] 드론 배정 취소 OR 서비스 종료
+            val isMatchingAssigned = state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED
+            val isMatchingComplete = state.droneState?.matchStatus == DroneStatus.MATCHING_COMPLETE
+
+            if (isMatchingAssigned || isMatchingComplete) {
                 Text(
-                    text = "드론 배정 취소",
+                    text = if (isMatchingAssigned) "드론 배정 취소" else "서비스 종료",
                     modifier = Modifier
-                        .padding(end = 16.dp, bottom = 72.dp) // 하단 버튼과의 간격 조절
+                        .padding(
+                            end = 16.dp,
+                            bottom = if (isMatchingAssigned) 72.dp else 48.dp
+                        )
                         .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
                         .clickable {
-                            state.droneState.droneId.let { droneId ->
-                                mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId)))
+                            state.droneState?.droneId?.let { droneId ->
+                                if (isMatchingAssigned) {
+                                    mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId))) // 드론 배정 취소
+                                } else {
+                                    mapViewModel.handleEvent(MapEvent.RequestServiceEnd(DroneCancelRequest(droneId = droneId))) // 서비스 종료
+                                }
                                 mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
                                 mapViewModel.handleEvent(MapEvent.ClearLocationData) // 출발/도착지 정보 초기화
                             }
@@ -599,6 +609,7 @@ fun MapScreen(
 
         // 3-4) 드론 배정 취소 결과 모달
         if (state.showCancelSuccessModal) {
+
             AlertDialog(
                 onDismissRequest = {
                     mapViewModel.handleEvent(MapEvent.CloseAllModals)
@@ -656,6 +667,26 @@ fun MapScreen(
             DroneAnimation (
                 onAnimationEnd = {
                     mapViewModel.handleEvent(MapEvent.EndDroneAnimation)
+                }
+            )
+        }
+
+        // 3-7) 서비스 종료 결과 모달
+        if (state.showServiceEndModal) {
+            AlertDialog(
+                onDismissRequest = {
+                    mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                },
+                title = { Text("서비스 종료") },
+                text = { Text("서비스가 성공적으로 종료되었습니다.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            mapViewModel.handleEvent(MapEvent.CloseAllModals)
+                        }
+                    ) {
+                        Text("확인")
+                    }
                 }
             )
         }
