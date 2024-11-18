@@ -51,7 +51,7 @@ class WebSocketSubscriptions @Inject constructor(
     private val messageClient = Wearable.getMessageClient(context)
     private val subscriptionScope = CoroutineScope(Dispatchers.IO)
     private val gson = Gson()
-
+    private var lastWarningTimestamp: Long = 0
 
     fun setupWatchMessageListener() {
         Wearable.getMessageClient(context).addListener { event ->
@@ -123,9 +123,9 @@ class WebSocketSubscriptions @Inject constructor(
                         Log.d(TAG, "위험 감지 메시지 수신")
                         val warningData = messageParser.parseWarningMessage(message)
                         if (warningData != null) {
+                            lastWarningTimestamp = System.currentTimeMillis()
                             Log.d(TAG, "위험 감지 메시지 파싱 성공 - warningFlag: ${warningData.warningFlag}")
-                            val isSafeConfirmed =
-                                alertHandler.getSafeConfirmationStatus()
+                            val isSafeConfirmed = alertHandler.getSafeConfirmationStatus()
                             handleWarningAlert(warningData, isSafeConfirmed)
                         } else {
                             Log.e(TAG, "위험 감지 메시지 파싱 실패")
@@ -133,13 +133,20 @@ class WebSocketSubscriptions @Inject constructor(
                     }
 
                     TYPE_OBJECT_FLAG -> {
-                        Log.d(TAG, "타인 감지 메시지 수신")
-                        val objectData = messageParser.parseObjectMessage(message)
-                        if (objectData != null) {
-                            Log.d(TAG, "타인 감지 메시지 파싱 성공 - objectFlag: ${objectData.objectFlag}")
-                            handleObjectAlert(objectData.objectFlag)
+                        val currentTime = System.currentTimeMillis()
+                        val timeSinceLastWarning = currentTime - lastWarningTimestamp
+
+                        if (timeSinceLastWarning >= 10000) {
+                            Log.d(TAG, "타인 감지 메시지 수신")
+                            val objectData = messageParser.parseObjectMessage(message)
+                            if (objectData != null) {
+                                Log.d(TAG, "타인 감지 메시지 파싱 성공 - objectFlag: ${objectData.objectFlag}")
+                                handleObjectAlert(objectData.objectFlag)
+                            } else {
+                                Log.e(TAG, "타인 감지 메시지 파싱 실패")
+                            }
                         } else {
-                            Log.e(TAG, "타인 감지 메시지 파싱 실패")
+                            Log.d(TAG, "위험 감지 후 10초 이내로 타인 감지 메시지 무시됨")
                         }
                     }
                 }
