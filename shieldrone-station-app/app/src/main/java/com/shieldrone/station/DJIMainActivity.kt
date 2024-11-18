@@ -41,7 +41,6 @@ class DJIMainActivity : AppCompatActivity() {
 
 
     companion object {
-        private const val PERMISSIONS_REQUEST_CODE = 1001
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.CAMERA,
             Manifest.permission.INTERNET,
