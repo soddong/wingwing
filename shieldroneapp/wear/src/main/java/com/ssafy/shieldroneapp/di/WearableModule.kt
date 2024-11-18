@@ -4,8 +4,8 @@ import android.app.Application
 import android.content.Context
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Wearable
-import com.ssafy.shieldroneapp.data.repository.DataRepository
-import com.ssafy.shieldroneapp.data.repository.SensorRepository
+import com.ssafy.shieldroneapp.domain.repository.DataRepository
+import com.ssafy.shieldroneapp.domain.repository.SensorRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
