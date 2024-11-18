@@ -59,7 +59,7 @@ class MapViewModel @Inject constructor(
     companion object {
         private const val TAG = "MapViewModel 모바일: 맵 뷰모델"
         private const val TIMER_DURATION_MS = 10 * 60 * 1000L // 10분
-        private const val SEARCH_DEBOUNCE_MS = 150L // 150ms 디바운스
+        private const val SEARCH_DEBOUNCE_MS = 50L // 50ms 디바운스
     }
 
     private val _state = MutableStateFlow(MapState())
@@ -116,6 +116,10 @@ class MapViewModel @Inject constructor(
             is MapEvent.RequestDroneMatching -> requestDroneMatching(event.request) // 드론 최종 매칭 요청
             is MapEvent.HandleDroneMatchingResult -> handleMatchingResult(event.result) // 드론 매칭 결과 별 이벤트 처리
 
+            // 드론 애니메이션 이벤트 처리
+            is MapEvent.StartDroneAnimation -> startDroneAnimation()
+            is MapEvent.EndDroneAnimation -> endDroneAnimation()
+     
             // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
             is MapEvent.UpdateLocationServicesState -> updateLocationServicesState(event.isEnabled) // 위치 서비스 활성화 상태 업데이트
 
@@ -341,7 +345,7 @@ class MapViewModel @Inject constructor(
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MS) // 150ms 디바운스
+            delay(SEARCH_DEBOUNCE_MS) // 50ms 디바운스
             val trimmedText = text.trim()
             if (trimmedText.isEmpty()) {
                 // 배정된 상태가 아닌 경우에만 로컬 데이터를 지움
@@ -533,10 +537,13 @@ class MapViewModel @Inject constructor(
                     // 드론 매칭 성공 시에만 WebSocket 초기화
                     audioServiceManager.initializeWebSocket()
 
+                    // 드론 애니메이션 시작
+                    handleEvent(MapEvent.StartDroneAnimation)
+
                     _state.update {
                         it.copy(
                             droneMatchResult = response,
-                            showDroneMatchResultModal = true,
+                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
                             error = null,
                             isLoading = false
                         )
@@ -547,7 +554,6 @@ class MapViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             showDroneMatchResultModal = true, // 매칭 결과 모달 표시
-//                            error = "입력된 인증 코드가 일치하지 않습니다.\n드론에 표시된 코드를 확인해주세요.",
                             error = "${error.message}",
                             isLoading = false
                         )
@@ -583,21 +589,29 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    // 결과 처리에서 이것까지 해야 함? ======> 성공 알림 및 애니메이션 시작
-//    private fun showSuccessAlert() {
-//        _state.update { it.copy(isSuccessAlertVisible = true) }
-//        // 애니메이션 실행 로직 호출
-//    }
+    /**
+     * 18. 드론 매칭 성공 시 - 애니메이션 시작
+     */
+    private fun startDroneAnimation() {
+        _state.update { it.copy(showDroneAnimation = true) }
+    }
 
     /**
-     * 18. 위치 서비스 활성화 상태 업데이트
+     * 19. 드론 매칭 성공 시 - 애니메이션 종료
+     */
+    private fun endDroneAnimation() {
+        _state.update { it.copy(showDroneAnimation = false) }
+    }
+
+    /**
+     * 20. 위치 서비스 활성화 상태 업데이트
      * */
     fun updateLocationServicesState(isEnabled: Boolean) {
         _locationServicesEnabled.value = isEnabled
     }
 
     /**
-     * 19. 실시간 위치 추적을 시작
+     * 21. 실시간 위치 추적을 시작
      * */
     private fun startTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = true) }
@@ -617,21 +631,21 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 20. TODO: 실시간 위치 추적을 중지 (필요 시)
+     * 22. TODO: 실시간 위치 추적을 중지 (필요 시)
      * */
     private fun stopTrackingLocation() {
         _state.update { it.copy(isTrackingLocation = false) }
     }
 
     /**
-     * 21. 오류 메시지 설정
+     * 23. 오류 메시지 설정
      * */
     private fun setError(message: String) {
         _state.update { it.copy(error = message) }
     }
 
     /**
-     * 22. 로컬에서 드론 상태 가져오기
+     * 24. 로컬에서 드론 상태 가져오기
      * */
     private fun loadDroneState() {
         viewModelScope.launch {
@@ -643,7 +657,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 23. 로컬에 드론 상태 저장
+     * 25. 로컬에 드론 상태 저장
      * */
     private fun saveDroneState(droneState: DroneState) {
         viewModelScope.launch {
@@ -654,7 +668,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 24. 로컬에서 드론 상태 초기화 및 웹소켓 연결 해제
+     * 26. 로컬에서 드론 상태 초기화 및 웹소켓 연결 해제
      */
     private fun clearDroneState() {
         viewModelScope.launch {
@@ -679,7 +693,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 25. 로컬에서 출발지, 도착지 가져오기
+     * 27. 로컬에서 출발지, 도착지 가져오기
      * */
     private fun loadStartAndEndLocations() {
         viewModelScope.launch {
@@ -704,7 +718,7 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * 26. 로컬에서 출발지 저장
+     * 28. 로컬에서 출발지 저장
      * */
     private fun saveStartLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -724,9 +738,8 @@ class MapViewModel @Inject constructor(
         }
     }
 
-
     /**
-     * 27. 로컬에서 도착지 저장
+     * 29. 로컬에서 도착지 저장
      * */
     private fun saveEndLocation(location: RouteLocation) {
         viewModelScope.launch {
@@ -748,7 +761,7 @@ class MapViewModel @Inject constructor(
 
 
     /**
-     * 27. 로컬에서 출발/도착지 초기화
+     * 30. 로컬에서 출발/도착지 초기화
      * */
     private fun clearLocationData() {
         viewModelScope.launch {
