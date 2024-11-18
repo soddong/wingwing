@@ -9,15 +9,22 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
+import com.shieldrone.station.data.TrackingDataDiff
+import dji.sdk.keyvalue.key.co_v.KeyAircraftLocation3D
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
+import dji.v5.et.create
+import dji.v5.et.get
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.sign
 
 class FlightAutoControlVM : ViewModel() {
     private val TAG = "FlightAutoControlVM"
@@ -29,14 +36,8 @@ class FlightAutoControlVM : ViewModel() {
     private val _droneState = MutableStateFlow<State?>(null)
     val droneState: StateFlow<State?> get() = _droneState.asStateFlow()
 
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> get() = _message.asStateFlow()
-
-    private val _virtualMessage = MutableStateFlow<String?>(null)
-    val virtualMessage: StateFlow<String?> get() = _virtualMessage.asStateFlow()
-
-    private val _gpsSignalLevel = MutableStateFlow<Int?>(null)
-    val gpsSignalLevel: StateFlow<Int?> get() = _gpsSignalLevel.asStateFlow()
+    private val _status = MutableStateFlow<String?>(null)
+    val status: StateFlow<String?> get() = _status.asStateFlow()
 
     private val _targetPosition = MutableStateFlow<Position?>(null)
     val targetPosition: StateFlow<Position?> get() = _targetPosition.asStateFlow()
@@ -44,23 +45,26 @@ class FlightAutoControlVM : ViewModel() {
     private val _virtualStickState = MutableStateFlow<String?>(null)
     val virtualStickState: StateFlow<String?> get() = _virtualStickState.asStateFlow()
 
-    var altitude: Int by mutableStateOf(0)
-        private set
+    lateinit var trackingData: StateFlow<TrackingDataDiff?>
+
+    private var autoControlCoroutine: Job? = null
+
     var pitch: Int by mutableStateOf(0)
         private set
 
+
     // 2. 필요한 초기화
     init {
-        flightControlModel.subscribeDroneGpsLevel { gpsLevel ->
-            _gpsSignalLevel.value = gpsLevel
-        }
-
         flightControlModel.subscribeDroneState { state ->
             _droneState.value = state
         }
         flightControlModel.subscribeVirtualStickState { stickState ->
             _virtualStickState.value = stickState
         }
+    }
+
+    fun setTrackingInfo(trackingDataDiffFlow: StateFlow<TrackingDataDiff?>){
+        trackingData = trackingDataDiffFlow
     }
 
     // 3. 생명주기 관리
@@ -79,13 +83,13 @@ class FlightAutoControlVM : ViewModel() {
         Log.d(TAG, "[ViewModel] startTakeOff 시작")
         flightControlModel.startTakeOff(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                _message.value = "이륙이 시작되었습니다."
+                _status.value = "이륙이 시작되었습니다."
                 Log.d(TAG, "[ViewModel] startTakeOff 성공")
                 flightControlModel.monitorTakeoffStatus()
             }
 
             override fun onFailure(error: IDJIError) {
-                _message.value = "이륙 실패: ${error.description()}"
+                _status.value = "이륙 실패: ${error.description()}"
                 Log.d(TAG, "[ViewModel] startTakeOff 실패: ${error.description()}")
             }
         })
@@ -96,6 +100,7 @@ class FlightAutoControlVM : ViewModel() {
         Log.d(TAG, "[ViewModel] ascendToCruiseAltitude 시작")
         CoroutineScope(Dispatchers.Default).launch {
             try {
+                _status.value = "순항 고도 상승시작"
                 adjustAltitudeCoroutine(altitudeSpeed, targetAltitude)
                 Log.d(TAG, "[ViewModel] ascendToCruiseAltitude 성공")
             } catch (e: Exception) {
@@ -107,25 +112,35 @@ class FlightAutoControlVM : ViewModel() {
     suspend fun adjustAltitudeCoroutine(altitudeSpeed: Int, targetAltitude: Float) {
         Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 시작")
         try {
+            _status.value = "순항 고도 상승중"
             while (true) {
-                val currentAltitude = _droneState.value!!.altitude!!
-                if (currentAltitude >= targetAltitude) {
+                val currentAltitude = KeyAircraftLocation3D.create().get()
+                if (currentAltitude == null){
+                    Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 실패 : 고도 정보 없음")
+                    _status.value = "고도 정보 없음"
+                    flightControlModel.adjustAltitude(0)
+                    break
+                }
+                if (currentAltitude.altitude >= targetAltitude) {
                     Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 성공: 목표 고도 도달")
+                    flightControlModel.adjustAltitude(0)
+                    _status.value = "순항 고도 도달"
                     break
                 }
 
-                val altitudeRatio = currentAltitude / targetAltitude
+                val altitudeRatio = (currentAltitude.altitude - 1.2f) / (targetAltitude -1.2f)
                 val adjustmentSpeed = when {
                     altitudeRatio < 0.2 -> (altitudeSpeed * 0.3).toLong()
                     altitudeRatio < 0.8 -> altitudeSpeed
-                    else -> (altitudeSpeed * 0.5).toLong()
+                    else -> (altitudeSpeed * 0.2).toLong()
                 }
 
                 flightControlModel.adjustAltitude(adjustmentSpeed.toInt())
-                delay(100L)
+                delay(200L)
             }
         } catch (e: Exception) {
             Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 실패: ${e.message}")
+            flightControlModel.adjustAltitude(0)
         }
     }
 
@@ -133,12 +148,12 @@ class FlightAutoControlVM : ViewModel() {
         Log.d(TAG, "[ViewModel] startLanding 시작")
         flightControlModel.startLanding(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                _message.value = "착륙이 시작되었습니다."
+                _status.value = "착륙이 시작되었습니다."
                 Log.d(TAG, "[ViewModel] startLanding 성공")
             }
 
             override fun onFailure(error: IDJIError) {
-                _message.value = "착륙 실패: ${error.description()}"
+                _status.value = "착륙 실패: ${error.description()}"
                 Log.d(TAG, "[ViewModel] startLanding 실패: ${error.description()}")
             }
         })
@@ -154,12 +169,10 @@ class FlightAutoControlVM : ViewModel() {
         Log.d(TAG, "[ViewModel] enableVirtualStickMode 시작")
         flightControlModel.enableVirtualStickMode(object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
-                _virtualMessage.value = "VIRTUAL 활성화"
                 Log.d(TAG, "[ViewModel] enableVirtualStickMode 성공")
             }
 
             override fun onFailure(error: IDJIError) {
-                _message.value = "Virtual Stick 활성화 실패: ${error.description()}"
                 Log.d(TAG, "[ViewModel] enableVirtualStickMode 실패: ${error.description()}")
             }
         })
@@ -210,19 +223,68 @@ class FlightAutoControlVM : ViewModel() {
         }
     }
 
-    fun updateAltitude(value: Int) {
-        Log.d(TAG, "[ViewModel] updateAltitude 시작")
-        altitude = value
-        Log.d(TAG, "[ViewModel] updateAltitude 성공: altitude=$value")
+    fun startAutoControl(targetAltitude:Float, altitudeThreshold:Float=0.1f, yawThreshold: Float =0.2f, controlDelay:Long = 100L ){
+        stopAutoControl()
+        autoControlCoroutine = CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                adjustAutoControl(targetAltitude,altitudeThreshold, yawThreshold)
+                delay(controlDelay)
+            }
+        }
     }
 
-    fun adjustAltitude() {
-        Log.d(TAG, "[ViewModel] adjustAltitude 시작")
-        try {
-            flightControlModel.adjustAltitude(altitude)
-//            Log.d(TAG, "[ViewModel] adjustAltitude 성공")
-        } catch (e: Exception) {
-            Log.d(TAG, "[ViewModel] adjustAltitude 실패: ${e.message}")
+    fun stopAutoControl(){
+        if(autoControlCoroutine != null && autoControlCoroutine!!.isActive){
+            autoControlCoroutine!!.cancel()
         }
+    }
+
+    fun adjustAutoControl(targetAltitude:Float, altitudeThreshold:Float=0.1f, yawThreshold: Float =0.2f,
+                          maxYawPower: Double = 220.0,minYawPower:Double = 10.0, kpValue: Double = 1.5,
+                          maxPitchPower: Double = 30.0) {
+        var altitudePower = 0.0
+        var yawPower = 0.0
+        var pitchPower = 0.0
+
+
+        //쓰로틀 계산, 순항 고도 유지
+        val currentAltitude = KeyAircraftLocation3D.create().get()?.altitude
+        if(currentAltitude != null){
+            val altitudeDifference = targetAltitude - currentAltitude
+
+            if (abs(altitudeDifference) > altitudeThreshold) {
+                altitudePower = altitudeDifference * 10
+            }
+        }
+
+
+        //yaw 계산
+        val offsetX = trackingData.value?.newData?.normalizedOffsetX
+        if(offsetX != null){
+            val absOffsetX = abs(offsetX)
+
+            Log.d("TrackingTargetActivity", "OffsetX: $offsetX, AbsOffsetX: $absOffsetX")
+
+            if (absOffsetX > yawThreshold) {
+                // 임계값을 초과한 부분을 0부터 1 사이로 정규화
+                val scaledOffset = (absOffsetX - yawThreshold) / (1.0 - yawThreshold)
+                // 최소 및 최대 회전 속도 사이에서 보간
+                val adjustmentValue = scaledOffset * (maxYawPower - minYawPower) + minYawPower
+                Log.d("TrackingTargetActivity", "adjustmentValue: $adjustmentValue")
+                // 방향에 따라 부호 적용
+                yawPower = adjustmentValue * sign(offsetX)
+            }
+        }
+
+
+        //pitch 계산
+        val eYFuture = trackingData.value?.futureErrorY
+        if(eYFuture != null){
+            val vY = -kpValue * eYFuture
+            pitchPower = vY.coerceIn(-1.0, 1.0) * maxPitchPower
+        }
+        _status.value = "자동 제어 진행중 alititude : ${altitudePower} yaw : ${yawPower}, pitch : ${pitchPower}"
+
+        flightControlModel.adjustAutoControl(altitudePower, yawPower, pitchPower)
     }
 }

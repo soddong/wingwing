@@ -36,7 +36,12 @@ class GimbalVM : ViewModel() {
     private fun describeGimbalInfo() {
         Log.d(TAG, "gimbal 연결됨 : ${KeyConnection.create().get()}")
         KeyGimbalAttitude.create().listen(this, false,  onChange = { newValue ->
-            _gimbalInfo.value = newValue.toString()
+            if(newValue != null){
+                _gimbalInfo.value = String.format("%.2f", newValue.pitch)
+            }
+            else{
+                _gimbalInfo.value = "no Info"
+            }
         })
         return
     }

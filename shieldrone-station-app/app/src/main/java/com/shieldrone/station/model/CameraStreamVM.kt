@@ -22,14 +22,8 @@ import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
 import dji.v5.manager.interfaces.ICameraStreamManager.FrameFormat
 import dji.v5.manager.interfaces.ICameraStreamManager.ScaleType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class CameraStreamVM : ViewModel() {
 
@@ -47,9 +41,6 @@ class CameraStreamVM : ViewModel() {
     val keyCameraVideoStreamSource = KeyTools.createKey(KeyCameraVideoStreamSource)
     val keyExposureMode = KeyTools.createKey(KeyExposureMode)
 
-    // CoroutineScope를 ViewModel에서 관리
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     private val frameListener = object : ICameraStreamManager.CameraFrameListener {
         override fun onFrame(
             frameData: ByteArray,
@@ -59,13 +50,8 @@ class CameraStreamVM : ViewModel() {
             height: Int,
             format: FrameFormat
         ) {
-            coroutineScope.launch {
-                streamController.sendFrameDataOverUDP(frameData, width, height)
-                Log.d(TAG, "Frame received: $length bytes, Resolution: ${width}x$height")
-                withContext(Dispatchers.Main) {
-                    _frameInfo.value = "Frame: ${width}x$height, Format: $format"
-                }
-            }
+            _frameInfo.value = "Frame: ${width}x$height, Format: $format, ${String.format("%.1f", (if (length == 0) 1 else length)/1024.0)} bytes"
+            streamController.sendFrameDataOverUDP(frameData, width, height)
         }
     }
 
@@ -75,7 +61,6 @@ class CameraStreamVM : ViewModel() {
         Log.d(TAG, "onCleared() called")
         removeFrameListener()
         streamController.closeSocket()
-        coroutineScope.cancel()
     }
 
     /**

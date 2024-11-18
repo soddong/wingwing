@@ -89,58 +89,6 @@ class FlightControlVM : ViewModel() {
         }
 
     }
-//    val routeListener = object : RouteAdapter.RouteListener {
-//        override fun onRouteUpdate(
-//            locationLat: Double,
-//            locationLng: Double,
-//            destLat: Double,
-//            destLng: Double,
-//            altitude: Double,
-//            startFlag: Boolean
-//        ) {
-//            _isStart.value = startFlag
-//            if (startFlag) {
-//                try {
-//                    startTakeOff()
-//                    Log.i(TAG, "이륙에 성공했습니다.")
-//                } catch (e: Exception) {
-//                    Log.e(TAG, "이륙 중 예외 발생: ${e.message}")
-//                    // 예외 발생 시 필요한 추가 처리 (예: 사용자에게 알림, 재시도 로직 등)
-//                }
-//            }
-//            // 위치 값이 유효한지 확인
-//            if (locationLat.isNaN() || locationLng.isNaN() || destLat.isNaN() || destLng.isNaN()) {
-//                Log.e(TAG, "Invalid location data received.")
-//                return
-//            }
-//
-//            _currentLocation.value = Position(locationLat, locationLng, altitude)
-//            _destinationLocation.value = Position(destLat, destLng, altitude)
-//
-//            val latDiff = abs(locationLat - destLat)
-//            val lngDiff = abs(locationLng - destLng)
-//            val threshold = 0.000027  // 대략적인 3미터 범위
-//
-//            // 3미터 이내에 도달
-//            if (latDiff <= threshold && lngDiff <= threshold) {
-//                // 이미 타이머가 실행 중인 경우 처리하지 않음
-//                if (reachedTargetTime == null) {
-//                    reachedTargetTime = System.currentTimeMillis()
-////                    startTimerForReturnToHome()
-//                    Log.d(TAG, "도달했습니다.")
-//                }
-//            } else {
-//                // 3미터 범위를 벗어났을 경우 초기화
-//                reachedTargetTime = null
-//                isReturningHome = false
-//                Log.d(TAG, "범위를 벗어났습니다.")
-//            }
-//        }
-//    }
-//
-//    val routeModel: RouteModel = RouteModel(routeListener)
-//    fun startReceivingLocation() = routeModel.startReceivingLocation()
-//    fun stopReceivingLocation() = routeModel.stopReceivingLocation()
 
     fun startTakeOff() {
         val callback = createCompletionCallback("이륙 시작", "이륙 실패")

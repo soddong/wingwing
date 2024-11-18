@@ -25,6 +25,15 @@ class TrackingDataVM : ViewModel() {
 
     private var previousData: TrackingData? = null
 
+    init {
+        startReceivingData()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopReceivingData()
+    }
+
     fun updateTrackingData(newData: TrackingData, isLocked: Boolean) {
         if (previousData != null && !isLocked) {//중간에 목표락이 풀리고 다시 락온이 됐을 때.
             previousData = null

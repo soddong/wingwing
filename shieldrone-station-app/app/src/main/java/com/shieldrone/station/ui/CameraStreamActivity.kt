@@ -78,7 +78,7 @@ fun CameraStreamScreen(viewModel: CameraStreamVM) {
 }
 
 @Composable
-fun CameraStreamSurfaceView(viewModel: CameraStreamVM) {
+fun CameraStreamSurfaceView(viewModel: CameraStreamVM, modifier: Modifier = Modifier) {
     // AndroidView를 사용하여 SurfaceView를 포함
     AndroidView(
         factory = { context ->
@@ -111,8 +111,7 @@ fun CameraStreamSurfaceView(viewModel: CameraStreamVM) {
                 })
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
+        modifier = modifier
+            .fillMaxSize()
     )
 }

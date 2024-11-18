@@ -12,7 +12,6 @@ import java.io.ByteArrayOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import kotlin.system.measureTimeMillis
 
 class CameraStreamController {
 
@@ -23,7 +22,7 @@ class CameraStreamController {
     private var lastSentTime = System.currentTimeMillis()
 
     // 전송 간격 (30fps의 모든 프레임을 보내지 않기 위해 샘플링)
-    private val frameIntervalMs = 100 // 100ms 간격으로 전송 (약 10fps)
+    private val frameIntervalMs = 50 // 100ms 간격으로 전송 (약 10fps)
 
     init {
         initializeSocket()
