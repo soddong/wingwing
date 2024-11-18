@@ -550,8 +550,8 @@ class MapViewModel @Inject constructor(
                     // 4) 드론 애니메이션 시작
                     handleEvent(MapEvent.StartDroneAnimation)
 
-                    // 5) 애니메이션이 어느정도 진행된 후 결과 모달 표시 (3.5초 후)
-                    delay(3500)
+                    // 5) 애니메이션이 어느정도 진행된 후 결과 모달 표시 (2.5초 후)
+                    delay(2500)
 
                     // 6. 마지막으로 매칭 결과 모달 표시
                     _state.update {
