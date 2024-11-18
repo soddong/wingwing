@@ -16,6 +16,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,6 +96,12 @@ fun DroneAssignmentSuccessModal(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions.Default.copy(
                                 keyboardType = KeyboardType.Number
+                            ),
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = MaterialTheme.colors.background, // 배경색
+                                focusedIndicatorColor = MaterialTheme.colors.secondary, // 포커스된 밑줄 색상
+                                unfocusedIndicatorColor = MaterialTheme.colors.onBackground, // 비포커스 밑줄 색상
+                                cursorColor = MaterialTheme.colors.secondary // 커서 색상
                             ),
                             modifier = Modifier
                                 .weight(1f)
