@@ -1,9 +1,13 @@
 package com.ssafy.shieldroneapp.ui.map.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -22,15 +26,32 @@ fun SearchResultItem(
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
     ) {
-        Text(text = location.locationName ?: "이름 없음")
+        Text(
+            text = location.locationName ?: "이름 없음",
+            style = MaterialTheme.typography.subtitle2,
+        )
+
+        Spacer(modifier = Modifier.padding(vertical = 4.dp))
+
         if (location.locationType == LocationType.START) {
-            Text(text = "정류장 번호: ${location.hiveNo ?: "N/A"}")
-            Text(text = "방면: ${location.direction ?: "N/A"}")
-            Text(text = "거리: ${location.distance ?: 0}m")
-            Text(text = "이용 가능 드론 수: ${location.availableDrone ?: 0}개")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${location.direction ?: "N/A"} 방면 | 정류장 번호: ${location.hiveNo ?: "N/A"}",
+                    style = MaterialTheme.typography.body2,
+                )
+//                Text(
+//                    text = "이용 가능 드론: ${location.availableDrone ?: 3}개",
+//                    style = MaterialTheme.typography.body2,
+//                )
+            }
         } else {
-            Text(text = "도로명 주소: ${location.homeAddress ?: "N/A"}")
-            Text(text = "거리: ${location.distance ?: 0}m")
+            Text(
+                text = "${location.homeAddress}",
+                style = MaterialTheme.typography.body2,
+            )
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Text
@@ -64,7 +65,7 @@ fun SearchResultsModal(
         confirmValueChange = { true },
         skipHalfExpanded = true
     )
-    
+
     // 모달이 닫힐 때(onDismiss) 처리 - 드래그 / 모달 외부 클릭 등 모든 닫힘 이벤트 감지
     LaunchedEffect(modalState.currentValue) {
         if (modalState.currentValue == ModalBottomSheetValue.Hidden) {
@@ -92,12 +93,12 @@ fun SearchResultsModal(
                 // 드래그 핸들
                 Box(
                     modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .width(40.dp)
-                        .height(4.dp)
+                        .padding(vertical = 12.dp)
+                        .width(60.dp)
+                        .height(6.dp)
                         .background(
                             color = Color.LightGray,
-                            shape = RoundedCornerShape(2.dp)
+                            shape = RoundedCornerShape(4.dp)
                         )
                 )
 
@@ -105,26 +106,28 @@ fun SearchResultsModal(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(24.dp)
                 ) {
                     Text(
-                        // TODO: 테스트 중! 수정 필요
                         text = (if (searchType == LocationType.START) "출발지 검색 결과" else "도착지 검색 결과"),
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 28.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colors.secondary,
                     )
 
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (searchResults.isEmpty()) {
                             item {
-                                Spacer(modifier = Modifier.padding(top = 28.dp))
+                                Spacer(modifier = Modifier.padding(top = 24.dp))
                                 Text(
                                     text = "검색 결과가 없습니다.",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center,
                                     color = Color.Gray
                                 )
