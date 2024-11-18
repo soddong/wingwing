@@ -7,9 +7,9 @@ import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
-import com.ssafy.shieldroneapp.MainApplication
-import com.ssafy.shieldroneapp.utils.await
-import com.ssafy.shieldroneapp.viewmodels.HeartRateViewModel
+import com.ssafy.shieldroneapp.app.MainApplication
+import com.ssafy.shieldroneapp.core.utils.await
+import com.ssafy.shieldroneapp.features.heartrate.HeartRateViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

@@ -2,20 +2,20 @@ package com.ssafy.shieldroneapp.services
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
-import com.ssafy.shieldroneapp.data.model.DataAvailability
-import com.ssafy.shieldroneapp.data.model.HeartRateData
-import com.ssafy.shieldroneapp.data.repository.DataRepository
-import com.ssafy.shieldroneapp.data.repository.SensorRepository
-import com.ssafy.shieldroneapp.data.repository.MeasureMessage
+import com.ssafy.shieldroneapp.domain.model.DataAvailability
+import com.ssafy.shieldroneapp.domain.model.HeartRateData
+import com.ssafy.shieldroneapp.domain.repository.DataRepository
+import com.ssafy.shieldroneapp.domain.repository.SensorRepository
+import com.ssafy.shieldroneapp.domain.repository.MeasureMessage
 import androidx.health.services.client.data.DataTypeAvailability
-import com.ssafy.shieldroneapp.services.connection.WearConnectionManager
+import com.ssafy.shieldroneapp.core.utils.WakeLockManager
+import com.ssafy.shieldroneapp.data.remote.WearConnectionManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject

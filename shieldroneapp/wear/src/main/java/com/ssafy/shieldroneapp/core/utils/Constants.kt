@@ -1,0 +1,1 @@
+package com.ssafy.shieldroneapp.core.utils// 상수 정의
