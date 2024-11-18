@@ -130,6 +130,9 @@ dependencies {
     // SystemUiController: 상태바, 네비게이션 바 등 시스템 UI 커스터마이징 (배경색, 아이콘 색상 등)
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 
+    // LottieAnimation
+    implementation ("com.airbnb.android:lottie-compose:6.3.0")
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
 

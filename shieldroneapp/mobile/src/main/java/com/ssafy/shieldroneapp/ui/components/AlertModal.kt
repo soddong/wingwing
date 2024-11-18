@@ -15,6 +15,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.data.source.remote.SafetyMessageSender
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
@@ -31,7 +35,7 @@ data class AlertState(
 )
 
 enum class AlertType {
-    WARNING, // 위험 신호 감지 (5초 타이머 + 버튼)
+    WARNING, // 위험 신호 감지 (10초 타이머 + 버튼)
     OBJECT   // 타인 감지 (3초 자동 닫힘)
 }
 
@@ -54,6 +58,14 @@ fun AlertModal(
 
     var apiResponse by remember { mutableStateOf<Response<Unit>?>(null) }
 
+    val warningAnimation by rememberLottieComposition(
+        LottieCompositionSpec.Url("https://lottie.host/cf0cb34a-eb30-429b-a89b-684885eb27c0/XVtlsuk1JE.json")
+    )
+
+    val objectAnimation by rememberLottieComposition(
+        LottieCompositionSpec.Url("https://lottie.host/98dca2bb-37e4-4430-b119-2a5e50907cf8/zlMAouUit2.json")
+    )
+
     if (alertState.alertType == AlertType.WARNING) {
         SentMessageToast(
             apiResponse = apiResponse,
@@ -72,7 +84,7 @@ fun AlertModal(
 
             showModal = true
             remainingSeconds = when (alertState.alertType) {
-                AlertType.WARNING -> 5
+                AlertType.WARNING -> 10
                 AlertType.OBJECT -> 3
             }
 
@@ -83,18 +95,19 @@ fun AlertModal(
                         remainingSeconds--
                     }
 
-                    when (alertState.alertType) {
-                        AlertType.WARNING -> {
-                            onEmergencyAlert?.let { emergencyAlert ->
-                                val success = emergencyAlert()
-                                if (success) {
-                                    shouldShowToast = true
+                    if (!alertHandler.isWatchConfirmed()) {
+                        when (alertState.alertType) {
+                            AlertType.WARNING -> {
+                                onEmergencyAlert?.let { emergencyAlert ->
+                                    val success = emergencyAlert()
+                                    if (success) {
+                                        shouldShowToast = true
+                                    }
                                 }
                             }
-                        }
-
-                        AlertType.OBJECT -> {
-                            alertHandler.dismissObjectAlert()
+                            AlertType.OBJECT -> {
+                                alertHandler.dismissObjectAlert()
+                            }
                         }
                     }
                 } finally {
@@ -116,90 +129,88 @@ fun AlertModal(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Color.Black.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
         ) {
             Card(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp)
-                    .align(Alignment.TopCenter),
+                    .fillMaxWidth(0.9f)
+                    .heightIn(min = 240.dp, max = 320.dp),
                 shape = RoundedCornerShape(24.dp),
                 backgroundColor = Color.White,
                 elevation = 8.dp
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
+                    Text(
+                        text = formatTimestamp(alertState.timestamp),
+                        style = MaterialTheme.typography.body1.copy(
+                            fontFamily = Pretendard
+                        ),
+                        color = Color.Black,
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            top = 20.dp,
+                            end = 24.dp
+                        )
+                    )
+
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Column {
-                            Text(
-                                text = formatTimestamp(alertState.timestamp),
-                                style = MaterialTheme.typography.body1.copy(
-                                    fontFamily = Pretendard
-                                ),
-                                color = Color.Black
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = when (alertState.alertType) {
-                                            AlertType.WARNING -> "위험 신호가 감지되었습니다. ${remainingSeconds}초 후 긴급 알림을 전송합니다."
-                                            AlertType.OBJECT -> "주변에 타인이 감지되었습니다."
-                                        },
-                                        style = MaterialTheme.typography.body2.copy(
-                                            fontFamily = Pretendard
-                                        ),
-                                        color = Color.DarkGray
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Image(
-                                    painter = painterResource(
-                                        id = when (alertState.alertType) {
-                                            AlertType.WARNING -> R.drawable.alert_level3
-                                            AlertType.OBJECT -> R.drawable.alert_level2
-                                        }
-                                    ),
-                                    contentDescription = when (alertState.alertType) {
-                                        AlertType.WARNING -> "드론 경고"
-                                        AlertType.OBJECT -> "타인 감지"
-                                    },
-                                    modifier = Modifier.size(72.dp)
+                        when (alertState.alertType) {
+                            AlertType.WARNING -> {
+                                LottieAnimation(
+                                    composition = warningAnimation,
+                                    iterations = LottieConstants.IterateForever,
+                                    modifier = Modifier.size(140.dp)
+                                )
+                            }
+                            AlertType.OBJECT -> {
+                                LottieAnimation(
+                                    composition = objectAnimation,
+                                    iterations = LottieConstants.IterateForever,
+                                    modifier = Modifier.size(140.dp)
                                 )
                             }
                         }
+
+                        Text(
+                            text = when (alertState.alertType) {
+                                AlertType.WARNING -> "위험 신호가 감지되었습니다.\n${remainingSeconds}초 후 긴급 알림을 전송합니다."
+                                AlertType.OBJECT -> "주변에 타인이 감지되었습니다."
+                            },
+                            style = MaterialTheme.typography.body1.copy(
+                                fontFamily = Pretendard
+                            ),
+                            color = Color.DarkGray,
+                        )
                     }
 
+                    // Bottom Section (Button)
                     if (alertState.alertType == AlertType.WARNING) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    // 안전 확인 처리
+                                    timerJob?.cancel()
                                     alertHandler.handleSafeConfirmation()
-                                    // 워치에 안전 확인 메시지 전송
                                     safetyMessageSender.sendSafeConfirmationToWatch()
                                     onSafeConfirm()
                                 }
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(bottom = 16.dp),
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 backgroundColor = Color.Black,
                                 contentColor = Color.White
@@ -214,8 +225,7 @@ fun AlertModal(
                                 text = "괜찮습니다. 위험하지 않습니다.",
                                 style = MaterialTheme.typography.body2.copy(
                                     fontFamily = Pretendard
-                                ),
-                                modifier = Modifier.padding(vertical = 8.dp)
+                                )
                             )
                         }
                     }
