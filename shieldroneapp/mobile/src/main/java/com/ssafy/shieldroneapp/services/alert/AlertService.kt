@@ -27,17 +27,26 @@ class AlertService @Inject constructor(
         private const val TAG = "모바일: 알림 서비스"
         private const val ALERT_CHANNEL_ID = "alert_channel"
         private const val ALERT_CHANNEL_NAME = "위험 알림"
-        private const val WARNING_NOTIFICATION_ID = 2000
+        private const val OBJECT_NOTIFICATION_ID = 2000
         private const val SAFE_CONFIRMATION_NOTIFICATION_ID = 2001
 
-        // 위험 감지용 진동 패턴 (0: 대기, 300: 진동, 150: 대기, 300: 진동)
-        private val WARNING_VIBRATION_PATTERN = longArrayOf(0, 300, 150, 300)
+        private val WARNING_VIBRATION_PATTERN = longArrayOf(
+            0,
+            *List(22) { index ->
+                if (index % 2 == 0) 300L else 150L
+            }.toLongArray()
+        )
 
         // 타인 감지용 진동 패턴 (한 번만 짧게)
         private val OBJECT_VIBRATION_PATTERN = longArrayOf(0, 100)
 
         // 진동 세기 (안드로이드 O 이상)
-        private val WARNING_VIBRATION_AMPLITUDE = intArrayOf(0, 255, 0, 255)  // 최대 세기
+        private val WARNING_VIBRATION_AMPLITUDE = intArrayOf(
+            0,
+            *List(22) { index ->
+                if (index % 2 == 0) 255 else 0
+            }.toIntArray()
+        ) // 최대 세기
         private val OBJECT_VIBRATION_AMPLITUDE = intArrayOf(0, 100)  // 약한 세기
 
         // 소음 감지용 진동 패턴
@@ -86,11 +95,10 @@ class AlertService @Inject constructor(
     fun handleWarningBeep(warningFlag: Boolean) {
         if (warningFlag) {
             startWarningSound()
-            showWarningNotification()
             startVibration(VibrationType.WARNING)
         } else {
             stopWarningSound()
-            cancelWarningNotification()
+            cancelObjectNotification()
             stopVibration()
         }
     }
@@ -98,9 +106,11 @@ class AlertService @Inject constructor(
     fun handleObjectBeep(objectFlag: Boolean) {
         if (objectFlag) {
             startWarningSound()
+            showObjectNotification()
             startVibration(VibrationType.OBJECT)
         } else {
             stopWarningSound()
+            cancelObjectNotification()
             stopVibration()
         }
     }
@@ -137,10 +147,10 @@ class AlertService @Inject constructor(
         Log.d(TAG, "경고음 중지")
     }
 
-    private fun showWarningNotification() {
+    private fun showObjectNotification() {
         val notification = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
-            .setContentTitle("위험 상황 감지!")
-            .setContentText("주변 상황에 주의하세요.")
+            .setContentTitle("타인 감지!")
+            .setContentText("주변에 타인이 있습니다.")
             .setSmallIcon(R.drawable.alert_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -148,13 +158,13 @@ class AlertService @Inject constructor(
             .setAutoCancel(false)
             .build()
 
-        notificationManager.notify(WARNING_NOTIFICATION_ID, notification)
+        notificationManager.notify(OBJECT_NOTIFICATION_ID, notification)
         Log.d(TAG, "위험 알림 표시")
     }
 
-    private fun cancelWarningNotification() {
-        notificationManager.cancel(WARNING_NOTIFICATION_ID)
-        Log.d(TAG, "위험 알림 취소")
+    private fun cancelObjectNotification() {
+        notificationManager.cancel(OBJECT_NOTIFICATION_ID)
+        Log.d(TAG, "타인 감지 알림 취소")
     }
 
     private fun startVibration(type: VibrationType) {
@@ -211,7 +221,7 @@ class AlertService @Inject constructor(
     }
 
     fun showSafeConfirmationNotification(title: String, message: String) {
-        cancelWarningNotification()
+        cancelObjectNotification()
 
         stopWarningSound()
         stopVibration()
@@ -222,7 +232,7 @@ class AlertService @Inject constructor(
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setSmallIcon(R.drawable.alert_ic)
+            .setSmallIcon(R.drawable.noise_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setAutoCancel(true)
@@ -232,22 +242,10 @@ class AlertService @Inject constructor(
         Log.d(TAG, "안전 확인 알림 표시: $title - $message")
     }
 
-    fun handleWarningBeep(warningFlag: Boolean, isSafeConfirmed: Boolean = false) {
-        if (warningFlag && !isSafeConfirmed) {
-            startWarningSound()
-            showWarningNotification()
-            startVibration(VibrationType.WARNING)
-        } else {
-            stopWarningSound()
-            cancelWarningNotification()
-            stopVibration()
-        }
-    }
-
     // 앱이 종료되거나 사용자가 앱을 강제로 종료할 때
     fun release() {
         stopWarningSound()
-        cancelWarningNotification()
+        cancelObjectNotification()
         notificationManager.cancel(SAFE_CONFIRMATION_NOTIFICATION_ID)
         stopVibration()
     }
