@@ -39,6 +39,7 @@ import com.shieldrone.station.model.TrackingDataVM
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import kotlin.math.abs
 import kotlin.math.sign
+
 private val TAG = "FlightControlActivity"
 
 class FlightControlActivity : ComponentActivity() {
@@ -62,7 +63,7 @@ class FlightControlActivity : ComponentActivity() {
         cameraStreamVM.setCameraModeAndIndex(ComponentIndexType.LEFT_OR_MAIN)
         Log.i(TAG, "Camera index set to LEFT_OR_MAIN")
 
-        flightControlVM.startReceivingLocation()
+//        flightControlVM.startReceivingLocation()
         Log.i(TAG, "location receive start")
 
         setContent {
@@ -81,16 +82,12 @@ fun TrackingTargetScreen(
 ) {
     val trackingData by trackingVM.trackingDataDiffFlow.collectAsState()
     val droneState by flightControlVM.droneState.collectAsState()
-    val gpsSignalLevel by flightControlVM.gpsSignalLevel.collectAsState()
-    val currentLocation by flightControlVM.currentLocation.collectAsState()
-    val virtualMessage by flightControlVM.virtualMessage.collectAsState()
     val frameInfo by cameraStreamVM.frameInfo.collectAsState()
     val virtualStickState by flightControlVM.virtualStickState.collectAsState()
     val gimbalInfo by gimbalVM.gimbalInfo.collectAsState()
 
     var maxYaw by remember { mutableStateOf(150.0) }   // 최대 회전 속도
     var maxStickValue by remember { mutableStateOf(20.0) }   // 최대 전진 속도
-    var altitudeValue by remember { mutableStateOf(0) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
     var KpValue by remember { mutableStateOf(1.0) } // 드론 속도 조절 가중치
 
@@ -223,7 +220,7 @@ fun TrackingTargetScreen(
             )
 
             Text("짐벌 상태")
-//                Text("Streaming : $gimbalInfo")
+                Text("Streaming : $gimbalInfo")
 
             Row {
                 Button(
@@ -300,38 +297,6 @@ fun TrackingTargetScreen(
             )
 
             // Slider (Compose의 SeekBar 대체)
-            Text("Kp 조절:")
-            Slider(
-                value = KpValue.toFloat(),
-                onValueChange = { value ->
-                    KpValue = value.toDouble()
-                },
-                valueRange = 0f..4f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp)
-            )
-            Text("현재 Kp: $KpValue")
-            Divider(
-                color = Color.Gray, // 원하는 색상으로 변경 가능
-                thickness = 2.dp,   // 구분선의 두께 조절
-                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
-            )
-
-            Text("고도 속도 조절:")
-            Slider(
-                value = altitudeValue.toFloat(),
-                onValueChange = { value ->
-                    altitudeValue = value.toInt()
-//                        flightControlVM.updateAltitude(altitudeValue) // 슬라이더 조정 시 altitude 값 업데이트
-//                        flightControlVM.adjustAltitude()
-                },
-                valueRange = 0f..200f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp)
-            )
-            Text("현재 Altitude: $altitudeValue")
             Divider(
                 color = Color.Gray, // 원하는 색상으로 변경 가능
                 thickness = 2.dp,   // 구분선의 두께 조절
@@ -374,17 +339,6 @@ fun TrackingTargetScreen(
                 thickness = 2.dp,   // 구분선의 두께 조절
                 modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
             )
-            Divider(
-                color = Color.Gray, // 원하는 색상으로 변경 가능
-                thickness = 2.dp,   // 구분선의 두께 조절
-                modifier = Modifier.padding(vertical = 8.dp) // 상하 여백 추가
-            )
-            // currentLocation 정보 표시
-            Text("목표 위치:")
-            Text("위도: ${currentLocation.latitude}")
-            Text("경도: ${currentLocation.longitude}")
-//                  Text("고도: ${currentLocation!!.altitude}") else {
-            Text("목표 위치 정보가 없습니다.")
         }
     }
 }
