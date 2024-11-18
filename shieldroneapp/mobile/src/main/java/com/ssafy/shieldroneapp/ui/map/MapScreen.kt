@@ -494,16 +494,24 @@ fun MapScreen(
                         .clickable {
                             state.droneState?.droneId?.let { droneId ->
                                 if (isMatchingAssigned) {
-                                    mapViewModel.handleEvent(MapEvent.RequestDroneCancel(DroneCancelRequest(droneId = droneId))) // 드론 배정 취소
+                                    mapViewModel.handleEvent(
+                                        MapEvent.RequestDroneCancel(
+                                            DroneCancelRequest(droneId = droneId)
+                                        )
+                                    ) // 드론 배정 취소
                                 } else {
-                                    mapViewModel.handleEvent(MapEvent.RequestServiceEnd(DroneCancelRequest(droneId = droneId))) // 서비스 종료
+                                    mapViewModel.handleEvent(
+                                        MapEvent.RequestServiceEnd(
+                                            DroneCancelRequest(droneId = droneId)
+                                        )
+                                    ) // 서비스 종료
                                 }
                                 mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
                                 mapViewModel.handleEvent(MapEvent.ClearLocationData) // 출발/도착지 정보 초기화
                             }
                         },
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), // 회색 텍스트
-                    style = MaterialTheme.typography.body2.copy(textDecoration = TextDecoration.Underline) // 밑줄
+                    style = MaterialTheme.typography.subtitle2.copy(textDecoration = TextDecoration.Underline) // 밑줄
                 )
             }
 
@@ -542,6 +550,10 @@ fun MapScreen(
                         .fillMaxWidth()
                         .height(56.dp)
                         .align(Alignment.BottomCenter),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colors.secondary,
+                        contentColor = MaterialTheme.colors.onSecondary,
+                    ),
                 ) {
                     Text(
                         text = "최종 매칭 요청",
@@ -614,20 +626,35 @@ fun MapScreen(
 
         // 3-4) 드론 배정 취소 결과 모달
         if (state.showCancelSuccessModal) {
-
             AlertDialog(
                 onDismissRequest = {
                     mapViewModel.handleEvent(MapEvent.CloseAllModals)
                 },
-                title = { Text("드론 배정 취소") },
-                text = { Text("드론 배정이 성공적으로 취소되었습니다.") },
+                title = {
+                    Text(
+                        "드론 배정 취소",
+                        style = MaterialTheme.typography.subtitle1,
+                    )
+                },
+                text = {
+                    Text(
+                        text = "드론 배정이 성공적으로 취소되었습니다.",
+                        style = MaterialTheme.typography.body1,
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             mapViewModel.handleEvent(MapEvent.CloseAllModals)
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colors.secondary
+                        ),
                     ) {
-                        Text("확인")
+                        Text(
+                            text = "확인",
+                            style = MaterialTheme.typography.subtitle2,
+                        )
                     }
                 }
             )
@@ -669,7 +696,7 @@ fun MapScreen(
 
         // 3-6) 드론 애니메이션
         if (state.showDroneAnimation) {
-            DroneAnimation (
+            DroneAnimation(
                 onAnimationEnd = {
                     mapViewModel.handleEvent(MapEvent.EndDroneAnimation)
                 }
@@ -682,15 +709,31 @@ fun MapScreen(
                 onDismissRequest = {
                     mapViewModel.handleEvent(MapEvent.CloseAllModals)
                 },
-                title = { Text("서비스 종료") },
-                text = { Text("서비스가 성공적으로 종료되었습니다.") },
+                title = {
+                    Text(
+                        "서비스 종료",
+                        style = MaterialTheme.typography.subtitle1,
+                    )
+                },
+                text = {
+                    Text(
+                        text = "서비스가 성공적으로 종료되었습니다.",
+                        style = MaterialTheme.typography.body1,
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             mapViewModel.handleEvent(MapEvent.CloseAllModals)
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colors.secondary
+                        ),
                     ) {
-                        Text("확인")
+                        Text(
+                            text = "확인",
+                            style = MaterialTheme.typography.subtitle2,
+                        )
                     }
                 }
             )
