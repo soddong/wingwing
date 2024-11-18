@@ -64,6 +64,7 @@ import com.ssafy.shieldroneapp.ui.components.ConnectionStatusSnackbar
 import com.ssafy.shieldroneapp.ui.components.HeartRateDisplay
 import com.ssafy.shieldroneapp.ui.components.WatchConnectionManager
 import com.ssafy.shieldroneapp.ui.map.screens.AlertHandler
+import com.ssafy.shieldroneapp.ui.map.screens.DroneAnimation
 import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentFailureModal
 import com.ssafy.shieldroneapp.ui.map.screens.DroneAssignmentSuccessModal
 import com.ssafy.shieldroneapp.ui.map.screens.MapMarkerInfoModal
@@ -636,8 +637,12 @@ fun MapScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT))
-                            mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_ASSIGNMENT_SUCCESS))
+                            if (state.error == null) {
+                                mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT))
+                                mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_ASSIGNMENT_SUCCESS))
+                            } else {
+                                mapViewModel.handleEvent(MapEvent.CloseModal(ModalType.DRONE_MATCH_RESULT))
+                            }
                         }
                     ) {
                         Text("확인")
@@ -645,6 +650,16 @@ fun MapScreen(
                 }
             )
         }
+
+        // 3-6) 드론 애니메이션
+        if (state.showDroneAnimation) {
+            DroneAnimation (
+                onAnimationEnd = {
+                    mapViewModel.handleEvent(MapEvent.EndDroneAnimation)
+                }
+            )
+        }
+
 
 
 

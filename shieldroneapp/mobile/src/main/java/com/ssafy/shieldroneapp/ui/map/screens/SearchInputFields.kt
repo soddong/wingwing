@@ -52,7 +52,7 @@ fun SearchInputFields(
                         TextButton (
                             onClick = { onStartTextChange("") }
                         ) {
-                            Text("X")
+                            Text("x")
                         }
                     }
                 },
@@ -84,7 +84,7 @@ fun SearchInputFields(
                         TextButton(
                             onClick = { onEndTextChange("") }
                         ) {
-                            Text("X")
+                            Text("x")
                         }
                     }
                 },
