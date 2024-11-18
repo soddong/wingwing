@@ -5,19 +5,25 @@ import android.view.Surface
 import androidx.lifecycle.ViewModel
 import com.shieldrone.station.controller.CameraStreamController
 import dji.sdk.keyvalue.key.CameraKey
+import dji.sdk.keyvalue.key.CameraKey.KeyCameraVideoStreamSource
+import dji.sdk.keyvalue.key.KeyTools
+import dji.sdk.keyvalue.key.co_r.KeyExposureMode
+import dji.sdk.keyvalue.key.co_r.KeyExposureModeRange
+import dji.sdk.keyvalue.value.camera.CameraExposureMode
+import dji.sdk.keyvalue.value.camera.CameraMode
 import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.v5.common.callback.CommonCallbacks
+import dji.v5.common.error.IDJIError
 import dji.v5.et.create
 import dji.v5.et.listen
+import dji.v5.et.set
 import dji.v5.manager.KeyManager
 import dji.v5.manager.datacenter.MediaDataCenter
 import dji.v5.manager.interfaces.ICameraStreamManager
-import dji.v5.manager.interfaces.ICameraStreamManager.ScaleType
 import dji.v5.manager.interfaces.ICameraStreamManager.FrameFormat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import dji.v5.manager.interfaces.ICameraStreamManager.ScaleType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 class CameraStreamVM : ViewModel() {
 
@@ -27,13 +33,13 @@ class CameraStreamVM : ViewModel() {
     private val _cameraName = MutableStateFlow("Unknown")
     val cameraName: StateFlow<String> = _cameraName
 
-    private val _streamInfo = MutableStateFlow("")
-    val streamInfo: StateFlow<String> = _streamInfo
-
     private val _frameInfo = MutableStateFlow("No frame data")
     val frameInfo: StateFlow<String> = _frameInfo
 
     private var cameraIndex = ComponentIndexType.LEFT_OR_MAIN
+    val keyExposureModeRange = KeyTools.createKey(KeyExposureModeRange)
+    val keyCameraVideoStreamSource = KeyTools.createKey(KeyCameraVideoStreamSource)
+    val keyExposureMode = KeyTools.createKey(KeyExposureMode)
 
     private val frameListener = object : ICameraStreamManager.CameraFrameListener {
         override fun onFrame(
@@ -44,16 +50,11 @@ class CameraStreamVM : ViewModel() {
             height: Int,
             format: FrameFormat
         ) {
-
-            // 프레임 데이터를 UDP로 전송
+            _frameInfo.value = "Frame: ${width}x$height, Format: $format, ${String.format("%.1f", (if (length == 0) 1 else length)/1024.0)} bytes"
             streamController.sendFrameDataOverUDP(frameData, width, height)
-
-            Log.d(TAG, "Frame received: $length bytes, Resolution: ${width}x$height")
-            CoroutineScope(Dispatchers.Main).launch {
-                _frameInfo.value = "Frame: ${width}x$height, Format: $format"
-            }
         }
     }
+
 
     override fun onCleared() {
         super.onCleared()
@@ -62,12 +63,42 @@ class CameraStreamVM : ViewModel() {
         streamController.closeSocket()
     }
 
-    fun setCameraIndex(cameraIndex: ComponentIndexType) {
+    /**
+     * 비동기적으로 카메라 모드를 PHOTO_NORMAL로 설정한 후 카메라 인덱스를 설정하는 함수
+     */
+    fun setCameraModeAndIndex(cameraIndex: ComponentIndexType) {
+        setCameraModeToPhotoNormal {
+            // 카메라 모드가 변경된 후, 인덱스를 설정합니다.
+            setCameraIndex(cameraIndex)
+        }
+    }
+
+    /**
+     * 카메라 모드를 PHOTO_NORMAL로 설정하고 완료 시 콜백을 호출합니다.
+     */
+    private fun setCameraModeToPhotoNormal(onComplete: () -> Unit) {
+        val keyCameraMode = CameraKey.KeyCameraMode.create()
+        KeyManager.getInstance().setValue(
+            keyCameraMode,
+            CameraMode.PHOTO_NORMAL,
+            object : CommonCallbacks.CompletionCallback {
+                override fun onSuccess() {
+                    Log.d(TAG, "Camera mode set to PHOTO_NORMAL successfully.")
+                    onComplete()
+                }
+
+                override fun onFailure(error: IDJIError) {
+                    Log.e(TAG, "Failed to set camera mode: ${error.description()}")
+                }
+            }
+        )
+    }
+
+    private fun setCameraIndex(cameraIndex: ComponentIndexType) {
         this.cameraIndex = cameraIndex
         KeyManager.getInstance().cancelListen(this)
         listenCameraType()
         addFrameListener()
-
     }
 
     private fun listenCameraType() {
@@ -75,7 +106,6 @@ class CameraStreamVM : ViewModel() {
             _cameraName.value = result?.toString() ?: "Not Supported"
         }
     }
-
 
     fun putCameraStreamSurface(surface: Surface, width: Int, height: Int, scaleType: ScaleType) {
         try {
@@ -103,5 +133,34 @@ class CameraStreamVM : ViewModel() {
 
     fun removeFrameListener() {
         MediaDataCenter.getInstance().cameraStreamManager.removeFrameListener(frameListener)
+    }
+
+    fun getCameraVideoStreamSource() {
+        keyCameraVideoStreamSource.listen(this, false, onChange = { newValue ->
+            Log.d(TAG, "getCameraVideoStreamSource : ${newValue!!.name}")
+        })
+    }
+
+    fun setCameraExposureMode() {
+        keyExposureModeRange.listen(this, false, onChange = { newValue ->
+            Log.d(TAG, "getCameraExposureModeRange : $newValue")
+
+            // newValue가 null이 아니고 PROGRAM이 포함되어 있는지 확인
+            if (newValue != null && newValue.stream().anyMatch { it == CameraExposureMode.PROGRAM }) {
+                // 조건 충족 시 setCameraExposureModeRange 호출
+                keyExposureMode.set(
+                    CameraExposureMode.PROGRAM,
+                    onSuccess = { ->
+
+                        Log.d(TAG, "[View] 모드 설정 성공")
+                    },
+                    onFailure = {
+                        Log.d(TAG, "[View] 모드 설정 실패")
+                    }
+
+                )
+            }
+        })
+
     }
 }

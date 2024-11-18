@@ -4,8 +4,8 @@ import com.shieldrone.station.constant.FlightConstant.Companion.MAX_STICK_VALUE
 import dji.v5.manager.aircraft.virtualstick.IStick
 
 
-// IStick을 구현하는 RightStick 클래스
-class RightStick(
+// IStick을 구현하는 LeftStick 클래스
+class LeftStick(
     private var stickPosition: StickPosition = StickPosition()
 ) : IStick {
 
