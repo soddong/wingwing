@@ -88,6 +88,6 @@ val Typography = Typography(
     caption = TextStyle(
         fontFamily = LaundryGothic,
         fontWeight = FontWeight.Normal,
-        fontSize = 9.sp
+        fontSize = 10.sp
     ),
 )
