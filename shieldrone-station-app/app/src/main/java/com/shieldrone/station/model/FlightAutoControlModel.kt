@@ -130,29 +130,18 @@ class FlightAutoControlModel {
         virtualStickManager.setVirtualStickStateListener(object : VirtualStickStateListener {
             override fun onVirtualStickStateUpdate(stickState: VirtualStickState) {
                 Log.d(TAG, "subscribeVirtualStickState: VirtualStickState 업데이트 $stickState")
-                virtualStickState = """
-                가상 스틱 상태: ${stickState.currentFlightControlAuthorityOwner.name}
-                가상 스틱 활성화 여부: ${stickState.isVirtualStickEnable}
-            """.trimIndent()
+                virtualStickState = """상태: ${stickState.currentFlightControlAuthorityOwner.name} | 활성화 여부: ${stickState.isVirtualStickEnable}""".trimIndent()
                 updateCombinedState()
             }
 
             override fun onChangeReasonUpdate(reason: FlightControlAuthorityChangeReason) {
                 Log.d(TAG, "subscribeVirtualStickState: ChangeReason 업데이트 $reason")
-                changeReason = """
-                가상 스틱 상태 변경 이유: ${reason.name}
-            """.trimIndent()
+                changeReason = """변경 이유: ${reason.name}""".trimIndent()
                 updateCombinedState()
             }
 
             private fun updateCombinedState() {
-                val combinedState = """
-                VirtualStickState:
-                ${virtualStickState ?: "N/A"}
-
-                ChangeReason:
-                ${changeReason ?: "N/A"}
-            """.trimIndent()
+                val combinedState = """${virtualStickState ?: "N/A"} | ${changeReason ?: "N/A"}""".trimIndent()
 
                 onUpdate(combinedState)
             }
@@ -243,9 +232,6 @@ class FlightAutoControlModel {
         state.pitch = attitude.get()?.pitch
         state.roll = attitude.get()?.roll
         state.yaw = attitude.get()?.yaw
-        state.xVelocity = velocity3D.get()?.x
-        state.yVelocity = velocity3D.get()?.y
-        state.zVelocity = velocity3D.get()?.z
         state.compassHeading = compassHeading.get()
         state.latitude = location3D.get()?.latitude
         state.longitude = location3D.get()?.longitude
@@ -268,16 +254,6 @@ class FlightAutoControlModel {
                 onUpdate(state)
             }
         }
-
-        KeyManager.getInstance().listen(velocity3D, this) { _, data ->
-            data?.let {
-                state.xVelocity = it.x
-                state.yVelocity = it.y
-                state.zVelocity = it.z
-                onUpdate(state)
-            }
-        }
-
     }
 
     // 7. Calculate Help
@@ -315,6 +291,23 @@ class FlightAutoControlModel {
         try {
             setLeftStick(leftStick)
             Log.d(TAG, "[Model] adjustAltitude 성공: altitude=$altitude")
+        } catch (e: Exception) {
+            Log.d(TAG, "[Model] adjustAltitude 실패: ${e.message}")
+        }
+    }
+
+    fun adjustAutoControl(altitudePower: Double, yawPower: Double, pitchPower: Double) {
+        val altitude =
+            altitudePower.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        val yaw =
+            yawPower.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        val pitch =
+            pitchPower.coerceIn(-MAX_STICK_VALUE.toDouble(), MAX_STICK_VALUE.toDouble()).toInt()
+        try {
+            virtualStickManager.leftStick.verticalPosition = altitude
+            virtualStickManager.leftStick.horizontalPosition = yaw
+            virtualStickManager.rightStick.verticalPosition = pitch
+            Log.d(TAG, "[Model] adjustAutoAltitude 성공: altitude=$altitude, yaw=$yaw, pitch=$pitch")
         } catch (e: Exception) {
             Log.d(TAG, "[Model] adjustAltitude 실패: ${e.message}")
         }
