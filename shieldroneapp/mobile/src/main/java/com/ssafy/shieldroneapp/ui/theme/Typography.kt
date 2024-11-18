@@ -66,7 +66,7 @@ val Typography = Typography(
     subtitle1 = TextStyle(
         fontFamily = LaundryGothic,
         fontWeight = FontWeight.Bold,
-        fontSize = 18.sp
+        fontSize = 16.sp
     ),
     subtitle2 = TextStyle(
         fontFamily = LaundryGothic,
@@ -83,5 +83,11 @@ val Typography = Typography(
         fontFamily = LaundryGothic,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp
+    ),
+
+    caption = TextStyle(
+        fontFamily = LaundryGothic,
+        fontWeight = FontWeight.Normal,
+        fontSize = 9.sp
     ),
 )

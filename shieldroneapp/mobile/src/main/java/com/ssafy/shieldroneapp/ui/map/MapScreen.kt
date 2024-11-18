@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
@@ -516,10 +517,14 @@ fun MapScreen(
                         .height(56.dp)
                         .align(Alignment.BottomCenter),
                     enabled = (state.selectedStart != null && state.selectedEnd != null),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colors.secondary,
+                        contentColor = MaterialTheme.colors.onSecondary,
+                    ),
                 ) {
                     Text(
                         text = "드론 배정 요청",
-                        style = MaterialTheme.typography.h5
+                        style = MaterialTheme.typography.h5,
                     )
                 }
             } else if (state.droneState.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
