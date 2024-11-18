@@ -534,16 +534,30 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             droneRepository.matchDrone(request)
                 .onSuccess { response ->
-                    // 드론 매칭 성공 시에만 WebSocket 초기화
+                    // 1) WebSocket 초기화 (드론 매칭 성공 시에만)
                     audioServiceManager.initializeWebSocket()
 
-                    // 드론 애니메이션 시작
+                    // 2) 먼저 이전 모달 닫기
+                    _state.update {
+                        it.copy(
+                            showDroneAssignmentSuccessModal = false
+                        )
+                    }
+
+                    // 3) 딜레이 추가하여 모달이 완전히 닫힐 시간 제공
+                    delay(300)
+
+                    // 4) 드론 애니메이션 시작
                     handleEvent(MapEvent.StartDroneAnimation)
 
+                    // 5) 애니메이션이 어느정도 진행된 후 결과 모달 표시 (3.5초 후)
+                    delay(3500)
+
+                    // 6. 마지막으로 매칭 결과 모달 표시
                     _state.update {
                         it.copy(
                             droneMatchResult = response,
-                            showDroneMatchResultModal = true, // 매칭 결과 모달 표시
+                            showDroneMatchResultModal = true,
                             error = null,
                             isLoading = false
                         )
