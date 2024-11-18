@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -74,8 +75,8 @@ fun BirthInputScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "생년월일을 입력해 주세요.",
-            style = MaterialTheme.typography.h4,
+            text = "생년월일을 입력해 주세요. (2/3)",
+            style = MaterialTheme.typography.subtitle1,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -111,7 +112,13 @@ fun BirthInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), // autofocus
-            label = { Text("생년월일 (숫자만 입력 / YYYY-MM-DD)") },
+            label = {
+                Text(
+                    text = "생년월일 (숫자만 입력 / YYYY-MM-DD)",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.secondary,
+                )
+            },
             singleLine = true,
             isError = validationError != null,
             keyboardOptions = KeyboardOptions(
@@ -127,8 +134,11 @@ fun BirthInputScreen(
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
-                backgroundColor = MaterialTheme.colors.surface
-            )
+                backgroundColor = MaterialTheme.colors.background,
+                focusedIndicatorColor = MaterialTheme.colors.secondary,
+                unfocusedIndicatorColor = MaterialTheme.colors.secondary,
+                cursorColor = MaterialTheme.colors.secondary,
+            ),
         )
 
         // 유효성 에러 메시지 표시
@@ -154,14 +164,16 @@ fun BirthInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            enabled = validationError == null && birth.text.length == 10
+            enabled = validationError == null && birth.text.length == 10,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary, // secondary 배경
+                contentColor = MaterialTheme.colors.onSecondary // 텍스트 색상
+            ),
         ) {
             Text(
                 text = "다음",
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h6
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

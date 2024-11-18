@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -76,8 +77,8 @@ fun PhoneInputScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "휴대폰 번호를 입력해주세요.",
-            style = MaterialTheme.typography.h4,
+            text = "휴대폰 번호를 입력해주세요. (3/3)",
+            style = MaterialTheme.typography.subtitle1,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -93,7 +94,13 @@ fun PhoneInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), // autofocus
-            label = { Text("휴대폰 번호 (숫자만 입력)") },
+            label = {
+                Text(
+                    text = "휴대폰 번호 (숫자만 입력)",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.secondary,
+                )
+            },
             singleLine = true,
             isError = validationError != null,
             keyboardOptions = KeyboardOptions(
@@ -109,7 +116,10 @@ fun PhoneInputScreen(
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
-                backgroundColor = MaterialTheme.colors.surface
+                backgroundColor = MaterialTheme.colors.background,
+                focusedIndicatorColor = MaterialTheme.colors.secondary,
+                unfocusedIndicatorColor = MaterialTheme.colors.secondary,
+                cursorColor = MaterialTheme.colors.secondary,
             ),
         )
 
@@ -136,14 +146,16 @@ fun PhoneInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            enabled = validationError == null && phoneNumber.isNotBlank()
+            enabled = validationError == null && phoneNumber.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary, // secondary 배경
+                contentColor = MaterialTheme.colors.onSecondary // 텍스트 색상
+            ),
         ) {
             Text(
                 text = "인증 문자 보내기",
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h6
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

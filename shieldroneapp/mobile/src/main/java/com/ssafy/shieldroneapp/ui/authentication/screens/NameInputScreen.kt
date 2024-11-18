@@ -65,8 +65,8 @@ fun NameInputScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "이름을 입력해주세요.",
-            style = MaterialTheme.typography.h4,
+            text = "이름을 입력해주세요. (1/3)",
+            style = MaterialTheme.typography.subtitle1,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -89,7 +89,13 @@ fun NameInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester), // autofocus
-            label = { Text("이름") },
+            label = {
+                Text(
+                    text = "이름",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.secondary,
+                )
+            },
             singleLine = true,
             isError = validationError != null, // 에러 발생 시 TextField에 에러 표시
             keyboardOptions = KeyboardOptions(
@@ -105,7 +111,10 @@ fun NameInputScreen(
                 }
             ),
             colors = TextFieldDefaults.textFieldColors(
-                backgroundColor = MaterialTheme.colors.surface
+                backgroundColor = MaterialTheme.colors.background,
+                focusedIndicatorColor = MaterialTheme.colors.secondary,
+                unfocusedIndicatorColor = MaterialTheme.colors.secondary,
+                cursorColor = MaterialTheme.colors.secondary,
             ),
         )
 
@@ -132,14 +141,16 @@ fun NameInputScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            enabled = validationError == null && name.isNotBlank()
+            enabled = validationError == null && name.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary, // secondary 배경
+                contentColor = MaterialTheme.colors.onSecondary // 텍스트 색상
+            ),
         ) {
             Text(
                 text = "다음",
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h6
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

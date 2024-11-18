@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Checkbox
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * 서비스 이용 약관 동의 화면
@@ -61,7 +63,7 @@ fun TermAgreementScreen(
 
         Text(
             text = "본인 인증이 완료되었습니다!\n\n이용 동의 및 서약 후\n서비스를 이용하실 수 있습니다.",
-            style = MaterialTheme.typography.h4,
+            style = MaterialTheme.typography.h5.copy(lineHeight = 32.sp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -114,14 +116,16 @@ fun TermAgreementScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            enabled = privacyChecked && termsChecked
+            enabled = privacyChecked && termsChecked,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.secondary, // secondary 배경
+                contentColor = MaterialTheme.colors.onSecondary // 텍스트 색상
+            ),
         ) {
             Text(
                 text = "시작하기",
-                style = MaterialTheme.typography.h5
+                style = MaterialTheme.typography.h6
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
