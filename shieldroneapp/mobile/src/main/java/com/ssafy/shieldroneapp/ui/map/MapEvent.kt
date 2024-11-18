@@ -42,6 +42,10 @@ sealed class MapEvent {
     data class RequestDroneMatching (val request: DroneMatchRequest) : MapEvent()
     data class HandleDroneMatchingResult (val result: DroneStatus) : MapEvent()
 
+    // 애니메이션 관리 이벤트
+    object StartDroneAnimation : MapEvent() // 드론 애니메이션 시작
+    object EndDroneAnimation : MapEvent() // 드론 애니메이션 종료
+
     // 위치 서비스(GPS, 네트워크)의 활성화 상태 업데이트
     data class UpdateLocationServicesState(val isEnabled: Boolean) : MapEvent()
 
@@ -62,6 +66,5 @@ sealed class MapEvent {
     data class SaveStartLocation(val location: RouteLocation) : MapEvent() // 출발지 저장
     data class SaveEndLocation(val location: RouteLocation) : MapEvent() // 도착지 저장
     object ClearLocationData : MapEvent() // 초기화
-
 }
 

@@ -44,6 +44,9 @@ data class MapState(
     val showDroneAssignmentSuccessModal: Boolean = false, // 드론 배정 성공
     val showDroneAssignmentFailureModal: Boolean = false, // 드론 배정 실패
     val showCancelSuccessModal: Boolean = false, // 드론 배정 취소 완료
+    
+    // 애니메이션
+    val showDroneAnimation: Boolean = false, // 드론 매칭 성공 시 애니메이션 표시 여부
 
     // 드론 상태
     val droneState: DroneState? = null,
