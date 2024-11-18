@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.app
+package com.ssafy.shieldroneapp
 
 import androidx.compose.runtime.Composable
 import com.ssafy.shieldroneapp.core.ui.components.Layout
