@@ -1,7 +1,6 @@
 package com.ssafy.shieldroneapp.utils
 
 import android.util.Log
-import com.kakao.vectormap.Const
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.LatLng
 import com.kakao.vectormap.camera.CameraUpdateFactory
@@ -15,8 +14,22 @@ import com.ssafy.shieldroneapp.data.model.RouteLocation
 import com.ssafy.shieldroneapp.ui.map.MapEvent
 import com.ssafy.shieldroneapp.ui.map.MapViewModel
 
-private const val LABEL_LAYER = "label_layer"
 private const val TAG = "MapUtils - 지도 설정 / 마커"
+
+// 이전 상태를 저장할 변수
+private var lastState: MapState? = null
+
+// 상태가 변경되었는지 확인하는 함수
+private fun needsUpdate(newState: MapState): Boolean {
+    return when {
+        lastState == null -> true
+        lastState?.currentLocation != newState.currentLocation -> true
+        lastState?.selectedStart != newState.selectedStart -> true
+        lastState?.selectedEnd != newState.selectedEnd -> true
+        lastState?.nearbyHives != newState.nearbyHives -> true
+        else -> false
+    }
+}
 
 fun convertToKakaoLatLng(location: CustomLatLng): LatLng {
     return LatLng.from(location.lat, location.lng)
@@ -65,62 +78,69 @@ fun updateCurrentLocationMarker(map: KakaoMap, location: CustomLatLng?) {
 }
 
 fun updateAllMarkers(map: KakaoMap, state: MapState) {
-    Log.d(TAG, "마커 업데이트 시작 - 현재 위치: ${state.currentLocation}, 정류장 수: ${state.nearbyHives.size}")
+    Log.d(TAG, "마커 업데이트 시작")
 
-    // 모든 레이블 제거
-    map.labelManager?.removeAllLabelLayer()
+    // 상태가 변경된 경우에만 마커 업데이트 수행
+    if (needsUpdate(state)) {
+        map.labelManager?.removeAllLabelLayer()
 
-    // 레이어 생성 (우선순위 순서대로)
-    val baseLayer = map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.BASE_LAYER)) // 현재 위치 레이어
-    val hiveLayer = map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.HIVE_LAYER)) // 일반 정류장 레이어
-    val selectedLayer = map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.SELECTED_LAYER)) // 선택된 마커 레이어
+        // 레이어 순서대로 생성 (아래부터 쌓임)
+        // 1. 현재 위치 레이어 (맨 아래)
+        map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.BASE_LAYER))?.let { layer ->
+            state.currentLocation?.let { location ->
+                val position = convertToKakaoLatLng(location)
+                val currentLocationLabel = LabelOptions.from(position)
+                    .setStyles(LabelStyle.from(R.drawable.ic_current_location))
+                    .setTag("current_location")
+                    .setClickable(false)
+                layer.addLabel(currentLocationLabel)
 
-    if (baseLayer == null || hiveLayer == null || selectedLayer == null) return
-
-    // 1. 현재 위치 마커 추가 (baseLayer)
-    state.currentLocation?.let { location ->
-        val position = convertToKakaoLatLng(location)
-        val currentLocationLabel = LabelOptions.from(position)
-            .setStyles(LabelStyle.from(R.drawable.ic_current_location))
-            .setTag("current_location")
-            .setClickable(false)  // 현재 위치 마커는 클릭 불가능하게 설정
-        baseLayer.addLabel(currentLocationLabel)
-
-        // 화면 회전 시에는 카메라 이동을 하지 않도록 수정
-        if (!map.cameraPosition?.position?.equals(position)!!) {
-            map.moveCamera(CameraUpdateFactory.newCenterPosition(position))
-            Log.d("MapUtils", "카메라 위치 업데이트: $position")
+                // 카메라 이동이 필요한 경우만 이동
+                if (!map.cameraPosition?.position?.equals(position)!!) {
+                    map.moveCamera(CameraUpdateFactory.newCenterPosition(position))
+                }
+            }
         }
-    }
 
-    // 2. 드론 정류장 마커 추가 (hiveLayer)
-    state.nearbyHives.forEach { hive ->
-        val position = LatLng.from(hive.lat, hive.lng)
-        val hiveLabel = LabelOptions.from(position)
-            .setStyles(LabelStyle.from(R.drawable.ic_location_pin))
-            .setTag(hive)
-            .setClickable(true)
-        hiveLayer.addLabel(hiveLabel)
-    }
+        // 2. 일반 정류장 레이어 (중간)
+        map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.HIVE_LAYER))?.let { layer ->
+            state.nearbyHives
+                .filter { hive -> state.selectedStart?.hiveId != hive.hiveId }  // 선택된 출발지 제외
+                .forEach { hive ->
+                    val position = LatLng.from(hive.lat, hive.lng)
+                    val hiveLabel = LabelOptions.from(position)
+                        .setStyles(LabelStyle.from(R.drawable.ic_location_pin))
+                        .setTag(hive)
+                        .setClickable(true)
+                    layer.addLabel(hiveLabel)
+                }
+        }
 
-    // 3. 선택된 출발지 마커 추가 (selectedLayer - 최상단)
-    state.selectedStart?.let { start ->
-        val position = LatLng.from(start.lat, start.lng)
-        val startLabel = LabelOptions.from(position)
-            .setStyles(LabelStyle.from(R.drawable.ic_start_location_pin))
-            .setTag(start)
-            .setClickable(false)
-        selectedLayer.addLabel(startLabel)
-    }
+        // 3. 선택된 마커 레이어 (맨 위)
+        map.labelManager?.addLayer(LabelLayerOptions.from(Constants.Marker.SELECTED_LAYER))?.let { layer ->
+            // 선택된 출발지
+            state.selectedStart?.let { start ->
+                val position = LatLng.from(start.lat, start.lng)
+                val startLabel = LabelOptions.from(position)
+                    .setStyles(LabelStyle.from(R.drawable.ic_start_location_pin))
+                    .setTag(start)
+                    .setClickable(false)
+                layer.addLabel(startLabel)
+            }
 
-    // 4. 선택된 도착지 마커 추가 (selectedLayer - 최상단)
-    state.selectedEnd?.let { end ->
-        val position = LatLng.from(end.lat, end.lng)
-        val endLabel = LabelOptions.from(position)
-            .setStyles(LabelStyle.from(R.drawable.ic_end_location_pin))
-            .setTag(end)
-            .setClickable(false)
-        selectedLayer.addLabel(endLabel)
+            // 선택된 도착지
+            state.selectedEnd?.let { end ->
+                val position = LatLng.from(end.lat, end.lng)
+                val endLabel = LabelOptions.from(position)
+                    .setStyles(LabelStyle.from(R.drawable.ic_end_location_pin))
+                    .setTag(end)
+                    .setClickable(false)
+                layer.addLabel(endLabel)
+            }
+        }
+
+        // 마지막 상태 저장
+        lastState = state.copy()
     }
 
     Log.d("MapUtils", "마커 업데이트 완료")
