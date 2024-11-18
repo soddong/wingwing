@@ -44,7 +44,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.SimulatorActivity" />
         <activity android:name=".ui.FlightControlActivity"
             android:screenOrientation="landscape"
             tools:ignore="DiscouragedApi" />

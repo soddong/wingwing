@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import com.shieldrone.station.model.CameraStreamVM
 import com.shieldrone.station.model.FlightAutoControlVM
 import com.shieldrone.station.model.GimbalVM
-import com.shieldrone.station.model.RouteVM
 import com.shieldrone.station.model.TrackingDataVM
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import kotlin.math.abs
@@ -87,6 +86,8 @@ fun TrackingTargetScreen(
     val virtualStickState by flightControlVM.virtualStickState.collectAsState()
     val gimbalInfo by gimbalVM.gimbalInfo.collectAsState()
     val droneStatus by flightControlVM.status.collectAsState()
+    val sonicHeight by flightControlVM.sonicHeight.collectAsState()
+
     val startFlag by routeVM.startFlag.collectAsState()
     var maxYaw by remember { mutableStateOf(220.0) }   // 최대 회전 속도
     var maxStickValue by remember { mutableStateOf(35.0) }   // 최대 전진 속도
@@ -137,8 +138,9 @@ fun TrackingTargetScreen(
             Text("드론 상태:")
             if (droneState != null) {
                 Text("$droneStatus")
-                Text("롤: ${String.format("%.1f", droneState!!.roll)}, 요: ${String.format("%.1f",droneState!!.yaw )}, 피치: ${String.format("%.1f",droneState!!.pitch )}")
+//                Text("롤: ${String.format("%.1f", droneState!!.roll)}, 요: ${String.format("%.1f",droneState!!.yaw )}, 피치: ${String.format("%.1f",droneState!!.pitch )}")
                 Text("고도: ${String.format("%.1f",droneState!!.altitude)}")
+                Text("초음파 높이: ${sonicHeight}")
             }
 
             Divider(

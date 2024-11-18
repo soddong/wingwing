@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -32,8 +31,6 @@ import androidx.core.content.ContextCompat
 import com.shieldrone.station.controller.RouteController
 import com.shieldrone.station.model.BatteryViewModel
 import com.shieldrone.station.ui.CameraStreamActivity
-import com.shieldrone.station.ui.FlightControlActivity
-import com.shieldrone.station.ui.SimulatorActivity
 import com.shieldrone.station.ui.TrackingTargetActivity
 import dji.v5.manager.KeyManager
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -205,26 +202,9 @@ class DJIMainActivity : AppCompatActivity() {
                             Text(text = "Drone Mode")
                         }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // 버추얼 스틱 모드 버튼 추가
-                    Button(onClick = { navigateToFlightControl() }) {
-                        Text(text = "통합")
-                    }
                 }
             }
         )
-    }
-
-    // SimulatorActivity로 이동하는 함수 추가
-    private fun navigateToSimulator() {
-        val intent = Intent(this, SimulatorActivity::class.java)
-        startActivity(intent)
-    }
-
-    // FlightControlActivity로 이동하는 함수 추가
-    private fun navigateToFlightControl() {
-        val intent = Intent(this, FlightControlActivity::class.java)
-        startActivity(intent)
     }
 
     private fun navigateToTrackingControl() {

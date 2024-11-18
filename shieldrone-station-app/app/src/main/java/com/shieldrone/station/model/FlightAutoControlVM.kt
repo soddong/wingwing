@@ -11,10 +11,12 @@ import com.shieldrone.station.data.Position
 import com.shieldrone.station.data.State
 import com.shieldrone.station.data.TrackingDataDiff
 import dji.sdk.keyvalue.key.co_v.KeyAircraftLocation3D
+import dji.sdk.keyvalue.key.co_v.KeyUltrasonicHeight
 import dji.v5.common.callback.CommonCallbacks
 import dji.v5.common.error.IDJIError
 import dji.v5.et.create
 import dji.v5.et.get
+import dji.v5.et.listen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,6 +47,9 @@ class FlightAutoControlVM : ViewModel() {
     private val _virtualStickState = MutableStateFlow<String?>(null)
     val virtualStickState: StateFlow<String?> get() = _virtualStickState.asStateFlow()
 
+    private val _sonicHeight = MutableStateFlow<Int?>(null)
+    val sonicHeight: StateFlow<Int?> get() = _sonicHeight.asStateFlow()
+
     lateinit var trackingData: StateFlow<TrackingDataDiff?>
 
     private var autoControlCoroutine: Job? = null
@@ -61,6 +66,9 @@ class FlightAutoControlVM : ViewModel() {
         flightControlModel.subscribeVirtualStickState { stickState ->
             _virtualStickState.value = stickState
         }
+        KeyUltrasonicHeight.create().listen(this,false, { newValue ->
+            _sonicHeight.value = newValue
+        })
     }
 
     fun setTrackingInfo(trackingDataDiffFlow: StateFlow<TrackingDataDiff?>){
@@ -115,20 +123,25 @@ class FlightAutoControlVM : ViewModel() {
             _status.value = "순항 고도 상승중"
             while (true) {
                 val currentAltitude = KeyAircraftLocation3D.create().get()
-                if (currentAltitude == null){
+                if (
+//                    currentAltitude == null
+                    sonicHeight.value == null
+                    ){
                     Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 실패 : 고도 정보 없음")
                     _status.value = "고도 정보 없음"
                     flightControlModel.adjustAltitude(0)
                     break
                 }
-                if (currentAltitude.altitude >= targetAltitude) {
+//                val curAltitude = currentAltitude!!.altitude
+                val curAltitude:Float = sonicHeight.value!!/10f
+                if (curAltitude>= targetAltitude) {
                     Log.d(TAG, "[ViewModel] adjustAltitudeCoroutine 성공: 목표 고도 도달")
                     flightControlModel.adjustAltitude(0)
                     _status.value = "순항 고도 도달"
                     break
                 }
 
-                val altitudeRatio = (currentAltitude.altitude - 1.2f) / (targetAltitude -1.2f)
+                val altitudeRatio = (curAltitude- 1.2f) / (targetAltitude -1.2f)
                 val adjustmentSpeed = when {
                     altitudeRatio < 0.2 -> (altitudeSpeed * 0.3).toLong()
                     altitudeRatio < 0.8 -> altitudeSpeed
@@ -248,9 +261,11 @@ class FlightAutoControlVM : ViewModel() {
 
 
         //쓰로틀 계산, 순항 고도 유지
-        val currentAltitude = KeyAircraftLocation3D.create().get()?.altitude
+//        val currentAltitude = KeyAircraftLocation3D.create().get()?.altitude
+        val currentAltitude = sonicHeight.value
         if(currentAltitude != null){
-            val altitudeDifference = targetAltitude - currentAltitude
+//            val altitudeDifference = targetAltitude - currentAltitude
+            val altitudeDifference = targetAltitude - currentAltitude.toDouble()/10f
 
             if (abs(altitudeDifference) > altitudeThreshold) {
                 altitudePower = altitudeDifference * 10
@@ -283,7 +298,7 @@ class FlightAutoControlVM : ViewModel() {
             val vY = -kpValue * eYFuture
             pitchPower = vY.coerceIn(-1.0, 1.0) * maxPitchPower
         }
-        _status.value = "자동 제어 진행중 alititude : ${altitudePower} yaw : ${yawPower}, pitch : ${pitchPower}"
+        _status.value = "자동 제어 진행중 alititude : ${String.format("%.1f", altitudePower)} yaw : ${String.format("%.1f", yawPower)}, pitch : ${String.format("%.1f", pitchPower)}"
 
         flightControlModel.adjustAutoControl(altitudePower, yawPower, pitchPower)
     }

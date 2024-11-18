@@ -229,22 +229,22 @@ class FlightAutoControlModel {
         val state = State()
 
         // 초기 값 설정
-        state.pitch = attitude.get()?.pitch
-        state.roll = attitude.get()?.roll
-        state.yaw = attitude.get()?.yaw
+//        state.pitch = attitude.get()?.pitch
+//        state.roll = attitude.get()?.roll
+//        state.yaw = attitude.get()?.yaw
         state.compassHeading = compassHeading.get()
         state.latitude = location3D.get()?.latitude
         state.longitude = location3D.get()?.longitude
         state.altitude = location3D.get()?.altitude
 
-        KeyManager.getInstance().listen(attitude, this) { _, data ->
-            data?.let {
-                state.yaw = it.yaw
-                state.roll = it.roll
-                state.pitch = it.pitch
-                onUpdate(state)
-            }
-        }
+//        KeyManager.getInstance().listen(attitude, this) { _, data ->
+//            data?.let {
+//                state.yaw = it.yaw
+//                state.roll = it.roll
+//                state.pitch = it.pitch
+//                onUpdate(state)
+//            }
+//        }
         // 업데이트 리스너 설정
         KeyManager.getInstance().listen(location3D, this) { _, data ->
             data?.let {
