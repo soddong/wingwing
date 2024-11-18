@@ -36,7 +36,7 @@ fun AlertScreen(
 ) {
     val currentAlert by alertViewModel.currentAlert.collectAsState(initial = null)
     var showImage by remember { mutableStateOf(false) }
-    var timeLeft by remember { mutableStateOf(5) }
+    var timeLeft by remember { mutableStateOf(10) }
     var isTimerRunning by remember { mutableStateOf(true) }
     var showEmergencyNotification by remember { mutableStateOf(false) }
     val isSafeConfirmed by alertViewModel.isSafeConfirmed.collectAsState()
@@ -95,7 +95,7 @@ fun AlertScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "보호자와 경찰측에\n긴급 상황이 전달되었습니다.",
+                text = "보호자에게 긴급 상황 알림과\n 장소를 전달했습니다",
                 style = MaterialTheme.typography.body2,
                 textAlign = TextAlign.Center
             )
@@ -111,8 +111,14 @@ fun AlertScreen(
         if (timeLeft == 0 && !isSafeConfirmed) {
             showEmergencyAlert()
             showEmergencyNotification = true
-            delay(5000L)
+            delay(10000L)
             showEmergencyNotification = false
+            if (currentAlert?.frame != null) {
+                showImage = true
+            } else {
+                alertViewModel.clearAlert()
+            }
+        } else if (isSafeConfirmed) {
             if (currentAlert?.frame != null) {
                 showImage = true
             } else {
@@ -176,11 +182,10 @@ fun AlertScreen(
             PrimaryButton(
                 text = "안전 확인",
                 onClick = {
+                    isTimerRunning = false
                     alertHandler.updateSafeConfirmation(true)
-                    Log.d("이거", "alertHandler 눌림")
                     CoroutineScope(Dispatchers.IO).launch {
                         wearConnectionManager.sendSafeConfirmationToMobile()
-                        Log.d("이거", "wearConnectionManager 눌림")
                     }
                 }
             )
