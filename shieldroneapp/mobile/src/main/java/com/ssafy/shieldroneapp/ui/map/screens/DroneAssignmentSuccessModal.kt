@@ -1,13 +1,14 @@
 package com.ssafy.shieldroneapp.ui.map.screens
 
 import android.util.Log
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -15,6 +16,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +45,10 @@ fun DroneAssignmentSuccessModal(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("${droneState.droneId}번 드론이 배정되었습니다!")
+                Text(
+                    text = "${droneState.droneId}번 드론이 배정되었습니다!",
+                    style = MaterialTheme.typography.subtitle1,
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 // 시작 > 도착 경로 표시
                 Text(
@@ -54,8 +59,14 @@ fun DroneAssignmentSuccessModal(
         },
         text = {
             Column {
-                Text("(예상) 이동 시간: ${droneState.estimatedTime ?: "N/A"}분")
-                Text("(예상) 이동 거리: ${droneState.distance ?: "N/A"}m")
+                Text(
+                    text = "(예상) 이동 시간: ${droneState.estimatedTime ?: "N/A"}분",
+                    style = MaterialTheme.typography.body2,
+                )
+                Text(
+                    text = "(예상) 이동 거리: ${droneState.distance ?: "N/A"}m",
+                    style = MaterialTheme.typography.body2,
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -86,6 +97,12 @@ fun DroneAssignmentSuccessModal(
                             keyboardOptions = KeyboardOptions.Default.copy(
                                 keyboardType = KeyboardType.Number
                             ),
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = MaterialTheme.colors.background, // 배경색
+                                focusedIndicatorColor = MaterialTheme.colors.secondary, // 포커스된 밑줄 색상
+                                unfocusedIndicatorColor = MaterialTheme.colors.onBackground, // 비포커스 밑줄 색상
+                                cursorColor = MaterialTheme.colors.secondary // 커서 색상
+                            ),
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(focusRequesters[i])
@@ -115,7 +132,11 @@ fun DroneAssignmentSuccessModal(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("배정 받은 드론의 고유 코드를 입력해주세요.")
+                Text(
+                    text = "배정 받은 드론의 고유 코드를 입력해주세요.",
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.secondary,
+                )
             }
         },
         confirmButton = {
@@ -128,14 +149,29 @@ fun DroneAssignmentSuccessModal(
                     } else {
                         Log.e("DroneAssignmentSuccessModal", "Invalid drone code: $droneCode")
                     }
-                }
+                },
+                colors = androidx.compose.material.ButtonDefaults.buttonColors(
+                    backgroundColor = MaterialTheme.colors.secondary, // 버튼 배경색
+                    contentColor = MaterialTheme.colors.onSecondary   // 버튼 텍스트 색
+                ),
             ) {
-                Text("드론 매칭 요청")
+                Text(
+                    text = "드론 매칭 요청",
+                    style = MaterialTheme.typography.subtitle2,
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("닫기")
+            TextButton(
+                onClick = onDismiss,
+                colors = androidx.compose.material.ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colors.secondary)
+
+            ) {
+                Text(
+                    text = "닫기",
+                    style = MaterialTheme.typography.subtitle2,
+                )
             }
         }
     )

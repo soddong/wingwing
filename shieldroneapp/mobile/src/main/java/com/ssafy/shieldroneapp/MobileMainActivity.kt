@@ -102,10 +102,10 @@ class MobileMainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
 
             // 토큰이 있는지 확인하여 초기 화면 결정
-            val startDestination = if (userLocalDataSource.getTokensSync() != null) {
+            val nextDestination = if (userLocalDataSource.getTokensSync() != null) {
                 ROUTE_MAP // 로그인 한 상태면(토큰 O) => Map 화면으로
             } else {
-                ROUTE_LANDING // 로그인 하지 않은 상태면(토큰 X) => Landing 화면으로
+                ROUTE_AUTHENTICATION // 로그인 하지 않은 상태면(토큰 X) => 로그인 화면으로
             }
 
             ShieldroneappTheme {
@@ -122,11 +122,11 @@ class MobileMainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = startDestination
+                    startDestination = ROUTE_LANDING
                 ) {
                     composable(ROUTE_LANDING) {
-                        LandingScreen(onAuthClick = {
-                            navController.navigate(ROUTE_AUTHENTICATION) {
+                        LandingScreen(navigateToNextScreen = {
+                            navController.navigate(nextDestination) {
                                 popUpTo(ROUTE_LANDING) { inclusive = true }
                             }
                         })

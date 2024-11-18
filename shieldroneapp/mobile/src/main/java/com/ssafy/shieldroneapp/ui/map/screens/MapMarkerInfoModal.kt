@@ -48,13 +48,14 @@ fun MapMarkerInfoModal(
     routeLocation: RouteLocation,
     onSelect: (() -> Unit)? = null // 선택 버튼이 필요한 경우
 ) {
-    val borderColor = if (routeLocation.locationType == LocationType.START) Color.Blue else Color.Red
+    val borderColor =
+        if (routeLocation.locationType == LocationType.START) Color.Blue else Color.Red
     val showSelectButton = routeLocation.locationType == LocationType.START
 
-    Card (
+    Card(
         modifier = Modifier
             .widthIn(max = 340.dp)
-            .padding(horizontal = 16.dp)
+            .padding(24.dp)
             .wrapContentSize(),
         border = BorderStroke(2.dp, borderColor), // 위치 유형에 따른 border 색상
         elevation = 8.dp
@@ -67,14 +68,18 @@ fun MapMarkerInfoModal(
             // TODO: availableDrone 개수, battery 정보 등 추가해야 함
             Text(
                 text = routeLocation.locationName ?: "이름 없음",
-                style = MaterialTheme.typography.h6
+                style = MaterialTheme.typography.subtitle2
             )
             if (routeLocation.locationType == LocationType.START) {
-                Text(text = "정류장 번호: ${routeLocation.hiveNo ?: "N/A"}")
-                Text(text = "방면: ${routeLocation.direction ?: "N/A"}")
+                Text(
+                    text = "${routeLocation.direction ?: "N/A"} 방면 | 정류장 번호: ${routeLocation.hiveNo ?: "N/A"}",
+                    style = MaterialTheme.typography.body2,
+                )
             } else {
-                Text(text = "도로명 주소: ${routeLocation.homeAddress ?: "N/A"}")
-                Text(text = "거리: ${routeLocation.distance ?: 0}m")
+                Text(
+                    text = "${routeLocation.homeAddress}",
+                    style = MaterialTheme.typography.body2,
+                )
             }
 
 
@@ -83,8 +88,9 @@ fun MapMarkerInfoModal(
 
                 Button(
                     onClick = { onSelect?.invoke() },
-                    modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)
-
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.CenterHorizontally),
                 ) {
                     Text(
                         text = "출발지로 선택",
