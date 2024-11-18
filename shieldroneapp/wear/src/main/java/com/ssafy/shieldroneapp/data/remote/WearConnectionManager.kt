@@ -11,8 +11,8 @@ import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.google.gson.Gson
-import com.ssafy.shieldroneapp.app.MainActivity
-import com.ssafy.shieldroneapp.app.MainApplication
+import com.ssafy.shieldroneapp.MainActivity
+import com.ssafy.shieldroneapp.MainApplication
 import com.ssafy.shieldroneapp.R
 import com.ssafy.shieldroneapp.domain.model.WatchConnectionState
 import com.ssafy.shieldroneapp.domain.repository.DataRepository

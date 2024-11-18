@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.app
+package com.ssafy.shieldroneapp
 
 import android.content.Intent
 import android.content.IntentFilter

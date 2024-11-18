@@ -1,4 +1,4 @@
-package com.ssafy.shieldroneapp.app
+package com.ssafy.shieldroneapp
 
 import android.app.Application
 import android.content.Context
