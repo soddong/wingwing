@@ -36,11 +36,12 @@ sealed class MapEvent {
     data class SetStartLocation(val location: RouteLocation) : MapEvent()
     data class SetEndLocation(val location: RouteLocation) : MapEvent()
 
-    // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리
+    // 드론 배정 요청 / 배정 취소 / 최종 매칭 요청 / 결과 처리 / 서비스 종료
     object RequestDroneAssignment : MapEvent()
     data class RequestDroneCancel(val droneId: DroneCancelRequest) : MapEvent()
     data class RequestDroneMatching (val request: DroneMatchRequest) : MapEvent()
     data class HandleDroneMatchingResult (val result: DroneStatus) : MapEvent()
+    data class RequestServiceEnd(val droneId: DroneCancelRequest) : MapEvent()
 
     // 애니메이션 관리 이벤트
     object StartDroneAnimation : MapEvent() // 드론 애니메이션 시작
