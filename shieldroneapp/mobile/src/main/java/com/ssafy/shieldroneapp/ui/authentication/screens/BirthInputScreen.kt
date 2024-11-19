@@ -9,8 +9,8 @@ import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -82,14 +82,14 @@ fun BirthInputScreen(
                 .padding(horizontal = 16.dp),
         )
 
-        TextField(
+        OutlinedTextField(
             value = birth,
             onValueChange = { newValue ->
                 val digitsOnly = newValue.text.filter { it.isDigit() }
 
                 // 현재 포맷이 완료된 상태라면 추가 변환을 건너뜀
                 if (birth.text.length == 10 && birth.text == DateUtils.formatBirthInput(digitsOnly)) {
-                    return@TextField
+                    return@OutlinedTextField
                 }
 
                 val formattedValue = if (digitsOnly.length <= 8) {

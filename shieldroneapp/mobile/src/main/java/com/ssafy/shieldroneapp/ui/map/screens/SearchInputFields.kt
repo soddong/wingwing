@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +41,7 @@ fun SearchInputFields(
         // 출발지 입력 필드
         val isStartFocused = remember { mutableStateOf(false) }
         val emptyStartText = startText.isEmpty()
-        TextField(
+        OutlinedTextField(
             value = startText,
             onValueChange = onStartTextChange,
             modifier = Modifier
@@ -99,7 +99,7 @@ fun SearchInputFields(
         // 도착지 입력 필드
         val isEndFocused = remember { mutableStateOf(false) }
         val emptyEndText = endText.isEmpty()
-        TextField(
+        OutlinedTextField(
             value = endText,
             onValueChange = onEndTextChange,
             modifier = Modifier

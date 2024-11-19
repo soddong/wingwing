@@ -72,7 +72,7 @@ fun NameInputScreen(
                 .padding(horizontal = 16.dp),
         )
 
-        TextField(
+        OutlinedTextField(
             value = name,
             onValueChange = { newValue ->
                 if (!newValue.contains("\n")) {
