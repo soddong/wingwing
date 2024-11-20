@@ -458,6 +458,7 @@ class PipePredictor(object):
                         self.drone_controller.control_value.init_zero()
                         no_detected_target_frames=0
                         target_prev_bbox=None
+                        resultqueue.put(self.drone_controller.get_control_value().get())
                 if self.cfg['visual']:
                     im = self.visualize_video(
                         frame_rgb, mot_res, frame_id, self.video_handler.fps, records, center_traj,  latency = frame_time)  # visualize
@@ -476,11 +477,13 @@ class PipePredictor(object):
                 if not np.isin(self.target_id, mot_res["boxes"][:, 0].astype(int)) :
                     if no_detected_target_frames <= self.target_frame_tolerance:
                         no_detected_target_frames+=1
-                    else:
+                    else:#목표 초기화
                         self.target_id=None
                         self.drone_controller.control_value.init_zero()
                         no_detected_target_frames=0
                         target_prev_bbox=None
+                        resultqueue.put(self.drone_controller.get_control_value().get())
+
                 else:
                     no_detected_target_frames=0
             if self.target_id is None:
