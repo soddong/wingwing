@@ -14,8 +14,8 @@ import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -84,7 +84,7 @@ fun PhoneInputScreen(
                 .padding(horizontal = 16.dp),
         )
 
-        TextField(
+        OutlinedTextField(
             value = phoneNumber,
             onValueChange = { newValue ->
                 setPhoneNumber(newValue)
