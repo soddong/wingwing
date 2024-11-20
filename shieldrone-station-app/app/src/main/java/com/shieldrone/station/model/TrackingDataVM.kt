@@ -26,12 +26,16 @@ class TrackingDataVM : ViewModel() {
     private var previousData: TrackingData? = null
 
     init {
+        Log.d("Test", "트래킹데이터VM 초기화 시도")
         startReceivingData()
+        Log.d("Test", "트래킹데이터VM 초기화 성공")
     }
 
     override fun onCleared() {
+        Log.d("Test", "트래킹데이터VM 클리어 시도")
         super.onCleared()
         stopReceivingData()
+        Log.d("Test", "트래킹데이터VM 클리어 성공")
     }
 
     fun updateTrackingData(newData: TrackingData, isLocked: Boolean) {
@@ -52,89 +56,56 @@ class TrackingDataVM : ViewModel() {
 
 
     fun startReceivingData() {
-        // 소켓이 이미 열려 있는지 확인하고 닫기
-        Log.i("TrackingController", "Attempting to start receiving data...")
-//        stopReceivingData()  // 기존 소켓이 열려 있으면 닫음
-
         Log.i("TrackingController", "Socket binding and receiving data started")
         coroutineScope.launch {
             receiveDataOverUDP()
         }
     }
 
+    private suspend fun receiveDataOverUDP() {
+        Log.i("TrackingController", "receiveDataOverUDP() 호출됨") // 추가 로그
+        withContext(Dispatchers.IO) {
+            Log.i("TrackingController", "withContext 블록 시작됨") // 추가 로그
 
-//    private suspend fun receiveDataOverUDP() {
-//        try {
-//            val buffer = ByteArray(1024)
-//            udpSocket = DatagramSocket(TrackingContstant.PORT)
-//
-//            while (true) {
-//                val packet = DatagramPacket(buffer, buffer.size)
-//                udpSocket?.receive(packet)
-//                val message = String(packet.data, 0, packet.length)
-//                val data = JSONObject(message)
-//
-//                val trackingData = TrackingData(
-//                    receivedTime = System.currentTimeMillis(),
-//                    boxWidth = data.getDouble("box_width"),
-//                    boxHeight = data.getDouble("box_height"),
-//                    normalizedOffsetX = data.getDouble("normalized_offset_x"),
-//                    normalizedOffsetY = data.getDouble("normalized_offset_y")
-//                )
-//
-//                updateTrackingData(trackingData, data.getBoolean("is_locked"))
-//            }
-//        } catch (e: Exception) {
-//            Log.e("TrackingController", "Error receiving data: ${e.message}")
-//        }
-//    }
+            try {
+                val bufferSize = 1024
+                Log.d("TrackingController", "소켓 생성 시도 중...") // 추가 로그
+                udpSocket = DatagramSocket(TrackingConstant.PORT)
+                Log.d("TrackingController", "UDP 소켓이 포트 ${TrackingConstant.PORT}에 바인딩되었습니다.")
 
-private suspend fun receiveDataOverUDP() {
-    Log.i("TrackingController", "receiveDataOverUDP() 호출됨") // 추가 로그
-    withContext(Dispatchers.IO) {
-        Log.i("TrackingController", "withContext 블록 시작됨") // 추가 로그
+                while (true) {
+                    // 버퍼 초기화
+                    val buffer = ByteArray(bufferSize)
+                    val packet = DatagramPacket(buffer, buffer.size)
 
-        var udpSocket: DatagramSocket? = null
-        try {
-            val bufferSize = 1024
-            Log.d("TrackingController", "소켓 생성 시도 중...") // 추가 로그
-            udpSocket = DatagramSocket(TrackingConstant.PORT)
-            Log.d("TrackingController", "UDP 소켓이 포트 ${TrackingConstant.PORT}에 바인딩되었습니다.")
+                    // 데이터 수신
+                    udpSocket!!.receive(packet)
+                    val message = String(packet.data, 0, packet.length).trim()
+                    Log.d("TrackingController", "데이터 수신: $message")
 
-            while (true) {
-                // 버퍼 초기화
-                val buffer = ByteArray(bufferSize)
-                val packet = DatagramPacket(buffer, buffer.size)
+                    // JSON 파싱 및 데이터 처리
+                    val data = JSONObject(message)
+                    val trackingData = TrackingData(
+                        receivedTime = System.currentTimeMillis(),
+                        boxWidth = data.getDouble("box_width"),
+                        boxHeight = data.getDouble("box_height"),
+                        normalizedOffsetX = data.getDouble("normalized_offset_x"),
+                        normalizedOffsetY = data.getDouble("normalized_offset_y")
+                    )
 
-                // 데이터 수신
-                udpSocket.receive(packet)
-                val message = String(packet.data, 0, packet.length).trim()
-                Log.d("TrackingController", "데이터 수신: $message")
-
-                // JSON 파싱 및 데이터 처리
-                val data = JSONObject(message)
-                val trackingData = TrackingData(
-                    receivedTime = System.currentTimeMillis(),
-                    boxWidth = data.getDouble("box_width"),
-                    boxHeight = data.getDouble("box_height"),
-                    normalizedOffsetX = data.getDouble("normalized_offset_x"),
-                    normalizedOffsetY = data.getDouble("normalized_offset_y")
-                )
-
-                updateTrackingData(trackingData, data.getBoolean("is_locked"))
+                    updateTrackingData(trackingData, data.getBoolean("is_locked"))
+                }
+            } catch (e: java.net.SocketException) {
+                Log.e("TrackingController", "소켓 오류: ${e.message}")
+            } catch (e: org.json.JSONException) {
+                Log.e("TrackingController", "JSON 파싱 오류: ${e.message}")
+            } catch (e: Exception) {
+                Log.e("TrackingController", "알 수 없는 오류: ${e.message}")
+            } finally {
+                Log.d("TrackingController", "UDP 소켓이 닫혔습니다.")
             }
-        } catch (e: java.net.SocketException) {
-            Log.e("TrackingController", "소켓 오류: ${e.message}")
-        } catch (e: org.json.JSONException) {
-            Log.e("TrackingController", "JSON 파싱 오류: ${e.message}")
-        } catch (e: Exception) {
-            Log.e("TrackingController", "알 수 없는 오류: ${e.message}")
-        } finally {
-            udpSocket?.close()
-            Log.d("TrackingController", "UDP 소켓이 닫혔습니다.")
         }
     }
-}
 
     fun stopReceivingData() {
         Log.i("TrackingController", "stopReceivingData() 호출됨") // 추가 로그

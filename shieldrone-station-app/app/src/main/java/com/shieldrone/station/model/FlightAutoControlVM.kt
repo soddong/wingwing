@@ -143,9 +143,9 @@ class FlightAutoControlVM : ViewModel() {
 
                 val altitudeRatio = (curAltitude- 1.2f) / (targetAltitude -1.2f)
                 val adjustmentSpeed = when {
-                    altitudeRatio < 0.2 -> (altitudeSpeed * 0.3).toLong()
+                    altitudeRatio < 0.2 -> (altitudeSpeed * 0.5).toLong()
                     altitudeRatio < 0.8 -> altitudeSpeed
-                    else -> (altitudeSpeed * 0.2).toLong()
+                    else -> (altitudeSpeed * 0.5).toLong()
                 }
 
                 flightControlModel.adjustAltitude(adjustmentSpeed.toInt())

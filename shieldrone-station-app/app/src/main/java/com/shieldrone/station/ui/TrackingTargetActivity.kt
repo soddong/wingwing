@@ -89,10 +89,10 @@ fun TrackingTargetScreen(
     val startFlag by routeVM.startFlag.collectAsState()
     var maxYaw by remember { mutableStateOf(220.0) }   // 최대 회전 속도
     var maxStickValue by remember { mutableStateOf(35.0) }   // 최대 전진 속도
-    var altitudeValue by remember { mutableStateOf(30) } // 순항 고도 상승 속도
+    var altitudeValue by remember { mutableStateOf(50) } // 순항 고도 상승 속도
     var isAdjustingYaw by remember { mutableStateOf(false) } // Yaw 조정 시작/중지를 위한 상태 추가
-    var KpValue by remember { mutableStateOf(1.25) } // 드론 속도 조절 가중치
-    var targetAltitude by remember { mutableStateOf(1.8f) } // 목표 순항 고도
+    var KpValue by remember { mutableStateOf(1.125) } // 드론 속도 조절 가중치
+    var targetAltitude by remember { mutableStateOf(3.1f) } // 목표 순항 고도
     val threshold = 0.2f // 드론 제어 시작 임계값
     val minYaw = 10.0    // 최소 회전 속도
     val TAG = "TrackingTargetActivity"
@@ -272,7 +272,7 @@ fun TrackingTargetScreen(
                     KpValue = value.toDouble()
                 },
                 valueRange = 0f..4f,
-                steps = 100,
+                steps = 82,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)
@@ -312,8 +312,8 @@ fun TrackingTargetScreen(
                 onValueChange = { value ->
                         targetAltitude = `value`
                 },
-                valueRange = 1.3f..3.8f,
-                steps = 24,
+                valueRange = 1.3f..3.4f,
+                steps = 20,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)
@@ -333,7 +333,7 @@ fun TrackingTargetScreen(
                     maxYaw = value.toDouble()
                 },
                 valueRange = 0f..660f,
-                steps = 661,
+                steps = 67,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)
