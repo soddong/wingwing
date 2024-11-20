@@ -485,34 +485,20 @@ fun MapScreen(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
         ) {
-            // [버튼] 드론 배정 취소 OR 서비스 종료
-            val isMatchingAssigned = state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED
-            val isMatchingComplete = state.droneState?.matchStatus == DroneStatus.MATCHING_COMPLETE
-
-            if (isMatchingAssigned || isMatchingComplete) {
+            // [버튼] 드론 배정 취소
+            if (state.droneState?.matchStatus == DroneStatus.MATCHING_ASSIGNED) {
                 Text(
-                    text = if (isMatchingAssigned) "드론 배정 취소" else "서비스 종료",
+                    text = "드론 배정 취소",
                     modifier = Modifier
-                        .padding(
-                            end = 16.dp,
-                            bottom = 72.dp
-                        )
+                        .padding(end = 16.dp, bottom = 72.dp)
                         .align(Alignment.BottomEnd) // 하단 오른쪽에 배치
                         .clickable {
-                            state.droneState?.droneId?.let { droneId ->
-                                if (isMatchingAssigned) {
-                                    mapViewModel.handleEvent(
-                                        MapEvent.RequestDroneCancel(
-                                            DroneCancelRequest(droneId = droneId)
-                                        )
-                                    ) // 드론 배정 취소
-                                } else {
-                                    mapViewModel.handleEvent(
-                                        MapEvent.RequestServiceEnd(
-                                            DroneCancelRequest(droneId = droneId)
-                                        )
-                                    ) // 서비스 종료
-                                }
+                            state.droneState.droneId.let { droneId ->
+                                mapViewModel.handleEvent(
+                                    MapEvent.RequestDroneCancel(
+                                        DroneCancelRequest(droneId = droneId)
+                                    )
+                                )
                                 mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
                                 mapViewModel.handleEvent(MapEvent.ClearLocationData) // 출발/도착지 정보 초기화
                             }
@@ -569,8 +555,38 @@ fun MapScreen(
                         color = MaterialTheme.colors.onSecondary,
                     )
                 }
-            } else {
-                // [텍스트] 서비스 이용 중
+            } else if (state.droneState.matchStatus == DroneStatus.MATCHING_COMPLETE) {
+                // [버튼] 서비스 종료
+                Button(
+                    onClick = {
+                        state.droneState.droneId.let { droneId ->
+                            mapViewModel.handleEvent(
+                                MapEvent.RequestServiceEnd(
+                                    DroneCancelRequest(droneId = droneId)
+                                )
+                            ) // 서비스 종료
+                            mapViewModel.handleEvent(MapEvent.ClearDroneState) // 드론 상태 초기화
+                            mapViewModel.handleEvent(MapEvent.ClearLocationData) // 출발/도착지 정보 초기화
+                        }
+                    },
+                    shape = RoundedCornerShape(0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .align(Alignment.BottomCenter),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colors.secondary,
+                        contentColor = MaterialTheme.colors.onSecondary,
+                    ),
+                ) {
+                    Text(
+                        text = "서비스 종료",
+                        style = MaterialTheme.typography.h5,
+                        color = MaterialTheme.colors.onSecondary,
+                    )
+                }
+
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -580,7 +596,7 @@ fun MapScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "안심 귀가 서비스 이용 중",
+                        text = "서비스 종료",
                         style = MaterialTheme.typography.h5,
                         color = MaterialTheme.colors.onSecondary // 텍스트 색상
                     )

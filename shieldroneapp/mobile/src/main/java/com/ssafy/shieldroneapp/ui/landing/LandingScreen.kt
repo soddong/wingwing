@@ -34,12 +34,12 @@ fun LandingScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // 배경 이미지
-            Image(
-                painter = painterResource(id = R.drawable.landing_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop // 이미지를 화면 크기에 맞게 조정
-            )
+//            Image(
+//                painter = painterResource(id = R.drawable.landing_background),
+//                contentDescription = null,
+//                modifier = Modifier.fillMaxSize(),
+//                contentScale = ContentScale.Crop // 이미지를 화면 크기에 맞게 조정
+//            )
 
             Column(
                 modifier = Modifier
@@ -49,19 +49,51 @@ fun LandingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 프로젝트 제목
-                TypingText(
-                    fullText = "WINGWING", // 타이핑 효과 적용
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // 프로젝트 제목
+                    TypingText(
+                        fullText = "WINGWING", // 타이핑 효과 적용
+                    )
 
-                Text(
-                    text = "WINGWING과 함께 안전 귀가를 시작하세요.\n" +
-                            "든든한 동행이 언제나 당신의 곁을 지킵니다.",
-                    style = MaterialTheme.typography.body2.copy(lineHeight = 22.sp),
-                    color = MaterialTheme.colors.background,
+                    Spacer(modifier = Modifier.height(46.dp)) // 간격 추가
+
+                    Text(
+                        text = "안전 귀가를 위한 새로운 동행",
+                        style = MaterialTheme.typography.subtitle1.copy(lineHeight = 22.sp),
+                        color = MaterialTheme.colors.primary,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+
+                // 국기와 텍스트를 나란히 배치
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 국기 이미지
+                    Image(
+                        painter = painterResource(id = R.drawable.korea),
+                        contentDescription = "대한민국 국기",
+                        modifier = Modifier
+                            .size(24.dp) // 이미지 크기 조정
+                            .padding(end = 8.dp) // 텍스트와 간격 추가
+                    )
+
+                    // 텍스트
+                    Text(
+                        text = "든든한 동행이 언제나 당신의 곁을 지킵니다.",
+                        style = MaterialTheme.typography.body2.copy(lineHeight = 22.sp),
+                        color = MaterialTheme.colors.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

@@ -19,7 +19,7 @@ private val LightColors = lightColors(
     onPrimary = Gray50, // primary 위 텍스트, 아이콘 등
 //    primaryVariant = Blue700, // 강조
 
-    secondary = Orange400, // 보조 색상 (추가 강조 요소)
+    secondary = Blue900, // 보조 색상 (추가 강조 요소)
     onSecondary = Gray50,
 
     background = Gray50, // 앱 전체 배경 색
