@@ -1,37 +1,21 @@
 package com.ssafy.shieldroneapp.data.source.local
 
-import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.DroneState
-import com.ssafy.shieldroneapp.data.model.DroneStatus
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class DroneLocalDataSourceImpl @Inject constructor(
-    context: Context,
+    private val sharedPreferences: SharedPreferences,
     private val gson: Gson
 ) : DroneLocalDataSource {
 
     /**
-     * EncryptedSharedPreferences 설정으로 보안 강화
-     * */
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        "drone_encrypted_prefs",
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-
-    /**
      * 1. 드론 상태 저장
      *
-     * @param state 로컬에 저장할 드론 상태 객체
+     * @param droneState 로컬에 저장할 드론 상태 객체
      */
     override suspend fun saveDroneState(droneState: DroneState) {
         val droneStateJson = gson.toJson(droneState)
@@ -53,7 +37,7 @@ class DroneLocalDataSourceImpl @Inject constructor(
      *
      * 기존 드론 상태 객체를 불러와 주어진 새로운 상태로 업데이트 후 저장합니다.
      *
-     * @param newState 업데이트할 드론 상태
+     * @param newDroneState 업데이트할 드론 상태
      */
     override suspend fun updateDroneState(newDroneState: DroneState) {
         val currentState = getDroneState() ?: DroneState(droneId = newDroneState.droneId)

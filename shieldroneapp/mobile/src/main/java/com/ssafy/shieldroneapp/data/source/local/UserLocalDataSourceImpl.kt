@@ -1,9 +1,6 @@
 package com.ssafy.shieldroneapp.data.source.local
 
-import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.ssafy.shieldroneapp.data.model.Guardian
 import com.ssafy.shieldroneapp.data.model.User
 import com.google.gson.Gson
@@ -16,26 +13,9 @@ import javax.inject.Singleton
 
 @Singleton
 class UserLocalDataSourceImpl @Inject constructor(
-    context: Context,
+    private val sharedPreferences: SharedPreferences,
     private val gson: Gson
 ) : UserLocalDataSource {
-    /**
-     * 0. EncryptedSharedPreferences 설정으로 보안 강화
-     *
-     * - masterKeyAlias: AES256_GCM 방식의 마스터 키 생성
-     * - sharedPreferences: EncryptedSharedPreferences를 사용해
-     *   AES256_SIV 및 AES256_GCM 암호화 스키마로 데이터를 안전하게 저장
-     *
-     * 민감한 정보를 암호화하여 보안을 강화합니다.
-     */
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        "user_encrypted_prefs",
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
 
     /**
      * 1-1. 인증 토큰 저장 (비동기)

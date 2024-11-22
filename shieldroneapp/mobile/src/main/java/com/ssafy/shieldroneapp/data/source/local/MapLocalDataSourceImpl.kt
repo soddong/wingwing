@@ -1,9 +1,6 @@
 package com.ssafy.shieldroneapp.data.source.local
 
-import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.google.gson.Gson
 import com.ssafy.shieldroneapp.data.model.RouteLocation
 import javax.inject.Inject
@@ -17,23 +14,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class MapLocalDataSourceImpl @Inject constructor(
-    context: Context,
+    private val sharedPreferences: SharedPreferences,
     private val gson: Gson
 ) : MapLocalDataSource {
-    /**
-     * EncryptedSharedPreferences 설정으로 보안 강화
-     *
-     * - masterKeyAlias: AES256_GCM 방식의 마스터 키 생성
-     * - sharedPreferences: AES256_SIV와 AES256_GCM 암호화 스키마를 사용하여 보안 저장
-     */
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        "map_encrypted_prefs",
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
 
     private val startLocationKey = "start_location"
     private val endLocationKey = "end_location"
