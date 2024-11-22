@@ -26,6 +26,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "shieldroneapp"
+rootProject.name = "wingwing"
 include(":mobile")
 include(":wear")

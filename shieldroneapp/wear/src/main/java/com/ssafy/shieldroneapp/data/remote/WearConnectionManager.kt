@@ -194,7 +194,7 @@ class WearConnectionManager @Inject constructor(
         val notification = NotificationCompat.Builder(context, "mobile_app_channel")
             .setContentTitle("모바일 앱 실행 필요")
             .setContentText("정확한 위험 감지를 위해 모바일 앱을 실행해주세요")
-            .setSmallIcon(R.drawable.shieldrone_ic)
+            .setSmallIcon(R.drawable.wingwing_ic)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 

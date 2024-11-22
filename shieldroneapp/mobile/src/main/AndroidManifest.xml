@@ -36,7 +36,7 @@
   <uses-permission android:name="com.google.android.wearable.permission.BIND_CAPABILITY"/>
   <uses-permission android:name="com.google.android.wearable.permission.BIND_DATA_CLIENT"/>
 
-  <application android:name=".MobileMainApplication" android:allowBackup="true" android:dataExtractionRules="@xml/data_extraction_rules" android:fullBackupContent="@xml/backup_rules" android:icon="@mipmap/android_icon" android:label="@string/app_name" android:roundIcon="@mipmap/android_icon_round" android:supportsRtl="true" android:theme="@style/Theme.Shieldroneapp" android:usesCleartextTraffic="true">
+  <application android:name=".MobileMainApplication" android:allowBackup="true" android:dataExtractionRules="@xml/data_extraction_rules" android:fullBackupContent="@xml/backup_rules" android:icon="@mipmap/android_icon" android:label="wingwing" android:roundIcon="@mipmap/android_icon_round" android:supportsRtl="true" android:theme="@style/Theme.Shieldroneapp" android:usesCleartextTraffic="true">
     <!-- HTTP 통신 허용 (배포 시 HTTPS 권장) -->
 
     <!-- WearOS 통신을 위한 Google Play Services Wearable API 사용 설정 -->

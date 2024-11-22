@@ -6,7 +6,7 @@
 
     <style name="Theme.Shieldrone.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/black</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/shieldrone_ic</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/wingwing_ic</item>
         <item name="postSplashScreenTheme">@android:style/Theme.DeviceDefault</item>
     </style>
 </resources>
