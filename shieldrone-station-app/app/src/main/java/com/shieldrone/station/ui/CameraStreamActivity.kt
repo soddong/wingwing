@@ -25,7 +25,7 @@ class CameraStreamActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // 카메라 인덱스 설정
-        viewModel.setCameraIndex(ComponentIndexType.LEFT_OR_MAIN)
+        viewModel.setCameraModeAndIndex(ComponentIndexType.LEFT_OR_MAIN)
 
         setContent {
             CameraStreamScreen(viewModel)
@@ -36,7 +36,6 @@ class CameraStreamActivity : ComponentActivity() {
 @Composable
 fun CameraStreamScreen(viewModel: CameraStreamVM) {
     val cameraName by viewModel.cameraName.collectAsState()
-    val streamInfo by viewModel.streamInfo.collectAsState()
     val frameInfo by viewModel.frameInfo.collectAsState()
 
     Column(
@@ -50,15 +49,6 @@ fun CameraStreamScreen(viewModel: CameraStreamVM) {
         Text(
             text = "Camera: $cameraName",
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 스트림 정보 출력
-        Text(
-            text = "Stream Info: $streamInfo",
-            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(8.dp)
         )
 
@@ -88,7 +78,7 @@ fun CameraStreamScreen(viewModel: CameraStreamVM) {
 }
 
 @Composable
-fun CameraStreamSurfaceView(viewModel: CameraStreamVM) {
+fun CameraStreamSurfaceView(viewModel: CameraStreamVM, modifier: Modifier = Modifier) {
     // AndroidView를 사용하여 SurfaceView를 포함
     AndroidView(
         factory = { context ->
@@ -121,8 +111,7 @@ fun CameraStreamSurfaceView(viewModel: CameraStreamVM) {
                 })
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
+        modifier = modifier
+            .fillMaxSize()
     )
 }

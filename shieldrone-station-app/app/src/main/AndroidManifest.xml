@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.usb.host" />
     <uses-feature
         android:name="android.hardware.camera"
@@ -43,9 +44,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.SimulatorActivity" />
-        <activity android:name=".ui.FlightControlActivity" />
-        <activity android:name=".ui.TrackingTargetActivity" />
+        <activity android:name=".ui.FlightControlActivity"
+            android:screenOrientation="landscape"
+            tools:ignore="DiscouragedApi" />
+        <activity android:name=".ui.TrackingTargetActivity"
+            android:screenOrientation="landscape"
+            tools:ignore="DiscouragedApi" />
         <activity android:name=".ui.CameraStreamActivity"/>
     </application>
 
