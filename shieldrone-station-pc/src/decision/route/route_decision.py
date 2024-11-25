@@ -55,10 +55,11 @@ class RouteDecision:
         최초 소켓 연결시, 앱서버에 startFlag 전송
         """
         data = {
-            "startFlag" : True
+            "start_flag" : True
         }
         message = json.dumps(data)
         self.sender_socket.sendto(message.encode('utf-8'), (self.target_host, self.target_port))  
+        print("[시작 플래그] 앱서버에 이륙 신호를 전딜했습니다.")
 
     def handle_position_update(self, lat, lng, dest_lat, dest_lng):
         """

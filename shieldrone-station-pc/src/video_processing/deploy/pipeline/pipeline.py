@@ -236,7 +236,7 @@ class PipePredictor(object):
         self.spatial_info_tracker = SpatialInfoTracker()
         # TODO : arg로 변경
         # 앱서버의 ip와 port로 변경하고 사용
-        self.res_sender = ResultSendHandler("192.168.107.236", 11435)
+        self.res_sender = ResultSendHandler("192.168.91.11", 11435)
         
 
     def set_file_name(self, path):
@@ -330,7 +330,7 @@ class PipePredictor(object):
             "info": info
         })
         send_socket.send_string(message)
-
+        
     def predict_video(self, thread_idx=0):
 
         frame_id = 0

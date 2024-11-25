@@ -41,6 +41,8 @@ class Server:
         self.ws_clients.add(websocket)
         print("WebSocket 클라이언트가 연결되었습니다.")
 
+        self.route_decision.send_initial_trigger()
+
         try:
             async for message in websocket:
                 data = json.loads(message)
@@ -66,6 +68,7 @@ class Server:
         """
         위험 상황 발생 시 모든 WebSocket 클라이언트에 경고 메시지 전송.
         """
+        print("[클라이언트 전송] 위험상황 전송")
         message = json.dumps({
             "type": "sendWarningFlag",
             "time": datetime.now().isoformat(),
@@ -98,7 +101,7 @@ class Server:
         """
         별도 스레드에서 카메라 데이터를 수신하여 asyncio 루프에 전달.
         """
-        asyncio.set_event_loop(loop)  # Set the event loop for this thread
+        asyncio.set_event_loop(loop)
         while True:
             try:
                 message = self.socket_camera.recv_string(flags=zmq.NOBLOCK)
@@ -107,7 +110,6 @@ class Server:
                 self.danger_decision.set_camera_flag_trigger(True)
                 print("[카메라 데이터 수신] Frame 데이터 업데이트됨.")
 
-                # Send the data update to the event loop
                 asyncio.run_coroutine_threadsafe(self.update_clients_with_frame(), loop)
 
             except zmq.Again:
@@ -118,9 +120,9 @@ class Server:
         WebSocket 클라이언트에 업데이트된 카메라 프레임을 전송.
         """
         message = json.dumps({
-            "type": "updateFrame",
+            "type": "sendObjectFlag",
             "time": datetime.now().isoformat(),
-            "frame": self.frame
+            "objectFlag": True
         })
         for client in self.ws_clients:
             try:
@@ -143,13 +145,8 @@ class Server:
         flask_thread = threading.Thread(target=self.run_flask)
         flask_thread.start()
 
-        # Set up the main event loop
         loop = asyncio.get_event_loop()
-        
-        # Start the camera data thread with access to the main loop
         threading.Thread(target=self.camera_data_thread, args=(loop,), daemon=True).start()
-
-        # Run WebSocket server in the main event loop
         loop.run_until_complete(self.run_websocket())
 
 if __name__ == "__main__":

@@ -66,14 +66,14 @@ class DangerDecision:
         """
         pulse_weight = 1/3
         db_weight = 1/3
-        camera_weight = 0
+        camera_weight = 1/3
 
         active_triggers = (self.pulse_flag_trigger * pulse_weight +
                            self.db_flag_trigger * db_weight +
                            self.camera_flag_trigger * camera_weight)
 
         print(f"[경고] 조건 체크 결과: {active_triggers}")
-        if active_triggers >= 0.5:
+        if active_triggers >= 0.9:
             print("[경고] 조건이 충족되었습니다. 위험 상황 처리 로직을 수행합니다.")
             self.reset_triggers()
             return True
