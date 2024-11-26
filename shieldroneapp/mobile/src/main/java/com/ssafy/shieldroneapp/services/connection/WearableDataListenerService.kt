@@ -152,7 +152,7 @@ class WearableDataListenerService : BaseMobileService() {
                 NotificationManagerCompat.from(this).notify(
                     NOTIFICATION_ID,
                     NotificationCompat.Builder(this, MobileMainApplication.NOTIFICATION_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.shieldrone_ic)
+                        .setSmallIcon(R.drawable.wingwing_ic)
                         .setContentTitle(title)
                         .setContentText(content)
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)

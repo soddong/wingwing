@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">shieldroneapp</string>
+  <string name="app_name">WINGWING</string>
   <string name="connection_error">연결 오류: %1$s</string>
   <string name="message_processing_error">메시지 처리 오류: %1$s</string>
   <string name="error_event">오류 이벤트: %1$s</string>
