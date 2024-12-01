@@ -1,0 +1,9 @@
+version: "2"
+authtoken: 2jMkQiruN0vjmr1kHVRh1UPqFQM_4Ja1RFzQuDrNTjT6H12jW
+tunnels:
+  flask_app:
+    addr: 5000
+    proto: http
+  websocket_app:
+    addr: 8765
+    proto: http
