@@ -1,5 +1,5 @@
-# [안전 귀가 드론 서비스] WINGWING
-![WINGWING-INTRO](./output/img/intro.gif)
+# [안전 귀가 드론 서비스] WINGWING   
+<img src="./output/img/intro.gif" alt="WINGWING-INTRO" width="600" />
 
 드론을 활용한 안전 귀가 지원부터, 위험 상황 감지 및 비상 신고까지!   
 스마트 치안을 실현하는 귀가 동행 서비스
@@ -19,7 +19,7 @@
 
 | **앱 알림**                  | **워치 알림**             |
 |-----------------------------|--------------------------|
-| <img src="./output/img/app+danger+alarm.png" alt="앱 경고 알림" width="500" /> | ![워치 경고 알림](./output/img/watch+danger+alarm.png)|
+| <img src="./output/img/app+danger+alarm.png" alt="앱 경고 알림" width="300" /> |  <img src="./output/img/watch+danger+alarm.png" alt="워치 경고 알림" width="300" />|
 
 ---
 ### **2. 사용자 인식 및 실시간 추적**
@@ -27,11 +27,11 @@
 
 | **드론 시작**               | 
 |-----------------------------|
-| ![드론 시작](./output/img/drone+start.gif) | 
+| <img src="./output/img/drone+start.gif" alt="앱 경고 알림" width="625" />| 
 
-| **사용자 탐지**             | **사용자 추적**             |
+|  **사용자 탐지**             | **사용자 추적**             |
 |--------------------------|----------------------------|
-| ![드론 환경 탐지](./output/img/drone+perception.gif) | ![드론 사용자 추적](./output/img/drone+pursuit.gif) |
+|<img src="./output/img/drone+perception.gif" alt="드론 환경 탐지" width="300" />|<img src="./output/img/drone+pursuit.gif" alt="드론 사용자 추적" width="300" />|
 
 
 
@@ -40,13 +40,9 @@
 ### **3. 위험 판단 및 대응 프로세스**
 - **기능 설명**: 위험 상황이 발생하면 즉시 판단하여 경고음을 작동하고 최적의 대응 경로를 제공합니다.
 
-| **위험 감지**               |
-|-----------------------------|
-| ![드론 위험 감지](./output/img/drone+danger.gif) |
-
-| **심박수 기반 경고**       | **소음 기반 경고**          |
-|--------------------------|----------------------------|
-| ![심박수 기반 경고](./output/img/warch+danger+bpm.png) | ![소음 기반 경고](./output/img/warch+danger+noise.png) |
+| **위험 감지**               | **심박수 기반 경고**       | **소음 기반 경고**          |
+|-----------------------------|--------------------------|----------------------------|
+| <img src="./output/img/drone+danger.gif" alt="드론 위험 감지" width="300" /> |  <img src="./output/img/warch+danger+bpm.png" alt="심박수 기반 경고" width="300" /> | <img src="./output/img/warch+danger+noise.png" alt="소음 기반 경고" width="300" /> |
 
 ---
 
@@ -55,7 +51,7 @@
 
 | **SNS 경고 공유**            |
 |-----------------------------|
-| <img src="./output/img/sns+danger+alarm.jpg" alt="SNS 경고 알림" width="400" />|
+| <img src="./output/img/sns+danger+alarm.jpg" alt="SNS 경고 알림" width="300" />|
 
 
 # **프로젝트 구조**
